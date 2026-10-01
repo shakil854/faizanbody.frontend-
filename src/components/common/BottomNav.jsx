@@ -1,7 +1,7 @@
 import React from 'react';
 
 /**
- * Ultra-Luxury Bottom Navigation Bar
+ * Ultra-Luxury Bottom Navigation Bar (Compact & Sleek)
  * High-fidelity vector icons, smooth pill indicator, and red notification badge for leaving alerts.
  */
 export function BottomNav({ activeTab, onTabChange, workerCount, alertCount = 0 }) {
@@ -18,8 +18,8 @@ export function BottomNav({ activeTab, onTabChange, workerCount, alertCount = 0 
           <div className="nav-icon-pill">
             <svg
               className="nav-svg-icon"
-              width="24"
-              height="24"
+              width="20"
+              height="20"
               viewBox="0 0 24 24"
               fill="none"
               xmlns="http://www.w3.org/2000/svg"
@@ -67,8 +67,8 @@ export function BottomNav({ activeTab, onTabChange, workerCount, alertCount = 0 
           <div className="nav-icon-pill">
             <svg
               className="nav-svg-icon"
-              width="24"
-              height="24"
+              width="20"
+              height="20"
               viewBox="0 0 24 24"
               fill="none"
               xmlns="http://www.w3.org/2000/svg"

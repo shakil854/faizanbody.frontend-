@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { workerService } from '../../services/workerService';
 import { isLeavingSoon } from '../../utils/dateAlerts';
 
-export function HomePage({ onNavigate, onQuickAddWorker }) {
+export function HomePage({ onNavigate }) {
   const [workers, setWorkers] = useState([]);
 
   useEffect(() => {
@@ -23,7 +23,7 @@ export function HomePage({ onNavigate, onQuickAddWorker }) {
   return (
     <div className="home-dashboard">
       <div className="android-body home-content">
-        {/* Management Modules Section - Strictly Only These 2 Cards */}
+        {/* Management Modules Section */}
         <section className="dashboard-section">
           <div className="section-title-row">
             <h3 className="section-heading">Management Modules</h3>
@@ -31,7 +31,7 @@ export function HomePage({ onNavigate, onQuickAddWorker }) {
           </div>
 
           <div className="modules-grid single-column-grid">
-            {/* 1. Workers Directory Card */}
+            {/* Workers Directory Card */}
             <div
               className={`module-card featured-module ${leavingSoonCount > 0 ? 'module-card-with-alert' : ''}`}
               onClick={() => onNavigate('workers')}
@@ -75,39 +75,6 @@ export function HomePage({ onNavigate, onQuickAddWorker }) {
                   </svg>
                 </span>
                 <span className="module-count-pill">{totalWorkers} Workers</span>
-              </div>
-            </div>
-
-            {/* 2. Add New Worker Card */}
-            <div
-              className="module-card action-shortcut-card"
-              onClick={onQuickAddWorker}
-              role="button"
-              tabIndex={0}
-            >
-              <div className="module-card-top">
-                <div className="module-icon-box add-module-icon">
-                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                    <line x1="12" y1="5" x2="12" y2="19" />
-                    <line x1="5" y1="12" x2="19" y2="12" />
-                  </svg>
-                </div>
-                <span className="shortcut-pill">Quick Action</span>
-              </div>
-              <div className="module-info">
-                <h4 className="module-title">Add New Worker</h4>
-                <p className="module-desc">
-                  Quickly enroll a new technician with joining date into the system.
-                </p>
-              </div>
-              <div className="module-footer">
-                <span className="open-link-text">
-                  Enroll Now
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                    <line x1="5" y1="12" x2="19" y2="12" />
-                    <polyline points="12 5 19 12 12 19" />
-                  </svg>
-                </span>
               </div>
             </div>
           </div>

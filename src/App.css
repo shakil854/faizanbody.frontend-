@@ -25,7 +25,7 @@
   width: 100%;
   margin: 0 auto;
   position: relative;
-  padding-bottom: 96px;
+  padding-bottom: 74px;
   box-sizing: border-box;
   overflow-x: clip;
 }
@@ -505,20 +505,20 @@
    ======================================================== */
 .android-fab.luxury-fab {
   position: fixed;
-  bottom: 84px;
-  right: 1.25rem;
+  bottom: 64px;
+  right: 1.15rem;
   z-index: 45;
   background: linear-gradient(135deg, #1d4ed8 0%, #2563eb 100%);
   color: #ffffff;
   border: none;
   border-radius: 50%;
-  width: 56px;
-  height: 56px;
+  width: 50px;
+  height: 50px;
   display: flex;
   align-items: center;
   justify-content: center;
   box-shadow: 
-    0 8px 24px rgba(37, 99, 235, 0.42),
+    0 6px 20px rgba(37, 99, 235, 0.4),
     inset 0 1px 1px rgba(255, 255, 255, 0.35);
   cursor: pointer;
   transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
@@ -526,8 +526,8 @@
 }
 
 .android-fab.luxury-fab:hover {
-  transform: translateY(-2px) scale(1.06);
-  box-shadow: 0 14px 30px rgba(37, 99, 235, 0.52);
+  transform: translateY(-2px) scale(1.05);
+  box-shadow: 0 10px 24px rgba(37, 99, 235, 0.48);
 }
 
 .android-fab.luxury-fab:active {
@@ -545,23 +545,23 @@
 }
 
 /* ========================================================
-   6. Luxury Android Bottom Navigation Bar
+   6. Luxury Android Bottom Navigation Bar (Compact & Sleek)
    ======================================================== */
 .mobile-bottom-bar.luxury-bottom-bar {
   position: fixed;
   bottom: 0;
   left: 0;
   right: 0;
-  height: 68px;
+  height: 52px;
   background: rgba(255, 255, 255, 0.94);
   backdrop-filter: blur(24px);
   -webkit-backdrop-filter: blur(24px);
-  border-top: 1px solid rgba(226, 232, 240, 0.9);
+  border-top: 1px solid rgba(226, 232, 240, 0.85);
   display: flex;
   align-items: center;
   justify-content: center;
   z-index: 40;
-  box-shadow: 0 -4px 24px rgba(15, 23, 42, 0.04);
+  box-shadow: 0 -3px 18px rgba(15, 23, 42, 0.04);
 }
 
 .bottom-nav-container {
@@ -569,8 +569,8 @@
   align-items: center;
   justify-content: space-around;
   width: 100%;
-  max-width: 500px;
-  padding: 0 1.25rem;
+  max-width: 440px;
+  padding: 0 1rem;
 }
 
 .bottom-nav-item {
@@ -580,10 +580,10 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 0.25rem;
+  gap: 0.12rem;
   cursor: pointer;
   flex: 1;
-  padding: 0.35rem 0;
+  padding: 0.15rem 0;
   transition: all 0.2s cubic-bezier(0.2, 0, 0, 1);
   font-family: inherit;
   outline: none;
@@ -591,9 +591,9 @@
 
 .nav-icon-pill {
   position: relative;
-  width: 56px;
-  height: 32px;
-  border-radius: 16px;
+  width: 44px;
+  height: 25px;
+  border-radius: 13px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -606,20 +606,20 @@
 
 .nav-badge-dot {
   position: absolute;
-  top: 1px;
-  right: 10px;
+  top: -1px;
+  right: 7px;
   background: #2563eb;
   color: #ffffff;
-  font-size: 0.62rem;
+  font-size: 0.55rem;
   font-weight: 800;
-  padding: 0.1rem 0.35rem;
+  padding: 0.06rem 0.28rem;
   border-radius: var(--radius-full);
   line-height: 1;
   border: 1.5px solid #ffffff;
 }
 
 .nav-label {
-  font-size: 0.74rem;
+  font-size: 0.67rem;
   font-weight: 600;
   color: #64748b;
   letter-spacing: 0.01em;
@@ -1539,33 +1539,33 @@
    10. 5-Day Leaving Soon Red Alert Notifications
    ======================================================== */
 
-/* A. Bottom Nav Red Notification Badge */
+/* A. Bottom Nav Red Notification Badge (Compact) */
 .nav-alert-badge {
   position: absolute;
-  top: -2px;
-  right: 6px;
+  top: -3px;
+  right: 5px;
   background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
   color: #ffffff;
-  font-size: 0.65rem;
+  font-size: 0.56rem;
   font-weight: 800;
-  min-width: 18px;
-  height: 18px;
-  padding: 0 4px;
+  min-width: 15px;
+  height: 15px;
+  padding: 0 3px;
   border-radius: var(--radius-full);
   display: flex;
   align-items: center;
   justify-content: center;
   line-height: 1;
-  border: 2px solid #ffffff;
-  box-shadow: 0 2px 8px rgba(220, 38, 38, 0.45);
+  border: 1.5px solid #ffffff;
+  box-shadow: 0 1px 6px rgba(220, 38, 38, 0.45);
   animation: pulseAlertBadge 2s infinite ease-in-out;
 }
 
 .alert-pulse-ring {
   position: absolute;
-  inset: -3px;
+  inset: -2px;
   border-radius: var(--radius-full);
-  border: 2px solid #ef4444;
+  border: 1.5px solid #ef4444;
   opacity: 0.6;
   animation: pulseRing 2s cubic-bezier(0.215, 0.61, 0.355, 1) infinite;
 }
