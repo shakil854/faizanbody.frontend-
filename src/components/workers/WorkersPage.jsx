@@ -8,10 +8,12 @@ import { WorkerFab } from './WorkerFab';
 import { Snackbar } from './Snackbar';
 import { BottomNav } from '../common/BottomNav';
 import { isLeavingSoon, getDaysUntil } from '../../utils/dateAlerts';
+import { useAuth } from '../../context/AuthContext';
 
 const BATCH_SIZE = 25; // High-performance progressive rendering batch size
 
 export function WorkersPage({ onBackToHome, onAlertCountChange }) {
+  const { isAdmin } = useAuth();
   // Initialize with cached workers instantly in 0ms
   const [workers, setWorkers] = useState(() => workerService.getCachedWorkers());
   const [loading, setLoading] = useState(() => workerService.getCachedWorkers().length === 0);
@@ -252,17 +254,19 @@ export function WorkersPage({ onBackToHome, onAlertCountChange }) {
                   ? `No worker matches "${searchQuery}". Try clearing search or check spelling.`
                   : 'Start adding workers to keep track of coming and going dates.'}
               </p>
-              <button
-                type="button"
-                className="btn btn-primary btn-empty-cta"
-                onClick={() => {
-                  setSearchQuery('');
-                  setEditingWorker(null);
-                  setIsFormOpen(true);
-                }}
-              >
-                + Add First Worker
-              </button>
+              {isAdmin && (
+                <button
+                  type="button"
+                  className="btn btn-primary btn-empty-cta"
+                  onClick={() => {
+                    setSearchQuery('');
+                    setEditingWorker(null);
+                    setIsFormOpen(true);
+                  }}
+                >
+                  + Add First Worker
+                </button>
+              )}
             </div>
           ) : (
             /* High-Performance Progressively Rendered Cards */
@@ -274,6 +278,7 @@ export function WorkersPage({ onBackToHome, onAlertCountChange }) {
                     worker={worker}
                     onEdit={handleEdit}
                     onDelete={handleDelete}
+                    canManage={isAdmin}
                   />
                 ))}
               </div>
@@ -292,13 +297,15 @@ export function WorkersPage({ onBackToHome, onAlertCountChange }) {
         </div>
       </main>
 
-      {/* 3. Android Floating Action Button (FAB) */}
-      <WorkerFab
-        onAddNew={() => {
-          setEditingWorker(null);
-          setIsFormOpen(true);
-        }}
-      />
+      {/* 3. Android Floating Action Button (FAB - Admin Only) */}
+      {isAdmin && (
+        <WorkerFab
+          onAddNew={() => {
+            setEditingWorker(null);
+            setIsFormOpen(true);
+          }}
+        />
+      )}
 
       {/* 4. Bottom App Navigation Bar with Red Alert count */}
       <BottomNav

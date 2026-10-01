@@ -1,4 +1,7 @@
 import React, { useState, useEffect } from 'react';
+import { useAuth } from './context/AuthContext';
+import { LoginPage } from './components/auth/LoginPage';
+import { ChangePasswordModal } from './components/auth/ChangePasswordModal';
 import { AppHeader } from './components/common/AppHeader';
 import { HomePage } from './components/home/HomePage';
 import { WorkersPage } from './components/workers/WorkersPage';
@@ -10,17 +13,22 @@ import { isLeavingSoon } from './utils/dateAlerts';
 import './App.css';
 
 export function App() {
+  const { isAuthenticated, loading: authLoading, isAdmin } = useAuth();
+
   const [currentPage, setCurrentPage] = useState(() => {
     return window.location.hash === '#workers' ? 'workers' : 'home';
   });
 
   const [isQuickAddOpen, setIsQuickAddOpen] = useState(false);
+  const [isChangePasswordOpen, setIsChangePasswordOpen] = useState(false);
   const [snackbar, setSnackbar] = useState({ message: '', type: 'info' });
   const [workerCount, setWorkerCount] = useState(0);
   const [alertCount, setAlertCount] = useState(0);
 
   // Keep track of worker count & 5-day leaving alerts for nav badge
   useEffect(() => {
+    if (!isAuthenticated) return;
+
     workerService
       .getWorkers()
       .then((res) => {
@@ -31,7 +39,7 @@ export function App() {
         }
       })
       .catch(() => {});
-  }, [currentPage]);
+  }, [currentPage, isAuthenticated]);
 
   // Sync hash with browser history for Android back gesture / back button
   useEffect(() => {
@@ -67,10 +75,46 @@ export function App() {
     }
   };
 
+  // 1. Splash loading state while verifying existing session
+  if (authLoading) {
+    return (
+      <div className="auth-splash-loading">
+        <div className="splash-logo-pulse">
+          <svg width="42" height="42" viewBox="0 0 24 24" fill="none" stroke="#2563eb" strokeWidth="2.2">
+            <path d="M10 17h4V5H2v12h3" />
+            <path d="M20 17h2v-3.34a4 4 0 0 0-1.17-2.83L19 9h-5v8h1" />
+            <circle cx="7.5" cy="17.5" r="2.5" />
+            <circle cx="17.5" cy="17.5" r="2.5" />
+          </svg>
+        </div>
+        <div className="splash-pulse-bar"></div>
+        <span className="splash-text">Loading Faizan Body Portal...</span>
+      </div>
+    );
+  }
+
+  // 2. Unauthenticated: Show strictly Login screen (no register)
+  if (!isAuthenticated) {
+    return (
+      <>
+        <LoginPage onLoginSuccess={() => navigateTo('home')} />
+        <Snackbar
+          message={snackbar.message}
+          type={snackbar.type}
+          onClose={() => setSnackbar({ message: '', type: 'info' })}
+        />
+      </>
+    );
+  }
+
+  // 3. Authenticated: Render Main App Shell
   return (
     <div className="app-root">
-      {/* 1. Global Persistent Sticky Header (Stays pinned when scrolling on ANY page) */}
-      <AppHeader />
+      {/* 1. Global Persistent Sticky Header */}
+      <AppHeader
+        onOpenChangePassword={() => setIsChangePasswordOpen(true)}
+        onNotify={(msg, type) => setSnackbar({ message: msg, type })}
+      />
 
       {/* 2. Main Page Content Shell */}
       <div className="android-app-shell">
@@ -78,7 +122,9 @@ export function App() {
           <>
             <HomePage
               onNavigate={navigateTo}
-              onQuickAddWorker={() => setIsQuickAddOpen(true)}
+              onQuickAddWorker={() => {
+                if (isAdmin) setIsQuickAddOpen(true);
+              }}
             />
             {/* Android Mobile Bottom Navigation Bar on Home with Red Alert badge */}
             <BottomNav
@@ -97,12 +143,21 @@ export function App() {
         )}
       </div>
 
-      {/* Quick Add Modal accessible from Home */}
-      <WorkerFormModal
-        isOpen={isQuickAddOpen}
-        initialData={null}
-        onClose={() => setIsQuickAddOpen(false)}
-        onSave={handleQuickAddSave}
+      {/* Quick Add Modal accessible from Home (Admin only) */}
+      {isAdmin && (
+        <WorkerFormModal
+          isOpen={isQuickAddOpen}
+          initialData={null}
+          onClose={() => setIsQuickAddOpen(false)}
+          onSave={handleQuickAddSave}
+        />
+      )}
+
+      {/* Change Password Modal (Supports Current Password or Email OTP) */}
+      <ChangePasswordModal
+        isOpen={isChangePasswordOpen}
+        onClose={() => setIsChangePasswordOpen(false)}
+        onNotify={(msg, type) => setSnackbar({ message: msg, type })}
       />
 
       {/* Global Snackbar Toast */}
