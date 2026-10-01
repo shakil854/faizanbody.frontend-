@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { AppHeader } from './components/common/AppHeader';
 import { HomePage } from './components/home/HomePage';
 import { WorkersPage } from './components/workers/WorkersPage';
 import { WorkerFormModal } from './components/workers/WorkerFormModal';
@@ -14,6 +15,17 @@ export function App() {
 
   const [isQuickAddOpen, setIsQuickAddOpen] = useState(false);
   const [snackbar, setSnackbar] = useState({ message: '', type: 'info' });
+  const [workerCount, setWorkerCount] = useState(0);
+
+  // Keep track of worker count for nav badge
+  useEffect(() => {
+    workerService
+      .getWorkers()
+      .then((res) => {
+        if (res && res.data) setWorkerCount(res.data.length);
+      })
+      .catch(() => {});
+  }, [currentPage]);
 
   // Sync hash with browser history for Android back gesture / back button
   useEffect(() => {
@@ -51,23 +63,31 @@ export function App() {
 
   return (
     <div className="app-root">
-      {/* Page Routing */}
-      {currentPage === 'home' ? (
-        <div className="android-app-shell">
-          <HomePage
-            onNavigate={navigateTo}
-            onQuickAddWorker={() => setIsQuickAddOpen(true)}
-          />
+      {/* 1. Global Persistent Sticky Header (Stays pinned when scrolling on ANY page) */}
+      <AppHeader />
 
-          {/* Android Mobile Bottom Navigation Bar (2 Tabs: Home and Workers) */}
-          <BottomNav activeTab="home" onTabChange={navigateTo} />
-        </div>
-      ) : (
-        <WorkersPage
-          onBackToHome={() => navigateTo('home')}
-          onNavigate={navigateTo}
-        />
-      )}
+      {/* 2. Main Page Content Shell */}
+      <div className="android-app-shell">
+        {currentPage === 'home' ? (
+          <>
+            <HomePage
+              onNavigate={navigateTo}
+              onQuickAddWorker={() => setIsQuickAddOpen(true)}
+            />
+            {/* Android Mobile Bottom Navigation Bar on Home */}
+            <BottomNav
+              activeTab="home"
+              onTabChange={navigateTo}
+              workerCount={workerCount}
+            />
+          </>
+        ) : (
+          <WorkersPage
+            onBackToHome={() => navigateTo('home')}
+            onNavigate={navigateTo}
+          />
+        )}
+      </div>
 
       {/* Quick Add Modal accessible from Home */}
       <WorkerFormModal

@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { workerService } from '../../services/workerService';
 import { TruckLogo } from '../common/TruckLogo';
-import { AppHeader } from '../common/AppHeader';
 
 export function HomePage({ onNavigate, onQuickAddWorker }) {
   const [workers, setWorkers] = useState([]);
@@ -26,10 +25,7 @@ export function HomePage({ onNavigate, onQuickAddWorker }) {
 
   return (
     <div className="home-dashboard">
-      {/* 1. Shared Luxury App Header */}
-      <AppHeader />
-
-      {/* 2. Main Executive Dashboard Content */}
+      {/* Main Executive Dashboard Content */}
       <div className="android-body home-content">
         {/* Executive Hero Banner */}
         <section className="home-hero-card">

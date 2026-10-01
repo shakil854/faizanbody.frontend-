@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { workerService } from '../../services/workerService';
-import { AppHeader } from '../common/AppHeader';
 import { WorkerSearchBar } from './WorkerSearchBar';
 import { WorkerCard } from './WorkerCard';
 import { WorkerFormModal } from './WorkerFormModal';
@@ -93,11 +92,8 @@ export function WorkersPage({ onBackToHome }) {
   }, [workers, searchQuery]);
 
   return (
-    <div className="android-app-shell">
-      {/* 1. Shared App Header (Identical to Home Page) */}
-      <AppHeader />
-
-      {/* 2. Main Content Area */}
+    <div className="workers-page-shell">
+      {/* Main Content Area */}
       <main className="android-body">
         {/* Only the Search Box */}
         <WorkerSearchBar
