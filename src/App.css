@@ -1780,3 +1780,38 @@
   color: #991b1b !important;
   font-weight: 800 !important;
 }
+
+/* ========================================================
+   11. High Performance Progressive Batch Loader
+   ======================================================== */
+.list-progressive-loader {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  padding: 1.25rem 0 1rem;
+  width: 100%;
+}
+
+.mini-pulse-bar {
+  width: 48px;
+  height: 4px;
+  background: linear-gradient(90deg, #dbeafe 0%, #2563eb 50%, #dbeafe 100%);
+  background-size: 200% 100%;
+  border-radius: 999px;
+  animation: pulseBarMove 1.2s infinite ease-in-out;
+}
+
+@keyframes pulseBarMove {
+  0% { background-position: 100% 0; }
+  100% { background-position: -100% 0; }
+}
+
+.loading-count-text {
+  font-size: 0.72rem;
+  color: #64748b;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+

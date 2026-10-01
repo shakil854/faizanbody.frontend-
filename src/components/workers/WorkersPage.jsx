@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { workerService } from '../../services/workerService';
 import { WorkerSearchBar } from './WorkerSearchBar';
 import { WorkerCard } from './WorkerCard';
@@ -9,10 +9,17 @@ import { Snackbar } from './Snackbar';
 import { BottomNav } from '../common/BottomNav';
 import { isLeavingSoon, getDaysUntil } from '../../utils/dateAlerts';
 
+const BATCH_SIZE = 25; // High-performance progressive rendering batch size
+
 export function WorkersPage({ onBackToHome, onAlertCountChange }) {
-  const [workers, setWorkers] = useState([]);
-  const [loading, setLoading] = useState(true);
+  // Initialize with cached workers instantly in 0ms
+  const [workers, setWorkers] = useState(() => workerService.getCachedWorkers());
+  const [loading, setLoading] = useState(() => workerService.getCachedWorkers().length === 0);
   const [searchQuery, setSearchQuery] = useState('');
+  const [visibleLimit, setVisibleLimit] = useState(BATCH_SIZE);
+
+  // Sentinel ref for infinite scroll
+  const sentinelRef = useRef(null);
 
   // Modals state
   const [isFormOpen, setIsFormOpen] = useState(false);
@@ -23,14 +30,16 @@ export function WorkersPage({ onBackToHome, onAlertCountChange }) {
   // Notification state
   const [snackbar, setSnackbar] = useState({ message: '', type: 'info' });
 
-  const showSnackbar = (message, type = 'info') => {
+  const showSnackbar = useCallback((message, type = 'info') => {
     setSnackbar({ message, type });
-  };
+  }, []);
 
-  const fetchWorkers = useCallback(async () => {
-    setLoading(true);
+  const fetchWorkers = useCallback(async ({ force = false } = {}) => {
+    if (workerService.getCachedWorkers().length === 0) {
+      setLoading(true);
+    }
     try {
-      const response = await workerService.getWorkers();
+      const response = await workerService.getWorkers({}, { forceRefresh: force });
       if (response && response.data) {
         setWorkers(response.data);
       }
@@ -40,11 +49,22 @@ export function WorkersPage({ onBackToHome, onAlertCountChange }) {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [showSnackbar]);
 
+  // Subscribe to service cache updates in real time
   useEffect(() => {
+    const unsubscribe = workerService.subscribe((updatedList) => {
+      setWorkers(updatedList);
+      setLoading(false);
+    });
     fetchWorkers();
+    return () => unsubscribe();
   }, [fetchWorkers]);
+
+  // Reset pagination limit on search
+  useEffect(() => {
+    setVisibleLimit(BATCH_SIZE);
+  }, [searchQuery]);
 
   // Count workers leaving within 5 days
   const leavingSoonCount = useMemo(() => {
@@ -58,7 +78,17 @@ export function WorkersPage({ onBackToHome, onAlertCountChange }) {
     }
   }, [leavingSoonCount, onAlertCountChange]);
 
-  // Handle Save (Create or Update)
+  // Stable callbacks for React.memo optimization
+  const handleEdit = useCallback((worker) => {
+    setEditingWorker(worker);
+    setIsFormOpen(true);
+  }, []);
+
+  const handleDelete = useCallback((worker) => {
+    setDeletingWorker(worker);
+  }, []);
+
+  // Handle Save (Create or Update) with zero-latency optimistic UI
   const handleSaveWorker = async (formData) => {
     try {
       if (editingWorker) {
@@ -81,7 +111,7 @@ export function WorkersPage({ onBackToHome, onAlertCountChange }) {
     }
   };
 
-  // Handle Delete
+  // Handle Delete with zero-latency UI
   const handleConfirmDelete = async (workerId) => {
     try {
       setIsDeleting(true);
@@ -97,24 +127,22 @@ export function WorkersPage({ onBackToHome, onAlertCountChange }) {
     }
   };
 
-  // Filter and SORT workers:
-  // Workers leaving within 5 days AUTOMATICALLY appear at the top!
+  // Ultra-fast sorted list:
+  // Leaving soon workers appear at the top, rest ordered naturally
   const sortedWorkers = useMemo(() => {
     let list = workers;
     if (searchQuery.trim()) {
       const query = searchQuery.trim().toLowerCase();
-      list = list.filter((w) => w.name?.toLowerCase().includes(query));
+      list = list.filter((w) => w.name && w.name.toLowerCase().includes(query));
     }
 
     return [...list].sort((a, b) => {
       const aAlert = isLeavingSoon(a.going_date);
       const bAlert = isLeavingSoon(b.going_date);
 
-      // 1. Leaving soon workers come first
       if (aAlert && !bAlert) return -1;
       if (!aAlert && bAlert) return 1;
 
-      // 2. If both leaving soon, sort by earliest date (fewest days left first)
       if (aAlert && bAlert) {
         const diffA = getDaysUntil(a.going_date) ?? 999;
         const diffB = getDaysUntil(b.going_date) ?? 999;
@@ -124,6 +152,36 @@ export function WorkersPage({ onBackToHome, onAlertCountChange }) {
       return 0;
     });
   }, [workers, searchQuery]);
+
+  // Progressive rendering slice (renders only visible batch for 60fps scrolling)
+  const visibleWorkers = useMemo(() => {
+    return sortedWorkers.slice(0, visibleLimit);
+  }, [sortedWorkers, visibleLimit]);
+
+  const hasMore = visibleLimit < sortedWorkers.length;
+
+  // Infinite scroll intersection observer for progressive rendering
+  useEffect(() => {
+    if (!hasMore || loading) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting) {
+          setVisibleLimit((prev) => Math.min(prev + BATCH_SIZE, sortedWorkers.length));
+        }
+      },
+      { rootMargin: '250px' }
+    );
+
+    const currentSentinel = sentinelRef.current;
+    if (currentSentinel) {
+      observer.observe(currentSentinel);
+    }
+
+    return () => {
+      if (currentSentinel) observer.unobserve(currentSentinel);
+    };
+  }, [hasMore, loading, sortedWorkers.length]);
 
   return (
     <div className="workers-page-shell">
@@ -135,7 +193,7 @@ export function WorkersPage({ onBackToHome, onAlertCountChange }) {
           onSearchChange={setSearchQuery}
         />
 
-        {/* Urgent Leaving Soon Red Alert Banner */}
+        {/* Urgent Leaving Soon Compact Red Alert Banner */}
         {leavingSoonCount > 0 && !searchQuery && (
           <div className="workers-leaving-alert-banner">
             <div className="alert-banner-left">
@@ -163,8 +221,8 @@ export function WorkersPage({ onBackToHome, onAlertCountChange }) {
 
         {/* Workers List Section */}
         <div className="workers-list-wrapper">
-          {loading ? (
-            /* Skeleton Loading State */
+          {loading && workers.length === 0 ? (
+            /* Skeleton Loading State (Only when no cache is available) */
             <div className="workers-skeleton-grid">
               {[1, 2, 3].map((n) => (
                 <div key={n} className="worker-card-skeleton">
@@ -207,22 +265,29 @@ export function WorkersPage({ onBackToHome, onAlertCountChange }) {
               </button>
             </div>
           ) : (
-            /* Worker Cards List */
-            <div className="workers-grid">
-              {sortedWorkers.map((worker) => (
-                <WorkerCard
-                  key={worker.id}
-                  worker={worker}
-                  onEdit={(w) => {
-                    setEditingWorker(w);
-                    setIsFormOpen(true);
-                  }}
-                  onDelete={(w) => {
-                    setDeletingWorker(w);
-                  }}
-                />
-              ))}
-            </div>
+            /* High-Performance Progressively Rendered Cards */
+            <>
+              <div className="workers-grid">
+                {visibleWorkers.map((worker) => (
+                  <WorkerCard
+                    key={worker.id}
+                    worker={worker}
+                    onEdit={handleEdit}
+                    onDelete={handleDelete}
+                  />
+                ))}
+              </div>
+
+              {/* Infinite Scroll Sentinel for seamless progressive batch loading */}
+              {hasMore && (
+                <div ref={sentinelRef} className="list-progressive-loader">
+                  <div className="mini-pulse-bar"></div>
+                  <span className="loading-count-text">
+                    Showing {visibleWorkers.length} of {sortedWorkers.length} workers...
+                  </span>
+                </div>
+              )}
+            </>
           )}
         </div>
       </main>

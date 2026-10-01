@@ -3,9 +3,16 @@ import { workerService } from '../../services/workerService';
 import { isLeavingSoon } from '../../utils/dateAlerts';
 
 export function HomePage({ onNavigate }) {
-  const [workers, setWorkers] = useState([]);
+  // Initialize with cached workers instantly (0ms loading)
+  const [workers, setWorkers] = useState(() => workerService.getCachedWorkers());
 
   useEffect(() => {
+    // 1. Subscribe to real-time cache updates
+    const unsubscribe = workerService.subscribe((updatedList) => {
+      setWorkers(updatedList);
+    });
+
+    // 2. Fetch/revalidate silently in background
     workerService
       .getWorkers()
       .then((res) => {
@@ -14,6 +21,8 @@ export function HomePage({ onNavigate }) {
         }
       })
       .catch(() => {});
+
+    return () => unsubscribe();
   }, []);
 
   const totalWorkers = workers.length;

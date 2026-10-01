@@ -1,7 +1,7 @@
 import React from 'react';
 import { isLeavingSoon, getLeavingSoonLabel, getDaysUntil, formatDisplayDate } from '../../utils/dateAlerts';
 
-export function WorkerCard({ worker, onEdit, onDelete }) {
+export const WorkerCard = React.memo(function WorkerCard({ worker, onEdit, onDelete }) {
   const getAvatarInitials = (name) => {
     if (!name) return 'W';
     const words = name.trim().split(/\s+/);
@@ -124,6 +124,6 @@ export function WorkerCard({ worker, onEdit, onDelete }) {
       </div>
     </div>
   );
-}
+});
 
 export default WorkerCard;
