@@ -1,53 +1,88 @@
 import React, { useState, useEffect } from 'react';
-import { Navbar } from './components/Navbar';
-import { ApiConfigBanner } from './components/ApiConfigBanner';
-import { ApiTester } from './components/ApiTester';
-import { SampleItemsList } from './components/SampleItemsList';
-import { StructureViewer } from './components/StructureViewer';
-import { healthService } from './services/healthService';
+import { HomePage } from './components/home/HomePage';
+import { WorkersPage } from './components/workers/WorkersPage';
+import { WorkerFormModal } from './components/workers/WorkerFormModal';
+import { Snackbar } from './components/workers/Snackbar';
+import { BottomNav } from './components/common/BottomNav';
+import { workerService } from './services/workerService';
 import './App.css';
 
 export function App() {
-  const [isBackendOnline, setIsBackendOnline] = useState(false);
+  const [currentPage, setCurrentPage] = useState(() => {
+    return window.location.hash === '#workers' ? 'workers' : 'home';
+  });
 
+  const [isQuickAddOpen, setIsQuickAddOpen] = useState(false);
+  const [snackbar, setSnackbar] = useState({ message: '', type: 'info' });
+
+  // Sync hash with browser history for Android back gesture / back button
   useEffect(() => {
-    // Initial health check on page load
-    healthService
-      .checkHealth()
-      .then(() => setIsBackendOnline(true))
-      .catch(() => setIsBackendOnline(false));
+    const handleHashChange = () => {
+      const page = window.location.hash === '#workers' ? 'workers' : 'home';
+      setCurrentPage(page);
+    };
+
+    window.addEventListener('hashchange', handleHashChange);
+    return () => window.removeEventListener('hashchange', handleHashChange);
   }, []);
 
+  const navigateTo = (page) => {
+    setCurrentPage(page);
+    window.location.hash = page === 'workers' ? '#workers' : '#home';
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleQuickAddSave = async (formData) => {
+    try {
+      await workerService.createWorker(formData);
+      setSnackbar({
+        message: `Worker "${formData.name}" added successfully!`,
+        type: 'success',
+      });
+      setIsQuickAddOpen(false);
+      // Navigate to workers page to see newly added worker
+      navigateTo('workers');
+    } catch (err) {
+      const msg = err.response?.data?.message || 'Error saving worker';
+      setSnackbar({ message: msg, type: 'error' });
+      throw err;
+    }
+  };
+
   return (
-    <div className="app-layout">
-      {/* 1. Header */}
-      <Navbar isBackendOnline={isBackendOnline} />
+    <div className="app-root">
+      {/* Page Routing */}
+      {currentPage === 'home' ? (
+        <div className="android-app-shell">
+          <HomePage
+            onNavigate={navigateTo}
+            onQuickAddWorker={() => setIsQuickAddOpen(true)}
+          />
 
-      {/* 2. Main Content Container */}
-      <main className="main-content">
-        {/* Banner with Live API guide */}
-        <ApiConfigBanner />
-
-        {/* Live Interaction & Test Console */}
-        <div className="dashboard-grid">
-          <ApiTester onHealthUpdate={setIsBackendOnline} />
-          <SampleItemsList />
+          {/* Android Mobile Bottom Navigation Bar (2 Tabs: Home and Workers) */}
+          <BottomNav activeTab="home" onTabChange={navigateTo} />
         </div>
+      ) : (
+        <WorkersPage
+          onBackToHome={() => navigateTo('home')}
+          onNavigate={navigateTo}
+        />
+      )}
 
-        {/* Project Architecture Structure Overview */}
-        <section className="section-block">
-          <div className="section-header">
-            <h3>Project Architecture (Senior Software Engineer Directory Setup)</h3>
-            <p>Both repositories are set up with production-grade modular separation.</p>
-          </div>
-          <StructureViewer />
-        </section>
-      </main>
+      {/* Quick Add Modal accessible from Home */}
+      <WorkerFormModal
+        isOpen={isQuickAddOpen}
+        initialData={null}
+        onClose={() => setIsQuickAddOpen(false)}
+        onSave={handleQuickAddSave}
+      />
 
-      {/* 3. Footer */}
-      <footer className="footer">
-        <p>FaizanBody Full-Stack Architecture • Node.js (Express) + Vite (React) + Centralized Axios</p>
-      </footer>
+      {/* Global Snackbar Toast */}
+      <Snackbar
+        message={snackbar.message}
+        type={snackbar.type}
+        onClose={() => setSnackbar({ message: '', type: 'info' })}
+      />
     </div>
   );
 }
