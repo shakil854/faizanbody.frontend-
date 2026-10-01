@@ -7,8 +7,9 @@ import { WorkerDeleteModal } from './WorkerDeleteModal';
 import { WorkerFab } from './WorkerFab';
 import { Snackbar } from './Snackbar';
 import { BottomNav } from '../common/BottomNav';
+import { isLeavingSoon, getDaysUntil } from '../../utils/dateAlerts';
 
-export function WorkersPage({ onBackToHome }) {
+export function WorkersPage({ onBackToHome, onAlertCountChange }) {
   const [workers, setWorkers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
@@ -44,6 +45,18 @@ export function WorkersPage({ onBackToHome }) {
   useEffect(() => {
     fetchWorkers();
   }, [fetchWorkers]);
+
+  // Count workers leaving within 5 days
+  const leavingSoonCount = useMemo(() => {
+    return workers.filter((w) => isLeavingSoon(w.going_date)).length;
+  }, [workers]);
+
+  // Sync alert count with parent if provided
+  useEffect(() => {
+    if (onAlertCountChange) {
+      onAlertCountChange(leavingSoonCount);
+    }
+  }, [leavingSoonCount, onAlertCountChange]);
 
   // Handle Save (Create or Update)
   const handleSaveWorker = async (formData) => {
@@ -84,11 +97,32 @@ export function WorkersPage({ onBackToHome }) {
     }
   };
 
-  // Filter Workers by search query only
-  const filteredWorkers = useMemo(() => {
-    if (!searchQuery.trim()) return workers;
-    const query = searchQuery.trim().toLowerCase();
-    return workers.filter((w) => w.name?.toLowerCase().includes(query));
+  // Filter and SORT workers:
+  // Workers leaving within 5 days AUTOMATICALLY appear at the top!
+  const sortedWorkers = useMemo(() => {
+    let list = workers;
+    if (searchQuery.trim()) {
+      const query = searchQuery.trim().toLowerCase();
+      list = list.filter((w) => w.name?.toLowerCase().includes(query));
+    }
+
+    return [...list].sort((a, b) => {
+      const aAlert = isLeavingSoon(a.going_date);
+      const bAlert = isLeavingSoon(b.going_date);
+
+      // 1. Leaving soon workers come first
+      if (aAlert && !bAlert) return -1;
+      if (!aAlert && bAlert) return 1;
+
+      // 2. If both leaving soon, sort by earliest date (fewest days left first)
+      if (aAlert && bAlert) {
+        const diffA = getDaysUntil(a.going_date) ?? 999;
+        const diffB = getDaysUntil(b.going_date) ?? 999;
+        return diffA - diffB;
+      }
+
+      return 0;
+    });
   }, [workers, searchQuery]);
 
   return (
@@ -100,6 +134,32 @@ export function WorkersPage({ onBackToHome }) {
           searchQuery={searchQuery}
           onSearchChange={setSearchQuery}
         />
+
+        {/* Urgent Leaving Soon Red Alert Banner */}
+        {leavingSoonCount > 0 && !searchQuery && (
+          <div className="workers-leaving-alert-banner">
+            <div className="alert-banner-left">
+              <span className="alert-banner-icon-ring">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#dc2626" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
+                  <line x1="12" y1="9" x2="12" y2="13" />
+                  <line x1="12" y1="17" x2="12.01" y2="17" />
+                </svg>
+              </span>
+              <div className="alert-banner-text">
+                <h4 className="alert-banner-title">
+                  {leavingSoonCount} Worker{leavingSoonCount > 1 ? 's' : ''} Leaving Within 5 Days
+                </h4>
+                <p className="alert-banner-subtitle">
+                  Urgent records prioritized at the top.
+                </p>
+              </div>
+            </div>
+            <span className="alert-count-pill">
+              {leavingSoonCount} Alert{leavingSoonCount > 1 ? 's' : ''}
+            </span>
+          </div>
+        )}
 
         {/* Workers List Section */}
         <div className="workers-list-wrapper">
@@ -116,7 +176,7 @@ export function WorkersPage({ onBackToHome }) {
                 </div>
               ))}
             </div>
-          ) : filteredWorkers.length === 0 ? (
+          ) : sortedWorkers.length === 0 ? (
             /* Empty State */
             <div className="empty-workers-state">
               <div className="empty-luxury-illustration">
@@ -149,7 +209,7 @@ export function WorkersPage({ onBackToHome }) {
           ) : (
             /* Worker Cards List */
             <div className="workers-grid">
-              {filteredWorkers.map((worker) => (
+              {sortedWorkers.map((worker) => (
                 <WorkerCard
                   key={worker.id}
                   worker={worker}
@@ -175,13 +235,14 @@ export function WorkersPage({ onBackToHome }) {
         }}
       />
 
-      {/* 4. Bottom App Navigation Bar (2 Tabs: Home and Workers) */}
+      {/* 4. Bottom App Navigation Bar with Red Alert count */}
       <BottomNav
         activeTab="workers"
         onTabChange={(tab) => {
           if (tab === 'home') onBackToHome();
         }}
         workerCount={workers.length}
+        alertCount={leavingSoonCount}
       />
 
       {/* 5. Add / Edit Modal (Android Bottom Sheet) */}

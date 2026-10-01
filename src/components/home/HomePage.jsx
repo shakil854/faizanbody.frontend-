@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { workerService } from '../../services/workerService';
+import { isLeavingSoon } from '../../utils/dateAlerts';
 
 export function HomePage({ onNavigate, onQuickAddWorker }) {
   const [workers, setWorkers] = useState([]);
@@ -17,6 +18,7 @@ export function HomePage({ onNavigate, onQuickAddWorker }) {
 
   const totalWorkers = workers.length;
   const activeWorkers = workers.filter((w) => !w.going_date).length;
+  const leavingSoonCount = workers.filter((w) => isLeavingSoon(w.going_date)).length;
 
   return (
     <div className="home-dashboard">
@@ -31,7 +33,7 @@ export function HomePage({ onNavigate, onQuickAddWorker }) {
           <div className="modules-grid single-column-grid">
             {/* 1. Workers Directory Card */}
             <div
-              className="module-card featured-module"
+              className={`module-card featured-module ${leavingSoonCount > 0 ? 'module-card-with-alert' : ''}`}
               onClick={() => onNavigate('workers')}
               role="button"
               tabIndex={0}
@@ -45,9 +47,18 @@ export function HomePage({ onNavigate, onQuickAddWorker }) {
                     <path d="M16 3.13a4 4 0 0 1 0 7.75" />
                   </svg>
                 </div>
-                <span className="module-status-badge">
-                  {activeWorkers} On Duty
-                </span>
+                
+                <div className="module-badge-group">
+                  {leavingSoonCount > 0 && (
+                    <span className="module-red-alert-pill">
+                      <span className="pulse-red-dot"></span>
+                      {leavingSoonCount} Leaving Soon
+                    </span>
+                  )}
+                  <span className="module-status-badge">
+                    {activeWorkers} On Duty
+                  </span>
+                </div>
               </div>
               <div className="module-info">
                 <h4 className="module-title">Workers Directory</h4>

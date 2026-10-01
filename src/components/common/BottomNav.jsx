@@ -2,9 +2,9 @@ import React from 'react';
 
 /**
  * Ultra-Luxury Bottom Navigation Bar
- * High-fidelity vector icons, smooth pill indicator, and native mobile tactile feedback.
+ * High-fidelity vector icons, smooth pill indicator, and red notification badge for leaving alerts.
  */
-export function BottomNav({ activeTab, onTabChange, workerCount }) {
+export function BottomNav({ activeTab, onTabChange, workerCount, alertCount = 0 }) {
   return (
     <nav className="mobile-bottom-bar android-nav-bar luxury-bottom-bar" aria-label="App Navigation">
       <div className="bottom-nav-container">
@@ -121,11 +121,20 @@ export function BottomNav({ activeTab, onTabChange, workerCount }) {
                 </>
               )}
             </svg>
-            {workerCount !== undefined && workerCount > 0 && (
+
+            {/* Red Alert Notification Badge for workers leaving within 5 days */}
+            {alertCount > 0 ? (
+              <span className="nav-alert-badge" title={`${alertCount} worker(s) leaving within 5 days`}>
+                <span className="alert-pulse-ring"></span>
+                {alertCount}
+              </span>
+            ) : workerCount !== undefined && workerCount > 0 ? (
               <span className="nav-badge-dot">{workerCount}</span>
-            )}
+            ) : null}
           </div>
-          <span className="nav-label">Workers</span>
+          <span className="nav-label">
+            Workers
+          </span>
         </button>
       </div>
     </nav>

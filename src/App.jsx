@@ -6,6 +6,7 @@ import { WorkerFormModal } from './components/workers/WorkerFormModal';
 import { Snackbar } from './components/workers/Snackbar';
 import { BottomNav } from './components/common/BottomNav';
 import { workerService } from './services/workerService';
+import { isLeavingSoon } from './utils/dateAlerts';
 import './App.css';
 
 export function App() {
@@ -16,13 +17,18 @@ export function App() {
   const [isQuickAddOpen, setIsQuickAddOpen] = useState(false);
   const [snackbar, setSnackbar] = useState({ message: '', type: 'info' });
   const [workerCount, setWorkerCount] = useState(0);
+  const [alertCount, setAlertCount] = useState(0);
 
-  // Keep track of worker count for nav badge
+  // Keep track of worker count & 5-day leaving alerts for nav badge
   useEffect(() => {
     workerService
       .getWorkers()
       .then((res) => {
-        if (res && res.data) setWorkerCount(res.data.length);
+        if (res && res.data) {
+          setWorkerCount(res.data.length);
+          const alerts = res.data.filter((w) => isLeavingSoon(w.going_date)).length;
+          setAlertCount(alerts);
+        }
       })
       .catch(() => {});
   }, [currentPage]);
@@ -74,17 +80,19 @@ export function App() {
               onNavigate={navigateTo}
               onQuickAddWorker={() => setIsQuickAddOpen(true)}
             />
-            {/* Android Mobile Bottom Navigation Bar on Home */}
+            {/* Android Mobile Bottom Navigation Bar on Home with Red Alert badge */}
             <BottomNav
               activeTab="home"
               onTabChange={navigateTo}
               workerCount={workerCount}
+              alertCount={alertCount}
             />
           </>
         ) : (
           <WorkersPage
             onBackToHome={() => navigateTo('home')}
             onNavigate={navigateTo}
+            onAlertCountChange={(cnt) => setAlertCount(cnt)}
           />
         )}
       </div>
