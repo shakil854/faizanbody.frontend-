@@ -89,7 +89,7 @@ export const OrderCard = React.memo(function OrderCard({ order, onOpen, onDelete
       {/* Worker Dates Grid: Owner & Date */}
       <div className="worker-dates-grid luxury-dates-grid">
         {/* Owner */}
-        <div className="date-item coming-date-box">
+        <div className="date-item coming-date-box" title={`Owner: ${order.owner_name || 'N/A'}`}>
           <div className="date-icon-circle coming-icon-bg">
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#2563eb" strokeWidth="2.2">
               <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
@@ -98,12 +98,12 @@ export const OrderCard = React.memo(function OrderCard({ order, onOpen, onDelete
           </div>
           <div className="date-content">
             <span className="date-label">OWNER</span>
-            <span className="date-value">{order.owner_name || '—'}</span>
+            <span className="date-value" title={order.owner_name || '—'}>{order.owner_name || '—'}</span>
           </div>
         </div>
 
         {/* Date */}
-        <div className="date-item going-date-box">
+        <div className="date-item going-date-box" title={`Date: ${order.order_date || 'N/A'}`}>
           <div className="date-icon-circle going-icon-bg">
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#64748b" strokeWidth="2.2">
               <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
@@ -114,7 +114,7 @@ export const OrderCard = React.memo(function OrderCard({ order, onOpen, onDelete
           </div>
           <div className="date-content">
             <span className="date-label">DATE</span>
-            <span className="date-value">{order.order_date || '—'}</span>
+            <span className="date-value" title={order.order_date || '—'}>{order.order_date || '—'}</span>
           </div>
         </div>
       </div>

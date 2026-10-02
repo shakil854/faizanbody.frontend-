@@ -133,26 +133,10 @@ export function OrderFormModal({ isOpen, onClose, onSave, initialData }) {
             ======================================================== */}
         <div className="modern-modal-header">
           <div className="modern-header-left">
-            <div className="modern-modal-icon-badge">
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M10 17h4V5H2v12h3" />
-                <path d="M20 17h2v-3.34a4 4 0 0 0-1.17-2.83L19 9h-5v8h1" />
-                <circle cx="7.5" cy="17.5" r="2.5" />
-                <circle cx="17.5" cy="17.5" r="2.5" />
-              </svg>
-            </div>
-            <div>
-              <div className="header-badge-row">
-                <span className="order-pill-badge">{initialData ? 'EDIT ORDER' : 'NEW ORDER'}</span>
-                <span className="order-id-label">{formData.order_no || 'WO-NEW'}</span>
-              </div>
-              <h3 className="modern-modal-title">
-                {initialData ? 'Edit Work Order / Job Card' : 'New Work Order / Job Card'}
-              </h3>
-              <p className="modern-modal-subtitle">
-                Faizan Body Manufacturing • All-in-one Job Sheet Entry & Task Checkoffs
-              </p>
-            </div>
+            <h3 className="modern-modal-title">
+              {initialData ? 'Edit Work Order' : 'New Work Order'}
+              {formData.order_no && <span className="modern-header-ordno"> ({formData.order_no})</span>}
+            </h3>
           </div>
 
           <div className="modern-header-right">
@@ -178,11 +162,18 @@ export function OrderFormModal({ isOpen, onClose, onSave, initialData }) {
             ======================================================== */}
         <form onSubmit={handleSubmit} className="modern-modal-form-shell">
           <div className="modern-modal-body-scroll" ref={scrollRef} id="printableSheet">
-          {/* SECTION 1: HEADER VEHICLE & OWNER DETAILS */}
+          {/* VEHICLE & OWNER DETAILS */}
           <div className="modern-section-card basic-info-card">
             <div className="modern-card-header-line">
               <div className="card-title-group">
-                <span className="card-num-badge">1</span>
+                <span className="card-num-badge card-num-badge-info" style={{ background: '#eff6ff', color: '#2563eb', border: '1px solid #dbeafe', display: 'flex', alignItems: 'center', justifyContent: 'center' }} title="Vehicle & Owner Info">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
+                    <path d="M10 17h4V5H2v12h3" />
+                    <path d="M20 17h2v-3.34a4 4 0 0 0-1.17-2.83L19 9h-5v8h1" />
+                    <circle cx="7.5" cy="17.5" r="2.5" />
+                    <circle cx="17.5" cy="17.5" r="2.5" />
+                  </svg>
+                </span>
                 <h4 className="card-heading-title">Vehicle & Owner Information</h4>
               </div>
               <div className="status-selector-wrap">
@@ -324,14 +315,14 @@ export function OrderFormModal({ isOpen, onClose, onSave, initialData }) {
               ======================================================== */}
           {ORDER_SECTIONS.map((sec, secIdx) => {
             if (sec.isFinishing) {
-              // Section 5: Finishing Work (COLOR, REDIUM, PAINTING, VAYRING)
+              // Section 6: Finishing Work (COLOR, REDIUM, PAINTING, VAYRING)
               const finishingData = formData.finishing_work || {};
 
               return (
                 <div key={sec.key} className="modern-section-card finishing-section-card">
                   <div className="modern-card-header-line">
                     <div className="card-title-group">
-                      <span className="card-num-badge">5</span>
+                      <span className="card-num-badge">{secIdx + 1}</span>
                       <div>
                         <h4 className="card-heading-title">
                           {sec.titleHindi} <span className="eng-sub">({sec.titleEnglish})</span>
@@ -409,7 +400,7 @@ export function OrderFormModal({ isOpen, onClose, onSave, initialData }) {
               );
             }
 
-            // Regular Sections: Cabin Work (2), Inside Work (3), Body Work (4), Accessories (5), Machro (6)
+            // Regular Sections: Cabin Work (1), Inside Work (2), Body Work (3), Machro (4), Accessories (5)
             const secData = formData[sec.key] || { boxes: ['', '', ''], items: {} };
             const secBoxes = secData.boxes || ['', '', ''];
             const itemsData = secData.items || {};
@@ -417,19 +408,16 @@ export function OrderFormModal({ isOpen, onClose, onSave, initialData }) {
             return (
               <div
                 key={sec.key}
-                className={`modern-section-card ${sec.isMovedDown ? 'machro-moved-card' : ''}`}
+                className="modern-section-card"
               >
                 {/* Section Header with 3 Blank Boxes */}
                 <div className="modern-card-header-line">
                   <div className="card-title-group">
-                    <span className="card-num-badge">{sec.isMovedDown ? '6' : secIdx + 1}</span>
+                    <span className="card-num-badge">{secIdx + 1}</span>
                     <div>
                       <h4 className="card-heading-title">
                         {sec.titleHindi} <span className="eng-sub">({sec.titleEnglish})</span>
                       </h4>
-                      {sec.isMovedDown && (
-                        <span className="moved-down-tag">↓ एरो के अनुसार फिनिशिंग के बाद रखा गया</span>
-                      )}
                     </div>
                   </div>
 
@@ -527,7 +515,7 @@ export function OrderFormModal({ isOpen, onClose, onSave, initialData }) {
             <div className="modern-card-header-line">
               <div className="card-title-group">
                 <span className="card-num-badge">7</span>
-                <h4 className="card-heading-title">Signatures & Notes</h4>
+                <h4 className="card-heading-title">हस्ताक्षर और नोट <span className="eng-sub">(Signature & Note)</span></h4>
               </div>
             </div>
 

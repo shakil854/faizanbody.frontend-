@@ -208,7 +208,7 @@ export function OrderJobSheetModal({ isOpen, onClose, order, onToggleTask, onEdi
             return (
               <div
                 key={sec.key}
-                className={`sheet-section ${sec.isMovedDown ? 'sheet-section-machro-moved' : ''}`}
+                className="sheet-section"
               >
                 {/* Section Header with 3 Blank Boxes */}
                 <div className="sheet-section-header">

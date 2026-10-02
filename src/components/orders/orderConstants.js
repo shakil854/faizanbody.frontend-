@@ -121,6 +121,18 @@ export const ORDER_SECTIONS = [
     ],
   },
   {
+    key: 'machro',
+    titleHindi: 'माछरो',
+    titleEnglish: 'MACHRO',
+    items: [
+      { key: 'plate_oonchai_thambhla', label: 'प्लेट से ऊँचाई / थांभला मात्रा' },
+      { key: 'side_pipe_matra_prakar', label: 'साइड में पाइप / मात्रा/प्रकार' },
+      { key: 'bhaya_matra_prakar', label: 'भया: मात्रा/ प्रकार' },
+      { key: 'dhar', label: 'ढार' },
+      { key: 'top_pipe_angle_prakar', label: 'टोप पर पाइप / एंगल/ प्रकार' },
+    ],
+  },
+  {
     key: 'accessories',
     titleHindi: 'ऐसेसरीज',
     titleEnglish: 'ACCESSORIES',
@@ -140,20 +152,6 @@ export const ORDER_SECTIONS = [
       { key: 'redium', label: 'रेडियम', subLabel: 'REDIUM' },
       { key: 'painting', label: 'पेंटिंग', subLabel: 'PAINTING' },
       { key: 'vayring', label: 'वायरिंग', subLabel: 'VAYRING' },
-    ],
-  },
-  // Machro moved DOWN after finishing work as indicated by arrow in screenshot 2
-  {
-    key: 'machro',
-    titleHindi: 'माछरो',
-    titleEnglish: 'MACHRO',
-    isMovedDown: true,
-    items: [
-      { key: 'plate_oonchai_thambhla', label: 'प्लेट से ऊँचाई / थांभला मात्रा' },
-      { key: 'side_pipe_matra_prakar', label: 'साइड में पाइप / मात्रा/प्रकार' },
-      { key: 'bhaya_matra_prakar', label: 'भया: मात्रा/ प्रकार' },
-      { key: 'dhar', label: 'ढार' },
-      { key: 'top_pipe_angle_prakar', label: 'टोप पर पाइप / एंगल/ प्रकार' },
     ],
   },
 ];
