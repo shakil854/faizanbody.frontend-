@@ -62,7 +62,7 @@ export function BottomNav({ activeTab, onTabChange, workerCount, alertCount = 0 
           type="button"
           className={`bottom-nav-item ${activeTab === 'orders' ? 'active' : ''}`}
           onClick={() => onTabChange('orders')}
-          aria-label="Work Orders / Job Cards"
+          aria-label="Orders"
         >
           <div className="nav-icon-pill">
             <svg
@@ -106,7 +106,7 @@ export function BottomNav({ activeTab, onTabChange, workerCount, alertCount = 0 
               )}
             </svg>
           </div>
-          <span className="nav-label">Job Cards</span>
+          <span className="nav-label">Orders</span>
         </button>
 
         {/* Tab 3: Workers */}

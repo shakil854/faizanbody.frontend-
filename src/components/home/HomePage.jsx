@@ -86,14 +86,14 @@ export function HomePage({ onNavigate, onQuickAddOrder }) {
                 </div>
               </div>
               <div className="module-info">
-                <h4 className="module-title">Work Orders / Job Cards</h4>
+                <h4 className="module-title">Orders</h4>
                 <p className="module-desc">
                   Track truck body fabrication, cabin, finishing tasks, task checkoffs & digital job sheets.
                 </p>
               </div>
               <div className="module-footer">
                 <span className="open-link-text">
-                  Open Job Cards
+                  Open Orders
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                     <line x1="5" y1="12" x2="19" y2="12" />
                     <polyline points="12 5 19 12 12 19" />

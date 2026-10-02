@@ -156,28 +156,6 @@ export function OrderFormModal({ isOpen, onClose, onSave, initialData }) {
           </div>
 
           <div className="modern-header-right">
-            <div className="modern-progress-box">
-              <div className="progress-mini-label">
-                <span>Completed:</span>
-                <strong>{done} / {total} ({percentage}%)</strong>
-              </div>
-              <div className="modern-progress-mini-bar">
-                <div
-                  className={`modern-progress-mini-fill ${percentage === 100 ? 'fill-green' : ''}`}
-                  style={{ width: `${percentage}%` }}
-                ></div>
-              </div>
-            </div>
-
-            <button type="button" className="btn-modern-print" onClick={handlePrint} title="Print or Save as PDF">
-              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <polyline points="6 9 6 2 18 2 18 9" />
-                <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" />
-                <rect x="6" y="14" width="12" height="8" />
-              </svg>
-              <span>Print / PDF</span>
-            </button>
-
             <button type="button" className="btn-modern-close" onClick={onClose} aria-label="Close" title="Close">
               ✕
             </button>
@@ -607,15 +585,6 @@ export function OrderFormModal({ isOpen, onClose, onSave, initialData }) {
             </div>
 
             <div className="footer-right">
-              <button type="button" className="btn-modern-print-footer" onClick={handlePrint}>
-                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <polyline points="6 9 6 2 18 2 18 9" />
-                  <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" />
-                  <rect x="6" y="14" width="12" height="8" />
-                </svg>
-                Print / PDF
-              </button>
-
               <button type="submit" className="btn-modern-save-submit" disabled={isSubmitting}>
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4">
                   <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" />

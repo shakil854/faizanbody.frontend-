@@ -7,12 +7,6 @@ export function AppHeader({ onOpenChangePassword, onNotify }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef(null);
 
-  // Format today's date in luxury format (e.g. 1 Oct)
-  const todayStr = new Date().toLocaleDateString('en-IN', {
-    day: 'numeric',
-    month: 'short',
-  });
-
   // Close dropdown on click outside
   useEffect(() => {
     const handleClickOutside = (e) => {
@@ -53,13 +47,8 @@ export function AppHeader({ onOpenChangePassword, onNotify }) {
             </div>
           </div>
 
-          {/* Right side luxury status pill & user profile menu */}
+          {/* Right side user profile menu */}
           <div className="top-bar-right" ref={menuRef}>
-            <div className="luxury-system-chip hide-on-xs">
-              <span className="system-chip-pulse"></span>
-              <span className="system-chip-text">{todayStr}</span>
-            </div>
-
             {/* Role Badge & Profile Button */}
             {user && (
               <div className="user-profile-menu-container">
