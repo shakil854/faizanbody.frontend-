@@ -5,6 +5,7 @@ import { ChangePasswordModal } from './components/auth/ChangePasswordModal';
 import { AppHeader } from './components/common/AppHeader';
 import { HomePage } from './components/home/HomePage';
 import { WorkersPage } from './components/workers/WorkersPage';
+import { OrdersPage } from './components/orders/OrdersPage';
 import { WorkerFormModal } from './components/workers/WorkerFormModal';
 import { Snackbar } from './components/workers/Snackbar';
 import { BottomNav } from './components/common/BottomNav';
@@ -16,7 +17,10 @@ export function App() {
   const { isAuthenticated, loading: authLoading, isAdmin } = useAuth();
 
   const [currentPage, setCurrentPage] = useState(() => {
-    return window.location.hash === '#workers' ? 'workers' : 'home';
+    const hash = window.location.hash;
+    if (hash === '#workers') return 'workers';
+    if (hash === '#orders') return 'orders';
+    return 'home';
   });
 
   const [isQuickAddOpen, setIsQuickAddOpen] = useState(false);
@@ -44,8 +48,10 @@ export function App() {
   // Sync hash with browser history for Android back gesture / back button
   useEffect(() => {
     const handleHashChange = () => {
-      const page = window.location.hash === '#workers' ? 'workers' : 'home';
-      setCurrentPage(page);
+      const hash = window.location.hash;
+      if (hash === '#workers') setCurrentPage('workers');
+      else if (hash === '#orders') setCurrentPage('orders');
+      else setCurrentPage('home');
     };
 
     window.addEventListener('hashchange', handleHashChange);
@@ -54,7 +60,7 @@ export function App() {
 
   const navigateTo = (page) => {
     setCurrentPage(page);
-    window.location.hash = page === 'workers' ? '#workers' : '#home';
+    window.location.hash = page === 'home' ? '#home' : `#${page}`;
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
@@ -118,29 +124,36 @@ export function App() {
 
       {/* 2. Main Page Content Shell */}
       <div className="android-app-shell">
-        {currentPage === 'home' ? (
-          <>
-            <HomePage
-              onNavigate={navigateTo}
-              onQuickAddWorker={() => {
-                if (isAdmin) setIsQuickAddOpen(true);
-              }}
-            />
-            {/* Android Mobile Bottom Navigation Bar on Home with Red Alert badge */}
-            <BottomNav
-              activeTab="home"
-              onTabChange={navigateTo}
-              workerCount={workerCount}
-              alertCount={alertCount}
-            />
-          </>
-        ) : (
+        {currentPage === 'home' && (
+          <HomePage
+            onNavigate={navigateTo}
+            onQuickAddWorker={() => {
+              if (isAdmin) setIsQuickAddOpen(true);
+            }}
+          />
+        )}
+
+        {currentPage === 'orders' && (
+          <OrdersPage
+            onBackToHome={() => navigateTo('home')}
+          />
+        )}
+
+        {currentPage === 'workers' && (
           <WorkersPage
             onBackToHome={() => navigateTo('home')}
             onNavigate={navigateTo}
             onAlertCountChange={(cnt) => setAlertCount(cnt)}
           />
         )}
+
+        {/* Global Bottom Navigation Bar */}
+        <BottomNav
+          activeTab={currentPage}
+          onTabChange={navigateTo}
+          workerCount={workerCount}
+          alertCount={alertCount}
+        />
       </div>
 
       {/* Quick Add Modal accessible from Home (Admin only) */}
