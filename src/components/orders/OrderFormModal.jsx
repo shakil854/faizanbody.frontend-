@@ -341,45 +341,47 @@ export function OrderFormModal({ isOpen, onClose, onSave, initialData }) {
                       return (
                         <div key={item.key} className={`modern-finishing-item-box ${isDone ? 'box-is-done' : ''}`}>
                           <div className="finishing-item-top">
-                            {/* Checkbox (Right ✓) */}
-                            <div
-                              className={`modern-checkbox-square ${isDone ? 'checked-green' : ''}`}
-                              onClick={() => handleFinishingItemChange(item.key, 'done', !isDone)}
-                              role="button"
-                              tabIndex={0}
-                              title="Click to mark complete (✓)"
-                            >
-                              {isDone ? <span className="check-tick">✓</span> : <span className="empty-box-dot"></span>}
-                            </div>
-
                             <div className="finishing-names">
                               <span className="finishing-hi">{item.label}</span>
                               <span className="finishing-en">({item.subLabel})</span>
                             </div>
 
-                            {/* 3 Blank Boxes */}
-                            <div className="three-blank-boxes-group">
-                              <input
-                                type="text"
-                                placeholder="Box 1"
-                                className="box-rect-input"
-                                value={boxes[0] || ''}
-                                onChange={(e) => handleFinishingBoxChange(item.key, 0, e.target.value)}
-                              />
-                              <input
-                                type="text"
-                                placeholder="Box 2"
-                                className="box-rect-input"
-                                value={boxes[1] || ''}
-                                onChange={(e) => handleFinishingBoxChange(item.key, 1, e.target.value)}
-                              />
-                              <input
-                                type="text"
-                                placeholder="Box 3"
-                                className="box-rect-input"
-                                value={boxes[2] || ''}
-                                onChange={(e) => handleFinishingBoxChange(item.key, 2, e.target.value)}
-                              />
+                            <div className="finishing-actions-right">
+                              {/* 3 Blank Boxes */}
+                              <div className="three-blank-boxes-group">
+                                <input
+                                  type="text"
+                                  placeholder="Box 1"
+                                  className="box-rect-input"
+                                  value={boxes[0] || ''}
+                                  onChange={(e) => handleFinishingBoxChange(item.key, 0, e.target.value)}
+                                />
+                                <input
+                                  type="text"
+                                  placeholder="Box 2"
+                                  className="box-rect-input"
+                                  value={boxes[1] || ''}
+                                  onChange={(e) => handleFinishingBoxChange(item.key, 1, e.target.value)}
+                                />
+                                <input
+                                  type="text"
+                                  placeholder="Box 3"
+                                  className="box-rect-input"
+                                  value={boxes[2] || ''}
+                                  onChange={(e) => handleFinishingBoxChange(item.key, 2, e.target.value)}
+                                />
+                              </div>
+
+                              {/* Checkbox (Right ✓) */}
+                              <div
+                                className={`modern-checkbox-square ${isDone ? 'checked-green' : ''}`}
+                                onClick={() => handleFinishingItemChange(item.key, 'done', !isDone)}
+                                role="button"
+                                tabIndex={0}
+                                title="Click to mark complete (✓)"
+                              >
+                                {isDone ? <span className="check-tick">✓</span> : <span className="empty-box-dot"></span>}
+                              </div>
                             </div>
                           </div>
 
@@ -458,28 +460,26 @@ export function OrderFormModal({ isOpen, onClose, onSave, initialData }) {
 
                     return (
                       <div key={item.key} className={`modern-item-row ${isDone ? 'row-is-completed' : ''}`}>
-                        {/* Checkbox (Right ✓) */}
-                        <div
-                          className={`modern-checkbox-square ${isDone ? 'checked-green' : ''}`}
-                          onClick={() => handleSectionItemChange(sec.key, item.key, 'done', !isDone)}
-                          role="button"
-                          tabIndex={0}
-                          title="Click to mark complete (✓)"
-                        >
-                          {isDone ? <span className="check-tick">✓</span> : <span className="empty-box-dot"></span>}
-                        </div>
-
-                        {/* Item Label (Hindi item label as per physical paper sheet) */}
-                        <div className="item-label-wrap">
+                        {/* Line 1: Label on Left, Checkbox [] on Right */}
+                        <div className="item-header-line">
                           <span className="item-hindi-label">{item.label}</span>
+                          <div
+                            className={`modern-checkbox-square ${isDone ? 'checked-green' : ''}`}
+                            onClick={() => handleSectionItemChange(sec.key, item.key, 'done', !isDone)}
+                            role="button"
+                            tabIndex={0}
+                            title="Click to mark complete (✓)"
+                          >
+                            {isDone ? <span className="check-tick">✓</span> : <span className="empty-box-dot"></span>}
+                          </div>
                         </div>
 
-                        {/* Value Input */}
+                        {/* Line 2: Empty line for writing */}
                         <div className="item-input-wrap">
                           <input
                             type="text"
                             className="modern-input-ctrl line-input"
-                            placeholder="Enter details..."
+                            placeholder="यहाँ विवरण लिखें..."
                             value={itemData.value || ''}
                             onChange={(e) =>
                               handleSectionItemChange(sec.key, item.key, 'value', e.target.value)
@@ -487,14 +487,14 @@ export function OrderFormModal({ isOpen, onClose, onSave, initialData }) {
                           />
                         </div>
 
-                        {/* Extra field (Jaali -> Vel) */}
+                        {/* Extra field (Jaali -> Vel) on its own line below */}
                         {item.extraKey && (
-                          <div className="item-extra-field-wrap">
+                          <div className="item-extra-separate-line">
                             <span className="extra-lbl">{item.extraLabel}:</span>
                             <input
                               type="text"
-                              className="modern-input-ctrl line-input extra-input"
-                              placeholder="वेल..."
+                              className="modern-input-ctrl line-input extra-input-full"
+                              placeholder="यहाँ वेल का विवरण लिखें..."
                               value={itemsData[item.extraKey]?.value || ''}
                               onChange={(e) =>
                                 handleSectionItemChange(sec.key, item.extraKey, 'value', e.target.value)

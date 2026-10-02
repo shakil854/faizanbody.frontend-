@@ -4938,20 +4938,28 @@
 
 /* Individual Item Rows */
 .modern-items-list {
-  display: flex;
-  flex-direction: column;
-  gap: 0.55rem;
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.75rem;
+}
+
+@media (max-width: 640px) {
+  .modern-items-list {
+    grid-template-columns: 1fr;
+    gap: 0.6rem;
+  }
 }
 
 .modern-item-row {
   display: flex;
-  align-items: center;
-  gap: 0.75rem;
+  flex-direction: column;
+  gap: 0.45rem;
   background: #f8fafc;
   border: 1px solid #e2e8f0;
-  padding: 0.55rem 0.85rem;
+  padding: 0.65rem 0.85rem;
   border-radius: 12px;
   transition: all 0.2s ease;
+  box-sizing: border-box;
 }
 
 .modern-item-row:hover {
@@ -4962,6 +4970,21 @@
 .modern-item-row.row-is-completed {
   background: #f0fdf4;
   border-color: #bbf7d0;
+}
+
+/* Line 1: moro on left, [] on right */
+.item-header-line {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+}
+
+.item-hindi-label {
+  font-size: 0.92rem;
+  font-weight: 700;
+  color: #0f172a;
+  line-height: 1.25;
 }
 
 /* Custom Checkbox Square */
@@ -5005,18 +5028,38 @@
   background: #94a3b8;
 }
 
-.item-label-wrap {
-  min-width: 175px;
-}
-
-.item-hindi-label {
-  font-size: 0.84rem;
-  font-weight: 700;
-  color: #1e293b;
-}
-
+/* Line 2: Empty line for writing */
 .item-input-wrap {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.item-input-wrap .line-input {
   flex: 1;
+  width: 100%;
+}
+
+.item-extra-separate-line {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  width: 100%;
+  padding-top: 0.15rem;
+  border-top: 1px dashed #f1f5f9;
+}
+
+.item-extra-separate-line .extra-lbl {
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: #334155;
+  flex-shrink: 0;
+}
+
+.item-extra-separate-line .extra-input-full {
+  flex: 1;
+  width: 100% !important;
 }
 
 .line-input {
@@ -5097,6 +5140,13 @@
   font-weight: 700;
   font-size: 0.78rem;
   color: #64748b;
+}
+
+.finishing-actions-right {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  flex-wrap: wrap;
 }
 
 /* Signatures */
@@ -5262,15 +5312,8 @@
   }
 
   .modern-item-row {
-    flex-direction: column !important;
-    align-items: flex-start !important;
-    padding: 0.6rem !important;
-    gap: 0.4rem !important;
-  }
-
-  .item-label-wrap {
-    min-width: unset !important;
-    width: 100% !important;
+    padding: 0.55rem 0.75rem !important;
+    gap: 0.35rem !important;
   }
 
   .item-input-wrap {
