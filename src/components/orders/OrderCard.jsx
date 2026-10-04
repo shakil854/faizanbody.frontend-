@@ -1,9 +1,21 @@
-import React from 'react';
+import React, { useState, useRef } from 'react';
 import { calculateOrderProgress } from './orderConstants';
+import orderService, { getPhotoFullUrl } from '../../services/orderService';
 
-export const OrderCard = React.memo(function OrderCard({ order, onOpen, onDelete }) {
+export const OrderCard = React.memo(function OrderCard({
+  order,
+  onOpen,
+  onDelete,
+  onViewPhotos,
+  onOrderUpdated,
+}) {
   const { total, done, percentage } = calculateOrderProgress(order);
   const isCompleted = order.status === 'Completed' || (total > 0 && done === total);
+  const [isUploading, setIsUploading] = useState(false);
+  const fileInputRef = useRef(null);
+
+  const photos = Array.isArray(order.photos) ? order.photos : [];
+  const latestPhoto = photos.length > 0 ? photos[photos.length - 1] : null;
 
   // Avatar initials from truck chassis number or owner name
   const getInitials = () => {
@@ -20,6 +32,26 @@ export const OrderCard = React.memo(function OrderCard({ order, onOpen, onDelete
     return 'WO';
   };
 
+  const handleQuickUpload = async (e) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+
+    setIsUploading(true);
+    try {
+      const res = await orderService.uploadPhotos(order.id, files);
+      if (res?.data && onOrderUpdated) {
+        onOrderUpdated(res.data);
+      }
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    } catch (err) {
+      alert(err.response?.data?.message || 'Photo upload failed');
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
   return (
     <div
       className={`worker-card luxury-worker-card ${isCompleted ? 'order-card-completed' : ''}`}
@@ -28,6 +60,17 @@ export const OrderCard = React.memo(function OrderCard({ order, onOpen, onDelete
       tabIndex={0}
       title="Click to open work order form"
     >
+      {/* Hidden file input for quick card upload */}
+      <input
+        type="file"
+        ref={fileInputRef}
+        onChange={handleQuickUpload}
+        multiple
+        accept="image/*"
+        style={{ display: 'none' }}
+        onClick={(e) => e.stopPropagation()}
+      />
+
       {/* Header Matching WorkerCard Header */}
       <div className="worker-card-header">
         <div className="worker-profile">
@@ -131,6 +174,99 @@ export const OrderCard = React.memo(function OrderCard({ order, onOpen, onDelete
             style={{ width: `${percentage}%` }}
           ></div>
         </div>
+      </div>
+
+      {/* Work Photos Section (Cloudflare R2 Integration) */}
+      <div className="order-card-photos-container" onClick={(e) => e.stopPropagation()}>
+        {photos.length > 0 && latestPhoto ? (
+          <div className="order-card-photo-box">
+            {/* Latest Photo Preview Thumbnail */}
+            <div
+              className="order-card-latest-photo"
+              onClick={() => onViewPhotos && onViewPhotos(order)}
+              title="Click to view all photos"
+            >
+              <img
+                src={getPhotoFullUrl(latestPhoto.url)}
+                alt="Latest Work Progress"
+                className="latest-photo-img"
+                loading="lazy"
+              />
+              <div className="latest-photo-badge">
+                <span className="live-dot"></span>
+                <span>Latest Photo</span>
+              </div>
+              <div className="photo-count-pill">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4">
+                  <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+                  <circle cx="8.5" cy="8.5" r="1.5" />
+                  <polyline points="21 15 16 10 5 21" />
+                </svg>
+                <span>{photos.length}</span>
+              </div>
+            </div>
+
+            {/* Bottom Actions: View More & Quick Upload */}
+            <div className="order-card-photo-actions">
+              <button
+                type="button"
+                className="btn-card-view-more"
+                onClick={() => onViewPhotos && onViewPhotos(order)}
+                title="View all photos in gallery"
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
+                  <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+                  <circle cx="12" cy="12" r="3" />
+                </svg>
+                <span>View More ({photos.length})</span>
+              </button>
+
+              <button
+                type="button"
+                className="btn-card-quick-upload"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={isUploading}
+                title="Upload more photos"
+              >
+                {isUploading ? (
+                  <span className="mini-card-spinner"></span>
+                ) : (
+                  <>
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                      <line x1="12" y1="5" x2="12" y2="19" />
+                      <line x1="5" y1="12" x2="19" y2="12" />
+                    </svg>
+                    <span>Upload</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        ) : (
+          /* Empty Photos Upload Trigger */
+          <div
+            className="order-card-empty-photo-trigger"
+            onClick={() => fileInputRef.current?.click()}
+            title="Click to upload work order progress photos"
+          >
+            {isUploading ? (
+              <div className="card-uploading-state">
+                <span className="mini-card-spinner"></span>
+                <span>Uploading photo to cloud...</span>
+              </div>
+            ) : (
+              <div className="card-empty-photo-content">
+                <div className="card-camera-icon">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
+                    <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
+                    <circle cx="12" cy="13" r="4" />
+                  </svg>
+                </div>
+                <span className="empty-photo-text">+ Upload Progress Photos (फोटो डालें)</span>
+              </div>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );

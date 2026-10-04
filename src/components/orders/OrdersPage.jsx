@@ -4,6 +4,7 @@ import { OrderCard } from './OrderCard';
 import { OrderFormModal } from './OrderFormModal';
 import { OrderJobSheetModal } from './OrderJobSheetModal';
 import { OrderDeleteModal } from './OrderDeleteModal';
+import { OrderPhotosModal } from './OrderPhotosModal';
 import { OrderFab } from './OrderFab';
 import { Snackbar } from '../workers/Snackbar';
 import { useAuth } from '../../context/AuthContext';
@@ -21,6 +22,7 @@ export function OrdersPage({ onBackToHome }) {
   const [editingOrder, setEditingOrder] = useState(null);
   const [viewingOrder, setViewingOrder] = useState(null);
   const [deletingOrder, setDeletingOrder] = useState(null);
+  const [photoModalOrder, setPhotoModalOrder] = useState(null);
   const [isDeleting, setIsDeleting] = useState(false);
 
   // Global Toast
@@ -217,6 +219,13 @@ export function OrdersPage({ onBackToHome }) {
                     setIsFormOpen(true);
                   }}
                   onDelete={(ord) => setDeletingOrder(ord)}
+                  onViewPhotos={(ord) => setPhotoModalOrder(ord)}
+                  onOrderUpdated={(updatedOrd) => {
+                    setOrders((prev) => prev.map((o) => (o.id === updatedOrd.id ? updatedOrd : o)));
+                    if (photoModalOrder?.id === updatedOrd.id) {
+                      setPhotoModalOrder(updatedOrd);
+                    }
+                  }}
                 />
               ))}
             </div>
@@ -266,6 +275,18 @@ export function OrdersPage({ onBackToHome }) {
         onConfirm={handleDeleteConfirm}
         order={deletingOrder}
         isDeleting={isDeleting}
+      />
+
+      {/* Cloudflare R2 Photos Modal */}
+      <OrderPhotosModal
+        isOpen={!!photoModalOrder}
+        onClose={() => setPhotoModalOrder(null)}
+        order={photoModalOrder}
+        onOrderUpdated={(updatedOrd) => {
+          setOrders((prev) => prev.map((o) => (o.id === updatedOrd.id ? updatedOrd : o)));
+          setPhotoModalOrder(updatedOrd);
+          showSnackbar('Work photos updated successfully', 'success');
+        }}
       />
 
       {/* Global Snackbar Toast */}

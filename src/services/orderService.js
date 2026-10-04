@@ -139,6 +139,53 @@ export const orderService = {
 
     return response.data;
   },
+
+  async uploadPhotos(id, files) {
+    const formData = new FormData();
+    if (Array.isArray(files)) {
+      files.forEach((file) => formData.append('photos', file));
+    } else if (files instanceof FileList) {
+      Array.from(files).forEach((file) => formData.append('photos', file));
+    } else {
+      formData.append('photos', files);
+    }
+
+    const response = await axiosInstance.post(`${ENDPOINTS.ORDERS}/${id}/photos`, formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+
+    const updated = response.data?.data;
+    if (updated && cachedOrders) {
+      cachedOrders = cachedOrders.map((o) => (o.id === Number(id) ? updated : o));
+      notifyListeners();
+    }
+
+    return response.data;
+  },
+
+  async deletePhoto(id, photoId) {
+    const response = await axiosInstance.delete(`${ENDPOINTS.ORDERS}/${id}/photos/${encodeURIComponent(photoId)}`);
+    const updated = response.data?.data;
+
+    if (updated && cachedOrders) {
+      cachedOrders = cachedOrders.map((o) => (o.id === Number(id) ? updated : o));
+      notifyListeners();
+    }
+
+    return response.data;
+  },
 };
 
+export function getPhotoFullUrl(url) {
+  if (!url) return '';
+  if (url.startsWith('http://') || url.startsWith('https://') || url.startsWith('blob:') || url.startsWith('data:')) {
+    return url;
+  }
+  const base = (import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api/v1').replace(/\/api\/v1\/?$/, '');
+  return `${base}${url.startsWith('/') ? '' : '/'}${url}`;
+}
+
 export default orderService;
+
