@@ -5612,7 +5612,7 @@
   position: absolute;
   top: 7px;
   left: 7px;
-  background: rgba(15, 23, 42, 0.8);
+  background: rgba(15, 23, 42, 0.85);
   backdrop-filter: blur(6px);
   color: #f8fafc;
   font-size: 0.65rem;
@@ -5624,6 +5624,11 @@
   gap: 5px;
   letter-spacing: 0.02em;
   border: 1px solid rgba(255, 255, 255, 0.2);
+  white-space: nowrap;
+  max-width: calc(100% - 65px);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  z-index: 2;
 }
 
 .live-dot {

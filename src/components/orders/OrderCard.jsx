@@ -19,6 +19,41 @@ export const OrderCard = React.memo(function OrderCard({
   const photos = Array.isArray(order.photos) ? order.photos : [];
   const latestPhoto = photos.length > 0 ? photos[photos.length - 1] : null;
 
+  const formatPhotoDate = (photo) => {
+    if (!photo) return '';
+    if (photo.createdAt) {
+      try {
+        const d = new Date(photo.createdAt);
+        if (!isNaN(d.getTime())) {
+          return d.toLocaleDateString('en-IN', {
+            day: 'numeric',
+            month: 'short',
+            hour: '2-digit',
+            minute: '2-digit',
+          });
+        }
+      } catch {}
+    }
+    const match = (photo.id || photo.key || '').match(/(\d{10,13})/);
+    if (match) {
+      try {
+        const ts = Number(match[1]);
+        const d = new Date(ts);
+        if (!isNaN(d.getTime()) && d.getFullYear() > 2020) {
+          return d.toLocaleDateString('en-IN', {
+            day: 'numeric',
+            month: 'short',
+            hour: '2-digit',
+            minute: '2-digit',
+          });
+        }
+      } catch {}
+    }
+    return '';
+  };
+
+  const latestPhotoDate = formatPhotoDate(latestPhoto);
+
   // Avatar initials from truck chassis number or owner name
   const getInitials = () => {
     if (order.truck_chassis_no) {
@@ -257,9 +292,12 @@ export const OrderCard = React.memo(function OrderCard({
                   <span>Uploading photo... (फोटो अपलोड हो रही है)</span>
                 </div>
               )}
-              <div className="latest-photo-badge">
+              <div
+                className="latest-photo-badge"
+                title={latestPhotoDate ? `Latest photo: ${latestPhotoDate}` : 'Latest Photo'}
+              >
                 <span className="live-dot"></span>
-                <span>Latest Photo</span>
+                <span>{latestPhotoDate || 'Latest Photo'}</span>
               </div>
               <div className="photo-count-pill">
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4">
