@@ -184,29 +184,37 @@ export function OrdersPage({ onBackToHome }) {
               <p className="loading-text">Loading work orders...</p>
             </div>
           ) : filteredOrders.length === 0 ? (
-            <div className="empty-state-luxury">
-              <div className="empty-icon-wrap">
-                <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" strokeWidth="1.8">
-                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-                  <polyline points="14 2 14 8 20 8" />
+            <div className="empty-workers-state">
+              <div className="empty-luxury-illustration">
+                <svg width="64" height="64" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <circle cx="32" cy="32" r="30" fill="#f0f7ff" stroke="#e0e7ff" strokeWidth="1.5" />
+                  <rect x="20" y="16" width="24" height="32" rx="4" fill="#dbeafe" stroke="#2563eb" strokeWidth="2" />
+                  <line x1="26" y1="24" x2="38" y2="24" stroke="#2563eb" strokeWidth="2" strokeLinecap="round" />
+                  <line x1="26" y1="30" x2="38" y2="30" stroke="#2563eb" strokeWidth="2" strokeLinecap="round" />
+                  <line x1="26" y1="36" x2="34" y2="36" stroke="#2563eb" strokeWidth="2" strokeLinecap="round" />
+                  <circle cx="45" cy="45" r="7" fill="#2563eb" />
+                  <path d="M45 42v6M42 45h6" stroke="#ffffff" strokeWidth="2" strokeLinecap="round" />
                 </svg>
               </div>
-              <h4 className="empty-title">No Work Orders Found</h4>
-              <p className="empty-desc">
+              <h3>No Work Orders Found</h3>
+              <p>
                 {searchQuery
-                  ? `No records match "${searchQuery}".`
-                  : 'No work orders created yet. Click the + button below to add a new order.'}
+                  ? `No records match "${searchQuery}". Try clearing search or check spelling.`
+                  : 'Start creating work orders to track truck body building, cabin, and body progress.'}
               </p>
-              <button
-                type="button"
-                className="btn btn-primary-luxury"
-                onClick={() => {
-                  setEditingOrder(null);
-                  setIsFormOpen(true);
-                }}
-              >
-                + Create First Work Order
-              </button>
+              {isAdmin && (
+                <button
+                  type="button"
+                  className="btn btn-primary btn-empty-cta"
+                  onClick={() => {
+                    setSearchQuery('');
+                    setEditingOrder(null);
+                    setIsFormOpen(true);
+                  }}
+                >
+                  + Create First Work Order
+                </button>
+              )}
             </div>
           ) : (
             <div className="workers-grid">
