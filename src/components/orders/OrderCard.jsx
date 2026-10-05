@@ -1,6 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { calculateOrderProgress } from './orderConstants';
 import orderService, { getPhotoFullUrl } from '../../services/orderService';
+import { capturePhotoFromCamera, pickPhotosFromGallery } from '../../utils/nativeCamera';
 
 export const OrderCard = React.memo(function OrderCard({
   order,
@@ -33,22 +34,49 @@ export const OrderCard = React.memo(function OrderCard({
     return 'WO';
   };
 
-  const handleQuickUpload = async (e) => {
-    const files = e.target.files;
+  const uploadFileList = async (files) => {
     if (!files || files.length === 0) return;
-
     setIsUploading(true);
     try {
       const res = await orderService.uploadPhotos(order.id, files);
       if (res?.data && onOrderUpdated) {
         onOrderUpdated(res.data);
       }
-      if (fileInputRef.current) fileInputRef.current.value = '';
-      if (cameraInputRef.current) cameraInputRef.current.value = '';
     } catch (err) {
       alert(err.response?.data?.message || 'Photo upload failed');
     } finally {
       setIsUploading(false);
+    }
+  };
+
+  const handleQuickUpload = async (e) => {
+    const files = e.target.files;
+    await uploadFileList(files);
+    if (fileInputRef.current) fileInputRef.current.value = '';
+    if (cameraInputRef.current) cameraInputRef.current.value = '';
+  };
+
+  const handleCameraTrigger = async (e) => {
+    e.stopPropagation();
+    try {
+      const files = await capturePhotoFromCamera();
+      if (files && files.length > 0) {
+        await uploadFileList(files);
+      }
+    } catch {
+      cameraInputRef.current?.click();
+    }
+  };
+
+  const handleGalleryTrigger = async (e) => {
+    e.stopPropagation();
+    try {
+      const files = await pickPhotosFromGallery();
+      if (files && files.length > 0) {
+        await uploadFileList(files);
+      }
+    } catch {
+      fileInputRef.current?.click();
     }
   };
 
@@ -221,7 +249,7 @@ export const OrderCard = React.memo(function OrderCard({
               <button
                 type="button"
                 className="btn-card-camera"
-                onClick={() => cameraInputRef.current?.click()}
+                onClick={handleCameraTrigger}
                 disabled={isUploading}
                 title="Click photo from mobile camera"
               >
@@ -235,7 +263,7 @@ export const OrderCard = React.memo(function OrderCard({
               <button
                 type="button"
                 className="btn-card-quick-upload"
-                onClick={() => fileInputRef.current?.click()}
+                onClick={handleGalleryTrigger}
                 disabled={isUploading}
                 title="Upload more photos from gallery"
               >
@@ -262,32 +290,41 @@ export const OrderCard = React.memo(function OrderCard({
                 <span>Uploading photo to cloud...</span>
               </div>
             ) : (
-              <div className="card-empty-photo-actions">
-                <button
-                  type="button"
-                  className="btn-empty-camera"
-                  onClick={() => cameraInputRef.current?.click()}
-                  title="Open Camera to Click Photo"
-                >
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.3">
+              <div className="card-photo-cta-wrapper">
+                <div className="card-photo-cta-header">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#2563eb" strokeWidth="2.2">
                     <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
                     <circle cx="12" cy="13" r="4" />
                   </svg>
-                  <span>Camera</span>
-                </button>
+                  <span>Work Progress Photos (फोटो)</span>
+                </div>
+                <div className="card-empty-photo-actions">
+                  <button
+                    type="button"
+                    className="btn-empty-camera"
+                    onClick={handleCameraTrigger}
+                    title="Open Camera to Click Photo"
+                  >
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4">
+                      <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
+                      <circle cx="12" cy="13" r="4" />
+                    </svg>
+                    <span>Camera</span>
+                  </button>
 
-                <button
-                  type="button"
-                  className="btn-empty-upload"
-                  onClick={() => fileInputRef.current?.click()}
-                  title="Upload from Gallery"
-                >
-                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                    <line x1="12" y1="5" x2="12" y2="19" />
-                    <line x1="5" y1="12" x2="19" y2="12" />
-                  </svg>
-                  <span>Upload</span>
-                </button>
+                  <button
+                    type="button"
+                    className="btn-empty-upload"
+                    onClick={handleGalleryTrigger}
+                    title="Upload from Gallery"
+                  >
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6">
+                      <line x1="12" y1="5" x2="12" y2="19" />
+                      <line x1="5" y1="12" x2="19" y2="12" />
+                    </svg>
+                    <span>Upload</span>
+                  </button>
+                </div>
               </div>
             )}
           </div>

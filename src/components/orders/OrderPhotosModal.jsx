@@ -1,5 +1,6 @@
 import React, { useState, useRef } from 'react';
 import orderService, { getPhotoFullUrl } from '../../services/orderService';
+import { capturePhotoFromCamera, pickPhotosFromGallery } from '../../utils/nativeCamera';
 
 export function OrderPhotosModal({ isOpen, onClose, order, onOrderUpdated }) {
   const [isUploading, setIsUploading] = useState(false);
@@ -16,25 +17,48 @@ export function OrderPhotosModal({ isOpen, onClose, order, onOrderUpdated }) {
   // Latest photos first so newest photo is at the top
   const sortedPhotos = [...photos].reverse();
 
-  const handleFileChange = async (e) => {
-    const files = e.target.files;
+  const uploadFileList = async (files) => {
     if (!files || files.length === 0) return;
-
     setIsUploading(true);
     setUploadError('');
-
     try {
       const res = await orderService.uploadPhotos(order.id, files);
       if (res?.data && onOrderUpdated) {
         onOrderUpdated(res.data);
       }
-      if (fileInputRef.current) {
-        fileInputRef.current.value = '';
-      }
+      if (fileInputRef.current) fileInputRef.current.value = '';
+      if (cameraInputRef.current) cameraInputRef.current.value = '';
     } catch (err) {
       setUploadError(err.response?.data?.message || 'Photo upload failed. Please try again.');
     } finally {
       setIsUploading(false);
+    }
+  };
+
+  const handleFileChange = async (e) => {
+    const files = e.target.files;
+    await uploadFileList(files);
+  };
+
+  const handleCameraTrigger = async () => {
+    try {
+      const files = await capturePhotoFromCamera();
+      if (files && files.length > 0) {
+        await uploadFileList(files);
+      }
+    } catch {
+      cameraInputRef.current?.click();
+    }
+  };
+
+  const handleGalleryTrigger = async () => {
+    try {
+      const files = await pickPhotosFromGallery();
+      if (files && files.length > 0) {
+        await uploadFileList(files);
+      }
+    } catch {
+      fileInputRef.current?.click();
     }
   };
 
@@ -148,7 +172,7 @@ export function OrderPhotosModal({ isOpen, onClose, order, onOrderUpdated }) {
             <button
               type="button"
               className="photos-camera-btn"
-              onClick={() => cameraInputRef.current?.click()}
+              onClick={handleCameraTrigger}
               disabled={isUploading || isDeletingAll}
               title="Click photo directly from camera"
             >
@@ -163,7 +187,7 @@ export function OrderPhotosModal({ isOpen, onClose, order, onOrderUpdated }) {
             <button
               type="button"
               className="photos-upload-trigger-btn"
-              onClick={() => fileInputRef.current?.click()}
+              onClick={handleGalleryTrigger}
               disabled={isUploading || isDeletingAll}
               title="Upload photos from gallery"
             >
