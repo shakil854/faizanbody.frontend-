@@ -25,3 +25,8 @@
   - Always use predefined button classes: `btn btn-primary`, `btn btn-secondary`, `btn btn-danger`.
   - NEVER invent one-off classes like `btn-primary-luxury` that lack CSS definitions.
 
+## 4. No Automatic Git Push Rule (Strict)
+- **NEVER** run `git push` or push code to remote repositories (`origin`, GitHub, etc.).
+- All changes, commits, or builds must remain strictly local.
+- The assistant must NEVER push unless the user explicitly gives a direct instruction to push.
+
