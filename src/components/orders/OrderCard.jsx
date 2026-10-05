@@ -9,10 +9,11 @@ export const OrderCard = React.memo(function OrderCard({
   onViewPhotos,
   onOrderUpdated,
 }) {
-  const { total, done, percentage } = calculateOrderProgress(order);
+  const { total, done } = calculateOrderProgress(order);
   const isCompleted = order.status === 'Completed' || (total > 0 && done === total);
   const [isUploading, setIsUploading] = useState(false);
   const fileInputRef = useRef(null);
+  const cameraInputRef = useRef(null);
 
   const photos = Array.isArray(order.photos) ? order.photos : [];
   const latestPhoto = photos.length > 0 ? photos[photos.length - 1] : null;
@@ -42,9 +43,8 @@ export const OrderCard = React.memo(function OrderCard({
       if (res?.data && onOrderUpdated) {
         onOrderUpdated(res.data);
       }
-      if (fileInputRef.current) {
-        fileInputRef.current.value = '';
-      }
+      if (fileInputRef.current) fileInputRef.current.value = '';
+      if (cameraInputRef.current) cameraInputRef.current.value = '';
     } catch (err) {
       alert(err.response?.data?.message || 'Photo upload failed');
     } finally {
@@ -60,13 +60,24 @@ export const OrderCard = React.memo(function OrderCard({
       tabIndex={0}
       title="Click to open work order form"
     >
-      {/* Hidden file input for quick card upload */}
+      {/* Hidden file input for quick card upload (Gallery) */}
       <input
         type="file"
         ref={fileInputRef}
         onChange={handleQuickUpload}
         multiple
         accept="image/*"
+        style={{ display: 'none' }}
+        onClick={(e) => e.stopPropagation()}
+      />
+
+      {/* Hidden file input for direct mobile camera click */}
+      <input
+        type="file"
+        ref={cameraInputRef}
+        onChange={handleQuickUpload}
+        accept="image/*"
+        capture="environment"
         style={{ display: 'none' }}
         onClick={(e) => e.stopPropagation()}
       />
@@ -192,7 +203,7 @@ export const OrderCard = React.memo(function OrderCard({
               </div>
             </div>
 
-            {/* Bottom Actions: View More & Quick Upload */}
+            {/* Bottom Actions: View More, Camera & Quick Upload */}
             <div className="order-card-photo-actions">
               <button
                 type="button"
@@ -201,10 +212,24 @@ export const OrderCard = React.memo(function OrderCard({
                 title="View all photos in gallery"
               >
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
-                  <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+                  <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8z" />
                   <circle cx="12" cy="12" r="3" />
                 </svg>
-                <span>View More ({photos.length})</span>
+                <span>View ({photos.length})</span>
+              </button>
+
+              <button
+                type="button"
+                className="btn-card-camera"
+                onClick={() => cameraInputRef.current?.click()}
+                disabled={isUploading}
+                title="Click photo from mobile camera"
+              >
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
+                  <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
+                  <circle cx="12" cy="13" r="4" />
+                </svg>
+                <span>Camera</span>
               </button>
 
               <button
@@ -212,7 +237,7 @@ export const OrderCard = React.memo(function OrderCard({
                 className="btn-card-quick-upload"
                 onClick={() => fileInputRef.current?.click()}
                 disabled={isUploading}
-                title="Upload more photos"
+                title="Upload more photos from gallery"
               >
                 {isUploading ? (
                   <span className="mini-card-spinner"></span>
@@ -229,26 +254,40 @@ export const OrderCard = React.memo(function OrderCard({
             </div>
           </div>
         ) : (
-          /* Empty Photos Upload Trigger */
-          <div
-            className="order-card-empty-photo-trigger"
-            onClick={() => fileInputRef.current?.click()}
-            title="Click to upload work order progress photos"
-          >
+          /* Empty Photos: Camera & Upload Triggers */
+          <div className="order-card-empty-photo-box" onClick={(e) => e.stopPropagation()}>
             {isUploading ? (
               <div className="card-uploading-state">
                 <span className="mini-card-spinner"></span>
                 <span>Uploading photo to cloud...</span>
               </div>
             ) : (
-              <div className="card-empty-photo-content">
-                <div className="card-camera-icon">
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
+              <div className="card-empty-photo-actions">
+                <button
+                  type="button"
+                  className="btn-empty-camera"
+                  onClick={() => cameraInputRef.current?.click()}
+                  title="Open Camera to Click Photo"
+                >
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.3">
                     <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
                     <circle cx="12" cy="13" r="4" />
                   </svg>
-                </div>
-                <span className="empty-photo-text">+ Upload Progress Photos (फोटो डालें)</span>
+                  <span>Camera</span>
+                </button>
+
+                <button
+                  type="button"
+                  className="btn-empty-upload"
+                  onClick={() => fileInputRef.current?.click()}
+                  title="Upload from Gallery"
+                >
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                    <line x1="12" y1="5" x2="12" y2="19" />
+                    <line x1="5" y1="12" x2="19" y2="12" />
+                  </svg>
+                  <span>Upload</span>
+                </button>
               </div>
             )}
           </div>
