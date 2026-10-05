@@ -93,8 +93,15 @@ export const workerService = {
     const response = await axiosInstance.post(ENDPOINTS.WORKERS, workerData);
     const newWorker = response.data?.data;
 
-    if (newWorker && cachedWorkers) {
-      cachedWorkers = [newWorker, ...cachedWorkers];
+    if (newWorker) {
+      if (cachedWorkers) {
+        const exists = cachedWorkers.some((w) => w.id === newWorker.id);
+        if (!exists) {
+          cachedWorkers = [newWorker, ...cachedWorkers];
+        }
+      } else {
+        cachedWorkers = [newWorker];
+      }
       notifyListeners();
     }
 

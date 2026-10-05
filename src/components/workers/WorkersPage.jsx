@@ -94,15 +94,11 @@ export function WorkersPage({ onBackToHome, onAlertCountChange }) {
   const handleSaveWorker = async (formData) => {
     try {
       if (editingWorker) {
-        const response = await workerService.updateWorker(editingWorker.id, formData);
+        await workerService.updateWorker(editingWorker.id, formData);
         showSnackbar(`Worker "${formData.name}" updated successfully!`, 'success');
-        setWorkers((prev) =>
-          prev.map((w) => (w.id === editingWorker.id ? response.data : w))
-        );
       } else {
-        const response = await workerService.createWorker(formData);
+        await workerService.createWorker(formData);
         showSnackbar(`Worker "${formData.name}" added successfully!`, 'success');
-        setWorkers((prev) => [response.data, ...prev]);
       }
       setIsFormOpen(false);
       setEditingWorker(null);
@@ -118,7 +114,6 @@ export function WorkersPage({ onBackToHome, onAlertCountChange }) {
     try {
       setIsDeleting(true);
       await workerService.deleteWorker(workerId);
-      setWorkers((prev) => prev.filter((w) => w.id !== workerId));
       showSnackbar('Worker removed from list', 'success');
       setDeletingWorker(null);
     } catch (err) {
@@ -132,7 +127,16 @@ export function WorkersPage({ onBackToHome, onAlertCountChange }) {
   // Ultra-fast sorted list:
   // Leaving soon workers appear at the top, rest ordered naturally
   const sortedWorkers = useMemo(() => {
-    let list = workers;
+    // Zero-duplicate guarantee: deduplicate by id
+    const seen = new Set();
+    const uniqueList = workers.filter((w) => {
+      if (!w || !w.id) return false;
+      if (seen.has(w.id)) return false;
+      seen.add(w.id);
+      return true;
+    });
+
+    let list = uniqueList;
     if (searchQuery.trim()) {
       const query = searchQuery.trim().toLowerCase();
       list = list.filter((w) => w.name && w.name.toLowerCase().includes(query));
