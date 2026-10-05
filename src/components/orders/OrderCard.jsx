@@ -235,6 +235,28 @@ export const OrderCard = React.memo(function OrderCard({
                   display: 'block',
                 }}
               />
+              {isUploading && (
+                <div
+                  style={{
+                    position: 'absolute',
+                    inset: 0,
+                    backgroundColor: 'rgba(15, 23, 42, 0.75)',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '8px',
+                    color: '#ffffff',
+                    fontSize: '13px',
+                    fontWeight: 600,
+                    zIndex: 10,
+                    backdropFilter: 'blur(2px)',
+                  }}
+                >
+                  <span className="mini-card-spinner" style={{ width: '22px', height: '22px', borderWidth: '3px' }}></span>
+                  <span>Uploading photo... (फोटो अपलोड हो रही है)</span>
+                </div>
+              )}
               <div className="latest-photo-badge">
                 <span className="live-dot"></span>
                 <span>Latest Photo</span>
@@ -271,11 +293,20 @@ export const OrderCard = React.memo(function OrderCard({
                 disabled={isUploading}
                 title="Click photo from mobile camera"
               >
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
-                  <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
-                  <circle cx="12" cy="13" r="4" />
-                </svg>
-                <span>Camera</span>
+                {isUploading ? (
+                  <>
+                    <span className="mini-card-spinner"></span>
+                    <span>Saving...</span>
+                  </>
+                ) : (
+                  <>
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
+                      <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
+                      <circle cx="12" cy="13" r="4" />
+                    </svg>
+                    <span>Camera</span>
+                  </>
+                )}
               </button>
 
               <button

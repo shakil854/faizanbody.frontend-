@@ -29,7 +29,7 @@ export function OrderPhotosModal({ isOpen, onClose, order, onOrderUpdated }) {
       if (fileInputRef.current) fileInputRef.current.value = '';
       if (cameraInputRef.current) cameraInputRef.current.value = '';
     } catch (err) {
-      setUploadError(err.response?.data?.message || 'Photo upload failed. Please try again.');
+      setUploadError(err.response?.data?.message || err.message || 'Photo upload failed. Please try again.');
     } finally {
       setIsUploading(false);
     }
@@ -176,11 +176,20 @@ export function OrderPhotosModal({ isOpen, onClose, order, onOrderUpdated }) {
               disabled={isUploading || isDeletingAll}
               title="Click photo directly from camera"
             >
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.3">
-                <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
-                <circle cx="12" cy="13" r="4" />
-              </svg>
-              <span>Camera</span>
+              {isUploading ? (
+                <>
+                  <span className="photos-spinner"></span>
+                  <span>Saving...</span>
+                </>
+              ) : (
+                <>
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.3">
+                    <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
+                    <circle cx="12" cy="13" r="4" />
+                  </svg>
+                  <span>Camera</span>
+                </>
+              )}
             </button>
 
             {/* Gallery Upload Button */}
