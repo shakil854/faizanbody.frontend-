@@ -58,6 +58,42 @@ export function App() {
     return () => window.removeEventListener('hashchange', handleHashChange);
   }, []);
 
+  // Native Android Capacitor hardware back button & status bar integration
+  useEffect(() => {
+    let backListener = null;
+
+    import('@capacitor/app')
+      .then(({ App: CapApp }) => {
+        return CapApp.addListener('backButton', () => {
+          if (isQuickAddOpen) {
+            setIsQuickAddOpen(false);
+          } else if (isChangePasswordOpen) {
+            setIsChangePasswordOpen(false);
+          } else if (window.location.hash && window.location.hash !== '#home' && window.location.hash !== '') {
+            window.location.hash = '#home';
+            setCurrentPage('home');
+          } else {
+            CapApp.exitApp();
+          }
+        });
+      })
+      .then((handle) => {
+        backListener = handle;
+      })
+      .catch(() => {});
+
+    import('@capacitor/status-bar')
+      .then(({ StatusBar, Style }) => {
+        StatusBar.setStyle({ style: Style.Dark }).catch(() => {});
+        StatusBar.setBackgroundColor({ color: '#090e1a' }).catch(() => {});
+      })
+      .catch(() => {});
+
+    return () => {
+      if (backListener && backListener.remove) backListener.remove();
+    };
+  }, [isQuickAddOpen, isChangePasswordOpen]);
+
   const navigateTo = (page) => {
     setCurrentPage(page);
     window.location.hash = page === 'home' ? '#home' : `#${page}`;

@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Faizan Body</string>
+    <string name="title_activity_main">Faizan Body</string>
+    <string name="package_name">com.faizanbody.app</string>
+    <string name="custom_url_scheme">com.faizanbody.app</string>
+</resources>
