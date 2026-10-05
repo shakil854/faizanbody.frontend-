@@ -465,6 +465,26 @@
   border: 1px solid #e2e8f0;
 }
 
+.shade-date-box {
+  background: linear-gradient(145deg, #fffbeb 0%, #fef3c7 100%);
+  border: 1px solid #fde68a;
+}
+
+.order-dates-grid-3 {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  gap: 0.45rem !important;
+}
+
+@media (max-width: 360px) {
+  .order-dates-grid-3 {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+  .order-dates-grid-3 .shade-date-box {
+    grid-column: span 2;
+  }
+}
+
 .date-icon-circle {
   width: 24px;
   height: 24px;
@@ -483,6 +503,11 @@
 .going-icon-bg {
   background: #ffffff;
   box-shadow: 0 2px 6px rgba(15, 23, 42, 0.05);
+}
+
+.shade-icon-bg {
+  background: #ffffff;
+  box-shadow: 0 1px 4px rgba(217, 119, 6, 0.15);
 }
 
 .date-content {
