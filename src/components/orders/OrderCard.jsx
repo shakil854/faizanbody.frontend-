@@ -32,7 +32,7 @@ export const OrderCard = React.memo(function OrderCard({
             minute: '2-digit',
           });
         }
-      } catch {}
+      } catch { }
     }
     const match = (photo.id || photo.key || '').match(/(\d{10,13})/);
     if (match) {
@@ -47,7 +47,7 @@ export const OrderCard = React.memo(function OrderCard({
             minute: '2-digit',
           });
         }
-      } catch {}
+      } catch { }
     }
     return '';
   };
@@ -156,19 +156,26 @@ export const OrderCard = React.memo(function OrderCard({
           </div>
           <div className="worker-meta">
             <h4 className="worker-name">{order.truck_chassis_no || order.order_no || 'Truck Order'}</h4>
-            <span className="worker-status-indicator">
-              {isCompleted ? (
-                <span className="relieved-dot-pill" style={{ color: '#059669', fontWeight: 700 }}>
-                  <span className="pulse-indicator" style={{ background: '#059669', boxShadow: '0 0 0 2px rgba(5, 150, 105, 0.25)' }}></span>
-                  Completed
-                </span>
-              ) : (
-                <span className="active-dot-pill">
-                  <span className="pulse-indicator"></span>
-                  {order.status || 'In Progress'}
-                </span>
-              )}
-            </span>
+            <div className="worker-status-subrow">
+              <span className="worker-status-indicator">
+                {isCompleted ? (
+                  <span className="relieved-dot-pill" style={{ color: '#059669', fontWeight: 700 }}>
+                    <span className="pulse-indicator" style={{ background: '#059669', boxShadow: '0 0 0 2px rgba(5, 150, 105, 0.25)' }}></span>
+                    Completed
+                  </span>
+                ) : (
+                  <span className="active-dot-pill">
+                    <span className="pulse-indicator"></span>
+                    {order.status || 'In Progress'}
+                  </span>
+                )}
+              </span>
+
+              <span className="card-shade-pill" title={`Shade No: ${order.shade_no || 'Not set'}`}>
+                <span className="shade-pill-dot"></span>
+                <span>Shade: {order.shade_no || '—'}</span>
+              </span>
+            </div>
           </div>
         </div>
 
@@ -203,8 +210,8 @@ export const OrderCard = React.memo(function OrderCard({
         </div>
       </div>
 
-      {/* Order Meta Grid: Owner, Shade No & Date */}
-      <div className="worker-dates-grid luxury-dates-grid order-dates-grid-3">
+      {/* Worker Dates Grid: Owner & Date */}
+      <div className="worker-dates-grid luxury-dates-grid">
         {/* Owner */}
         <div className="date-item coming-date-box" title={`Owner: ${order.owner_name || 'N/A'}`}>
           <div className="date-icon-circle coming-icon-bg">
@@ -216,19 +223,6 @@ export const OrderCard = React.memo(function OrderCard({
           <div className="date-content">
             <span className="date-label">OWNER</span>
             <span className="date-value" title={order.owner_name || '—'}>{order.owner_name || '—'}</span>
-          </div>
-        </div>
-
-        {/* Shade No */}
-        <div className="date-item shade-date-box" title={`Shade No: ${order.shade_no || 'N/A'}`}>
-          <div className="date-icon-circle shade-icon-bg">
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#d97706" strokeWidth="2.2">
-              <path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z" />
-            </svg>
-          </div>
-          <div className="date-content">
-            <span className="date-label">SHADE NO</span>
-            <span className="date-value" title={order.shade_no || '—'}>{order.shade_no || '—'}</span>
           </div>
         </div>
 
