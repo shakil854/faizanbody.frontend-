@@ -176,6 +176,18 @@ export const orderService = {
 
     return response.data;
   },
+
+  async deleteAllPhotos(id) {
+    const response = await axiosInstance.delete(`${ENDPOINTS.ORDERS}/${id}/photos`);
+    const updated = response.data?.data;
+
+    if (updated && cachedOrders) {
+      cachedOrders = cachedOrders.map((o) => (o.id === Number(id) ? updated : o));
+      notifyListeners();
+    }
+
+    return response.data;
+  },
 };
 
 export function getPhotoFullUrl(url) {

@@ -5874,42 +5874,91 @@
   border-bottom: 1px solid #e2e8f0;
 }
 
-.photos-upload-trigger-btn {
-  width: 100%;
-  padding: 0.48rem 0.8rem;
-  background: #ffffff;
-  border: 1.5px dashed #93c5fd;
-  border-radius: 9px;
-  color: #1d4ed8;
-  font-weight: 700;
-  font-size: 0.82rem;
+.order-photos-actions-row {
   display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  width: 100%;
+}
+
+.photos-upload-trigger-btn {
+  flex: 1;
+  padding: 0.52rem 0.95rem;
+  background: #2563eb;
+  border: none;
+  border-radius: 8px;
+  color: #ffffff;
+  font-weight: 700;
+  font-size: 0.84rem;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 0.45rem;
   cursor: pointer;
   white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  box-shadow: 0 2px 6px rgba(37, 99, 235, 0.25);
   transition: all 0.2s ease;
 }
 
 .photos-upload-trigger-btn:hover:not(:disabled) {
-  background: #eff6ff;
-  border-color: #3b82f6;
-  color: #1e40af;
+  background: #1d4ed8;
+  box-shadow: 0 4px 10px rgba(37, 99, 235, 0.35);
+  transform: translateY(-1px);
+}
+
+.photos-upload-trigger-btn:active:not(:disabled) {
+  transform: translateY(0);
 }
 
 .photos-upload-trigger-btn:disabled {
   opacity: 0.7;
   cursor: not-allowed;
+  transform: none;
+}
+
+.photos-delete-all-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 0.52rem 0.85rem;
+  background: #fee2e2;
+  border: 1px solid #fca5a5;
+  color: #dc2626;
+  border-radius: 8px;
+  font-weight: 700;
+  font-size: 0.8rem;
+  cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
+  transition: all 0.2s ease;
+}
+
+.photos-delete-all-btn:hover:not(:disabled) {
+  background: #fecaca;
+  color: #b91c1c;
+  transform: translateY(-1px);
+}
+
+.photos-delete-all-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.mini-spinner-danger {
+  width: 12px;
+  height: 12px;
+  border: 2px solid #fecaca;
+  border-top-color: #dc2626;
+  border-radius: 50%;
+  animation: cardSpin 0.7s linear infinite;
 }
 
 .photos-spinner {
-  width: 18px;
-  height: 18px;
-  border: 2.5px solid #bfdbfe;
-  border-top-color: #2563eb;
+  width: 14px;
+  height: 14px;
+  border: 2px solid rgba(255, 255, 255, 0.4);
+  border-top-color: #ffffff;
   border-radius: 50%;
   animation: cardSpin 0.7s linear infinite;
 }
@@ -5928,8 +5977,8 @@
 .order-photos-content {
   flex: 1;
   overflow-y: auto;
-  padding: 1.4rem;
-  background: #ffffff;
+  padding: 1.2rem;
+  background: #f8fafc;
   min-height: 250px;
 }
 
@@ -5984,7 +6033,7 @@
 
 .order-photos-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
   gap: 1.1rem;
 }
 
@@ -5992,8 +6041,8 @@
   border-radius: 14px;
   border: 1px solid #e2e8f0;
   overflow: hidden;
-  background: #ffffff;
-  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.05);
+  background: #0f172a;
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.08);
   cursor: pointer;
   transition: transform 0.2s ease, box-shadow 0.2s ease;
   display: flex;
@@ -6002,59 +6051,100 @@
 
 .order-photo-card:hover {
   transform: translateY(-2px);
-  box-shadow: 0 6px 16px rgba(15, 23, 42, 0.1);
+  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.15);
 }
 
 .order-photo-card.is-latest {
-  border-color: #93c5fd;
+  border: 2px solid #22c55e;
 }
 
 .photo-thumb-wrapper {
   position: relative;
   width: 100%;
-  height: 165px;
+  height: 250px;
   background: #0f172a;
-  display: flex;
-  align-items: center;
-  justify-content: center;
   overflow: hidden;
 }
 
 .photo-thumb-img {
   width: 100%;
   height: 100%;
-  object-fit: contain;
+  object-fit: cover;
   transition: transform 0.3s ease;
+  display: block;
 }
 
 .order-photo-card:hover .photo-thumb-img {
-  transform: scale(1.02);
+  transform: scale(1.03);
 }
 
 .latest-photo-tag {
   position: absolute;
-  top: 7px;
-  left: 7px;
+  top: 8px;
+  left: 8px;
   background: #16a34a;
   color: white;
-  font-size: 0.62rem;
+  font-size: 0.66rem;
   font-weight: 800;
-  padding: 2px 7px;
+  padding: 3px 8px;
   border-radius: 999px;
   text-transform: uppercase;
   letter-spacing: 0.03em;
-  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+  z-index: 4;
+}
+
+.photo-card-delete-overlay-btn {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: rgba(15, 23, 42, 0.75);
+  backdrop-filter: blur(4px);
+  color: #ffffff;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  z-index: 5;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.35);
+}
+
+.photo-card-delete-overlay-btn:hover {
+  background: #dc2626;
+  border-color: #ef4444;
+  transform: scale(1.08);
+}
+
+.photo-card-date-overlay {
+  position: absolute;
+  bottom: 8px;
+  left: 8px;
+  background: rgba(15, 23, 42, 0.75);
+  backdrop-filter: blur(4px);
+  color: #f8fafc;
+  font-size: 0.68rem;
+  font-weight: 700;
+  padding: 3px 8px;
+  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  z-index: 3;
 }
 
 .photo-card-overlay {
   position: absolute;
   inset: 0;
-  background: rgba(15, 23, 42, 0.45);
+  background: rgba(15, 23, 42, 0.35);
   opacity: 0;
   display: flex;
   align-items: center;
   justify-content: center;
   transition: opacity 0.2s ease;
+  z-index: 2;
 }
 
 .order-photo-card:hover .photo-card-overlay {
@@ -6074,48 +6164,11 @@
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
 }
 
-.photo-card-footer {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0.55rem 0.75rem;
-  background: #f8fafc;
-  border-top: 1px solid #f1f5f9;
-}
-
-.photo-date {
-  font-size: 0.7rem;
-  color: #64748b;
-  font-weight: 600;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.photo-delete-btn {
-  background: #fee2e2;
-  color: #dc2626;
-  border: none;
-  width: 28px;
-  height: 28px;
-  border-radius: 8px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.photo-delete-btn:hover {
-  background: #fecaca;
-  color: #b91c1c;
-}
-
 .mini-spinner {
   width: 12px;
   height: 12px;
-  border: 2px solid #fecaca;
-  border-top-color: #dc2626;
+  border: 2px solid rgba(255, 255, 255, 0.4);
+  border-top-color: #ffffff;
   border-radius: 50%;
   animation: cardSpin 0.7s linear infinite;
 }

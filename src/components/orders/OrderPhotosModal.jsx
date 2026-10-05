@@ -6,11 +6,14 @@ export function OrderPhotosModal({ isOpen, onClose, order, onOrderUpdated }) {
   const [uploadError, setUploadError] = useState('');
   const [activePhotoIndex, setActivePhotoIndex] = useState(null); // For fullscreen preview
   const [deletingPhotoId, setDeletingPhotoId] = useState(null);
+  const [isDeletingAll, setIsDeletingAll] = useState(false);
   const fileInputRef = useRef(null);
 
   if (!isOpen || !order) return null;
 
   const photos = Array.isArray(order.photos) ? order.photos : [];
+  // Latest photos first so newest photo is at the top
+  const sortedPhotos = [...photos].reverse();
 
   const handleFileChange = async (e) => {
     const files = e.target.files;
@@ -53,6 +56,30 @@ export function OrderPhotosModal({ isOpen, onClose, order, onOrderUpdated }) {
       alert(err.response?.data?.message || 'Failed to delete photo');
     } finally {
       setDeletingPhotoId(null);
+    }
+  };
+
+  const handleDeleteAllPhotos = async () => {
+    if (!photos || photos.length === 0) return;
+    if (
+      !window.confirm(
+        `Are you sure you want to delete all ${photos.length} photos of this order? (क्या आप इस आर्डर की सभी ${photos.length} फोटो हटाना चाहते हैं?)`
+      )
+    ) {
+      return;
+    }
+
+    setIsDeletingAll(true);
+    try {
+      const res = await orderService.deleteAllPhotos(order.id);
+      if (res?.data && onOrderUpdated) {
+        onOrderUpdated(res.data);
+      }
+      setActivePhotoIndex(null);
+    } catch (err) {
+      alert(err.response?.data?.message || 'Failed to delete all photos');
+    } finally {
+      setIsDeletingAll(false);
     }
   };
 
@@ -104,35 +131,60 @@ export function OrderPhotosModal({ isOpen, onClose, order, onOrderUpdated }) {
             style={{ display: 'none' }}
           />
 
-          <button
-            type="button"
-            className="photos-upload-trigger-btn"
-            onClick={() => fileInputRef.current?.click()}
-            disabled={isUploading}
-          >
-            {isUploading ? (
-              <>
-                <span className="photos-spinner"></span>
-                <span>Uploading Photos...</span>
-              </>
-            ) : (
-              <>
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
-                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-                  <polyline points="17 8 12 3 7 8" />
-                  <line x1="12" y1="3" x2="12" y2="15" />
-                </svg>
-                <span>+ Upload Photos (फोटो अपलोड करें)</span>
-              </>
+          <div className="order-photos-actions-row">
+            <button
+              type="button"
+              className="photos-upload-trigger-btn"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={isUploading || isDeletingAll}
+            >
+              {isUploading ? (
+                <>
+                  <span className="photos-spinner"></span>
+                  <span>Uploading...</span>
+                </>
+              ) : (
+                <>
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6">
+                    <line x1="12" y1="5" x2="12" y2="19" />
+                    <line x1="5" y1="12" x2="19" y2="12" />
+                  </svg>
+                  <span>Upload</span>
+                </>
+              )}
+            </button>
+
+            {photos.length > 0 && (
+              <button
+                type="button"
+                className="photos-delete-all-btn"
+                onClick={handleDeleteAllPhotos}
+                disabled={isDeletingAll || isUploading}
+                title="Delete all photos for this order"
+              >
+                {isDeletingAll ? (
+                  <span className="mini-spinner-danger"></span>
+                ) : (
+                  <>
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
+                      <polyline points="3 6 5 6 21 6" />
+                      <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                      <line x1="10" y1="11" x2="10" y2="17" />
+                      <line x1="14" y1="11" x2="14" y2="17" />
+                    </svg>
+                    <span>Delete All</span>
+                  </>
+                )}
+              </button>
             )}
-          </button>
+          </div>
 
           {uploadError && <div className="photos-error-banner">{uploadError}</div>}
         </div>
 
         {/* Photos Grid Content */}
         <div className="order-photos-content">
-          {photos.length === 0 ? (
+          {sortedPhotos.length === 0 ? (
             <div className="order-photos-empty">
               <div className="empty-photo-icon">
                 <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" strokeWidth="1.6">
@@ -153,9 +205,9 @@ export function OrderPhotosModal({ isOpen, onClose, order, onOrderUpdated }) {
             </div>
           ) : (
             <div className="order-photos-grid">
-              {photos.map((photo, index) => {
+              {sortedPhotos.map((photo, index) => {
                 const fullUrl = getPhotoFullUrl(photo.url);
-                const isLatest = index === photos.length - 1;
+                const isLatest = index === 0; // Newest photo is first at the top
                 const uploadDate = photo.createdAt
                   ? new Date(photo.createdAt).toLocaleDateString('en-IN', {
                       day: 'numeric',
@@ -178,29 +230,14 @@ export function OrderPhotosModal({ isOpen, onClose, order, onOrderUpdated }) {
                         className="photo-thumb-img"
                         loading="lazy"
                       />
-                      {isLatest && <span className="latest-photo-tag">Latest</span>}
                       
-                      <div className="photo-card-overlay">
-                        <span className="zoom-hint">
-                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4">
-                            <circle cx="11" cy="11" r="8" />
-                            <line x1="21" y1="21" x2="16.65" y2="16.65" />
-                            <line x1="11" y1="8" x2="11" y2="14" />
-                            <line x1="8" y1="11" x2="14" y2="11" />
-                          </svg>
-                          View
-                        </span>
-                      </div>
-                    </div>
+                      {/* Latest badge on top left */}
+                      {isLatest && <span className="latest-photo-tag">Latest</span>}
 
-                    <div className="photo-card-footer">
-                      <span className="photo-date" title={uploadDate}>
-                        {uploadDate || `Photo #${index + 1}`}
-                      </span>
-
+                      {/* Delete button directly over the photo on top right */}
                       <button
                         type="button"
-                        className="photo-delete-btn"
+                        className="photo-card-delete-overlay-btn"
                         onClick={(e) => handleDeletePhoto(photo.id, e)}
                         disabled={deletingPhotoId === photo.id}
                         title="Delete this photo"
@@ -209,12 +246,33 @@ export function OrderPhotosModal({ isOpen, onClose, order, onOrderUpdated }) {
                         {deletingPhotoId === photo.id ? (
                           <span className="mini-spinner"></span>
                         ) : (
-                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
+                          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4">
                             <polyline points="3 6 5 6 21 6" />
                             <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                            <line x1="10" y1="11" x2="10" y2="17" />
+                            <line x1="14" y1="11" x2="14" y2="17" />
                           </svg>
                         )}
                       </button>
+
+                      {/* Date badge directly over the photo at bottom */}
+                      {uploadDate && (
+                        <span className="photo-card-date-overlay">
+                          {uploadDate}
+                        </span>
+                      )}
+
+                      <div className="photo-card-overlay">
+                        <span className="zoom-hint">
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4">
+                            <circle cx="11" cy="11" r="8" />
+                            <line x1="21" y1="21" x2="16.65" y2="16.65" />
+                            <line x1="11" y1="8" x2="11" y2="14" />
+                            <line x1="8" y1="11" x2="14" y2="11" />
+                          </svg>
+                          View Full
+                        </span>
+                      </div>
                     </div>
                   </div>
                 );
@@ -224,7 +282,7 @@ export function OrderPhotosModal({ isOpen, onClose, order, onOrderUpdated }) {
         </div>
 
         {/* Fullscreen Lightbox Preview */}
-        {activePhotoIndex !== null && photos[activePhotoIndex] && (
+        {activePhotoIndex !== null && sortedPhotos[activePhotoIndex] && (
           <div className="order-photo-lightbox" onClick={() => setActivePhotoIndex(null)}>
             <div className="lightbox-content" onClick={(e) => e.stopPropagation()}>
               <button
@@ -252,19 +310,19 @@ export function OrderPhotosModal({ isOpen, onClose, order, onOrderUpdated }) {
 
               <div className="lightbox-image-holder">
                 <img
-                  src={getPhotoFullUrl(photos[activePhotoIndex].url)}
-                  alt={photos[activePhotoIndex].originalName || 'Work photo full'}
+                  src={getPhotoFullUrl(sortedPhotos[activePhotoIndex].url)}
+                  alt={sortedPhotos[activePhotoIndex].originalName || 'Work photo full'}
                   className="lightbox-full-img"
                 />
                 <div className="lightbox-caption">
-                  <span>Photo {activePhotoIndex + 1} of {photos.length}</span>
-                  {photos[activePhotoIndex].createdAt && (
-                    <span> • {new Date(photos[activePhotoIndex].createdAt).toLocaleString('en-IN')}</span>
+                  <span>Photo {activePhotoIndex + 1} of {sortedPhotos.length}</span>
+                  {sortedPhotos[activePhotoIndex].createdAt && (
+                    <span> • {new Date(sortedPhotos[activePhotoIndex].createdAt).toLocaleString('en-IN')}</span>
                   )}
                 </div>
               </div>
 
-              {activePhotoIndex < photos.length - 1 && (
+              {activePhotoIndex < sortedPhotos.length - 1 && (
                 <button
                   type="button"
                   className="lightbox-nav-btn next"
