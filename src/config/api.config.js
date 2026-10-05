@@ -6,7 +6,7 @@
  * ya phir direct yaha niche LIVE_API_URL me apna live domain daal sakte ho!
  */
 
-const DEFAULT_API_URL = 'http://localhost:5000/api/v1';
+const DEFAULT_API_URL = 'https://faizanbody-backend.onrender.com/api/v1';
 
 export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || DEFAULT_API_URL;
 
