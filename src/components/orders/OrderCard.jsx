@@ -210,12 +210,30 @@ export const OrderCard = React.memo(function OrderCard({
               className="order-card-latest-photo"
               onClick={() => onViewPhotos && onViewPhotos(order)}
               title="Click to view all photos"
+              style={{
+                height: '180px',
+                maxHeight: '180px',
+                width: '100%',
+                position: 'relative',
+                borderRadius: '12px',
+                overflow: 'hidden',
+                backgroundColor: '#0f172a',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
             >
               <img
                 src={getPhotoFullUrl(latestPhoto.url)}
                 alt="Latest Work Progress"
                 className="latest-photo-img"
                 loading="lazy"
+                style={{
+                  width: '100%',
+                  height: '100%',
+                  objectFit: 'cover',
+                  display: 'block',
+                }}
               />
               <div className="latest-photo-badge">
                 <span className="live-dot"></span>
