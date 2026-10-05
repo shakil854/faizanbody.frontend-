@@ -162,20 +162,6 @@ export const OrderCard = React.memo(function OrderCard({
         </div>
       </div>
 
-      {/* Progress Strip */}
-      <div className="order-compact-progress">
-        <div className="order-compact-progress-meta">
-          <span className="progress-task-text">Tasks: <strong>{done}</strong>/{total}</span>
-          <span className="progress-task-pct">{percentage}%</span>
-        </div>
-        <div className="order-compact-progress-track">
-          <div
-            className={`order-compact-progress-fill ${percentage === 100 ? 'fill-green' : ''}`}
-            style={{ width: `${percentage}%` }}
-          ></div>
-        </div>
-      </div>
-
       {/* Work Photos Section (Cloudflare R2 Integration) */}
       <div className="order-card-photos-container" onClick={(e) => e.stopPropagation()}>
         {photos.length > 0 && latestPhoto ? (
