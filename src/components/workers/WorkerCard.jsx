@@ -166,7 +166,7 @@ export const WorkerCard = React.memo(function WorkerCard({ worker, onEdit, onDel
           onClick={() => setShowKhataModal(true)}
           role="button"
           tabIndex={0}
-          title="खाता बही (जमा-उपाड़ हिसाब) खोलें"
+          title="Open Worker Khata Ledger"
         >
           {/* Header Row: Title & Action Button */}
           <div className="khata-card-header-row">
@@ -180,8 +180,8 @@ export const WorkerCard = React.memo(function WorkerCard({ worker, onEdit, onDel
                 </svg>
               </span>
               <div className="khata-card-title-text">
-                <span className="khata-card-heading">खाता हिसाब</span>
-                <span className="khata-card-subheading">जमा - उपाड़ लेजर</span>
+                <span className="khata-card-heading">Khata Ledger</span>
+                <span className="khata-card-subheading">Debit & Credit Record</span>
               </div>
             </div>
 
@@ -193,7 +193,7 @@ export const WorkerCard = React.memo(function WorkerCard({ worker, onEdit, onDel
                 setShowKhataModal(true);
               }}
             >
-              <span>खाता</span>
+              <span>View Khata</span>
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                 <polyline points="9 18 15 12 9 6" />
               </svg>
@@ -203,15 +203,15 @@ export const WorkerCard = React.memo(function WorkerCard({ worker, onEdit, onDel
           {/* 3 Micro-KPIs Grid: Total, Upad, Paid */}
           <div className="khata-micro-grid">
             <div className="khata-micro-item item-total">
-              <span className="micro-label">कुल बना</span>
+              <span className="micro-label">Total Work</span>
               <span className="micro-val">₹{khataSalary.toLocaleString('en-IN')}</span>
             </div>
             <div className="khata-micro-item item-upad">
-              <span className="micro-label">उपाड़</span>
+              <span className="micro-label">Upad (Adv)</span>
               <span className="micro-val">₹{khataUpad.toLocaleString('en-IN')}</span>
             </div>
             <div className="khata-micro-item item-paid">
-              <span className="micro-label">दिया</span>
+              <span className="micro-label">Paid</span>
               <span className="micro-val">₹{khataPaid.toLocaleString('en-IN')}</span>
             </div>
           </div>
@@ -220,14 +220,14 @@ export const WorkerCard = React.memo(function WorkerCard({ worker, onEdit, onDel
           <div className={`khata-balance-strip ${khataBalance > 0 ? 'strip-due' : khataBalance < 0 ? 'strip-upad' : 'strip-settled'}`}>
             <div className="balance-strip-left">
               <span className="balance-strip-label">
-                {khataBalance > 0 ? 'देना बनता है:' : khataBalance < 0 ? 'उपाड़ ज्यादा लिया:' : 'बाकी हिसाब:'}
+                {khataBalance > 0 ? 'Due to Pay:' : khataBalance < 0 ? 'Advance Due:' : 'Net Balance:'}
               </span>
               <span className="balance-strip-amount">
                 ₹{Math.abs(khataBalance).toLocaleString('en-IN')}
               </span>
             </div>
             <span className="balance-strip-badge">
-              {khataBalance > 0 ? 'देना है' : khataBalance < 0 ? 'उपाड़ बाकी' : 'बराबर'}
+              {khataBalance > 0 ? 'Payable' : khataBalance < 0 ? 'Advance Due' : 'Settled'}
             </span>
           </div>
         </div>

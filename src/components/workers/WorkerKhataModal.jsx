@@ -88,7 +88,7 @@ export function WorkerKhataModal({ isOpen, onClose, worker, canManage = true }) 
 
     const numAmount = Number(amount);
     if (!numAmount || numAmount <= 0) {
-      setFormError('कृपया सही राशि (रुपये) दर्ज करें');
+      setFormError('Please enter a valid amount (₹)');
       return;
     }
 
@@ -113,7 +113,7 @@ export function WorkerKhataModal({ isOpen, onClose, worker, canManage = true }) 
       setNotes('');
       setShowAddForm(false);
     } catch (err) {
-      const msg = err.response?.data?.message || err.message || 'एंट्री सेव करने में समस्या आई';
+      const msg = err.response?.data?.message || err.message || 'Failed to save transaction entry';
       setFormError(msg);
     } finally {
       setIsSubmitting(false);
@@ -149,26 +149,26 @@ export function WorkerKhataModal({ isOpen, onClose, worker, canManage = true }) 
       year: 'numeric',
     });
 
-    let balanceStatus = 'हिसाब बराबर';
+    let balanceStatus = 'Account Settled (All Clear)';
     if (safeSummary.balance > 0) {
-      balanceStatus = `देना बनता है (Due to Pay: ₹${safeSummary.balance.toLocaleString('en-IN')})`;
+      balanceStatus = `Due to Pay: ₹${safeSummary.balance.toLocaleString('en-IN')}`;
     } else if (safeSummary.balance < 0) {
-      balanceStatus = `उपाड़ बाकी है (Advance Due: ₹${Math.abs(safeSummary.balance).toLocaleString('en-IN')})`;
+      balanceStatus = `Advance Due: ₹${Math.abs(safeSummary.balance).toLocaleString('en-IN')}`;
     }
 
     const message = 
-`*🚚 फैज़ान बॉडी वर्क्स - हिसाब पर्ची*
-👤 *कारीगर/वर्कर:* ${worker.name || ''}
-📅 *दिनांक:* ${todayDate}
+`*🚚 FAIZAN BODY WORKS - KHATA STATEMENT*
+👤 *Worker:* ${worker.name || ''}
+📅 *Date:* ${todayDate}
 ----------------------------------
-💰 *कुल बनता है (मजदूरी/पगार):* ₹${safeSummary.total_salary.toLocaleString('en-IN')}
-⚡ *कुल उपाड़ (एडवांस लिया):* ₹${safeSummary.total_upad.toLocaleString('en-IN')}
-💳 *कुल पेमेंट दिया:* ₹${safeSummary.total_paid.toLocaleString('en-IN')}
+💰 *Total Work / Wages:* ₹${safeSummary.total_salary.toLocaleString('en-IN')}
+⚡ *Total Upad (Advance):* ₹${safeSummary.total_upad.toLocaleString('en-IN')}
+💳 *Total Payment Paid:* ₹${safeSummary.total_paid.toLocaleString('en-IN')}
 ----------------------------------
-⚖️ *बाकी हिसाब:* ₹${Math.abs(safeSummary.balance).toLocaleString('en-IN')}
-👉 *स्थिति:* *${balanceStatus}*
+⚖️ *Net Balance:* ₹${Math.abs(safeSummary.balance).toLocaleString('en-IN')}
+👉 *Status:* *${balanceStatus}*
 ----------------------------------
-_धन्यवाद! फैज़ान बॉडी वर्क्स_`;
+_Faizan Body Works_`;
 
     const encodedMsg = encodeURIComponent(message);
     const waNativeUrl = waPhone
@@ -216,9 +216,9 @@ _धन्यवाद! फैज़ान बॉडी वर्क्स_`;
                 </svg>
               </div>
               <div>
-                <h3 className="sheet-title">{worker.name} का खाता</h3>
+                <h3 className="sheet-title">{worker.name}'s Khata</h3>
                 <p className="sheet-subtitle">
-                  {worker.mobile ? `मो: ${worker.mobile} • ` : ''}खाता हिसाब बही
+                  {worker.mobile ? `Mobile: ${worker.mobile} • ` : ''}Debit & Credit Ledger
                 </p>
               </div>
             </div>
@@ -240,31 +240,31 @@ _धन्यवाद! फैज़ान बॉडी वर्क्स_`;
           <div className="khata-kpi-grid">
             {/* Card 1: Total Salary / Earned */}
             <div className="khata-kpi-card card-salary">
-              <span className="kpi-label">कुल पेमेंट बनता है</span>
+              <span className="kpi-label">TOTAL WORK</span>
               <span className="kpi-amount">₹{safeSummary.total_salary.toLocaleString('en-IN')}</span>
-              <span className="kpi-tag">काम का कुल हिसाब</span>
+              <span className="kpi-tag">Total Earned</span>
             </div>
 
             {/* Card 2: Total Upaad (Advance) */}
             <div className="khata-kpi-card card-upad">
-              <span className="kpi-label">उपाड़ लिया</span>
+              <span className="kpi-label">UPAD (ADVANCE)</span>
               <span className="kpi-amount">₹{safeSummary.total_upad.toLocaleString('en-IN')}</span>
-              <span className="kpi-tag">एडवांस / खर्चा</span>
+              <span className="kpi-tag">Total Advance</span>
             </div>
 
             {/* Card 3: Total Paid */}
             <div className="khata-kpi-card card-payment">
-              <span className="kpi-label">पेमेंट दिया</span>
+              <span className="kpi-label">TOTAL PAID</span>
               <span className="kpi-amount">₹{safeSummary.total_paid.toLocaleString('en-IN')}</span>
-              <span className="kpi-tag">चुकाया हुआ पेमेंट</span>
+              <span className="kpi-tag">Payment Settled</span>
             </div>
 
             {/* Card 4: Net Balance */}
             <div className={`khata-kpi-card card-balance ${balanceColorClass}`}>
-              <span className="kpi-label">बाकी हिसाब</span>
+              <span className="kpi-label">NET BALANCE</span>
               <span className="kpi-amount">₹{Math.abs(safeSummary.balance).toLocaleString('en-IN')}</span>
               <span className="kpi-tag">
-                {safeSummary.balance > 0 ? 'देना बनता है' : safeSummary.balance < 0 ? 'उपाड़ ज्यादा है' : 'हिसाब बराबर'}
+                {safeSummary.balance > 0 ? 'Due to Pay' : safeSummary.balance < 0 ? 'Advance Due' : 'All Clear'}
               </span>
             </div>
           </div>
@@ -283,7 +283,7 @@ _धन्यवाद! फैज़ान बॉडी वर्क्स_`;
                       <line x1="18" y1="6" x2="6" y2="18" />
                       <line x1="6" y1="6" x2="18" y2="18" />
                     </svg>
-                    फॉर्म बंद करें
+                    Close Form
                   </>
                 ) : (
                   <>
@@ -291,7 +291,7 @@ _धन्यवाद! फैज़ान बॉडी वर्क्स_`;
                       <line x1="12" y1="5" x2="12" y2="19" />
                       <line x1="5" y1="12" x2="19" y2="12" />
                     </svg>
-                    + नई एंट्री जोड़ें
+                    + Add New Entry
                   </>
                 )}
               </button>
@@ -301,19 +301,19 @@ _धन्यवाद! फैज़ान बॉडी वर्क्स_`;
               type="button"
               className="btn btn-whatsapp-share"
               onClick={handleShareWhatsApp}
-              title="Share Hisab summary on WhatsApp"
+              title="Share statement on WhatsApp"
             >
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" />
               </svg>
-              WhatsApp पर भेजें
+              Share on WhatsApp
             </button>
           </div>
 
           {/* Expandable Add Entry Form */}
           {showAddForm && (
             <div className="khata-add-entry-box">
-              <h4 className="entry-box-title">नया लेन-देन दर्ज करें</h4>
+              <h4 className="entry-box-title">Record New Transaction</h4>
 
               {formError && (
                 <div className="form-alert-error" style={{ marginBottom: '0.65rem' }}>
@@ -329,28 +329,28 @@ _धन्यवाद! फैज़ान बॉडी वर्क्स_`;
                     className={`entry-type-tab tab-salary ${entryType === 'salary' ? 'active' : ''}`}
                     onClick={() => setEntryType('salary')}
                   >
-                    💰 कुल पेमेंट (Total Banta)
+                    💰 Total Work
                   </button>
                   <button
                     type="button"
                     className={`entry-type-tab tab-upad ${entryType === 'upad' ? 'active' : ''}`}
                     onClick={() => setEntryType('upad')}
                   >
-                    ⚡ उपाड़ (Upad)
+                    ⚡ Advance (Upad)
                   </button>
                   <button
                     type="button"
                     className={`entry-type-tab tab-payment ${entryType === 'payment' ? 'active' : ''}`}
                     onClick={() => setEntryType('payment')}
                   >
-                    💳 पेमेंट दिया (Payment Diya)
+                    💳 Payment Paid
                   </button>
                 </div>
 
                 {/* Amount & Date Grid */}
                 <div className="entry-inputs-grid">
                   <div className="form-group">
-                    <label className="form-label">राशि (रुपये ₹) *</label>
+                    <label className="form-label">Amount (₹) *</label>
                     <div className="input-with-icon">
                       <span className="field-icon rupee-icon">₹</span>
                       <input
@@ -368,7 +368,7 @@ _धन्यवाद! फैज़ान बॉडी वर्क्स_`;
                   </div>
 
                   <div className="form-group">
-                    <label className="form-label">तारीख *</label>
+                    <label className="form-label">Date *</label>
                     <input
                       type="date"
                       className="form-input date-input"
@@ -382,26 +382,26 @@ _धन्यवाद! फैज़ान बॉडी वर्क्स_`;
                 {/* Notes & Mode Grid */}
                 <div className="entry-inputs-grid">
                   <div className="form-group">
-                    <label className="form-label">विवरण / नोट (वैकल्पिक)</label>
+                    <label className="form-label">Notes / Description (Optional)</label>
                     <input
                       type="text"
                       className="form-input"
-                      placeholder="e.g. राशन खर्चा / बॉडी काम पगार / कैश दिया"
+                      placeholder="e.g. Body work wage / Ration advance / Cash paid"
                       value={notes}
                       onChange={(e) => setNotes(e.target.value)}
                     />
                   </div>
 
                   <div className="form-group">
-                    <label className="form-label">माध्यम</label>
+                    <label className="form-label">Payment Mode</label>
                     <select
                       className="form-input select-mode"
                       value={paymentMode}
                       onChange={(e) => setPaymentMode(e.target.value)}
                     >
-                      <option value="Cash">रोकड़ा (Cash)</option>
+                      <option value="Cash">Cash</option>
                       <option value="Online/UPI">Online / PhonePe / GPay</option>
-                      <option value="Bank">बैंक ट्रांसफर (NEFT/RTGS)</option>
+                      <option value="Bank">Bank Transfer (NEFT/RTGS)</option>
                     </select>
                   </div>
                 </div>
@@ -414,14 +414,14 @@ _धन्यवाद! फैज़ान बॉडी वर्क्स_`;
                     onClick={() => setShowAddForm(false)}
                     disabled={isSubmitting}
                   >
-                    रद्द करें
+                    Cancel
                   </button>
                   <button
                     type="submit"
                     className="btn btn-primary"
                     disabled={isSubmitting}
                   >
-                    {isSubmitting ? 'सेव हो रहा है...' : 'एंट्री सेव करें'}
+                    {isSubmitting ? 'Saving...' : 'Save Entry'}
                   </button>
                 </div>
               </form>
@@ -430,7 +430,7 @@ _धन्यवाद! फैज़ान बॉडी वर्क्स_`;
 
           {/* History Filters & Section Title */}
           <div className="khata-history-header">
-            <h4 className="history-title">लेन-देन इतिहास ({filteredTransactions.length})</h4>
+            <h4 className="history-title">Transaction History ({filteredTransactions.length})</h4>
 
             <div className="khata-filter-chips">
               <button
@@ -438,28 +438,28 @@ _धन्यवाद! फैज़ान बॉडी वर्क्स_`;
                 className={`filter-chip ${filterType === 'all' ? 'active' : ''}`}
                 onClick={() => setFilterType('all')}
               >
-                सभी
+                All
               </button>
               <button
                 type="button"
                 className={`filter-chip chip-salary ${filterType === 'salary' ? 'active' : ''}`}
                 onClick={() => setFilterType('salary')}
               >
-                कुल पेमेंट
+                Total Work
               </button>
               <button
                 type="button"
                 className={`filter-chip chip-upad ${filterType === 'upad' ? 'active' : ''}`}
                 onClick={() => setFilterType('upad')}
               >
-                उपाड़
+                Upad (Adv)
               </button>
               <button
                 type="button"
                 className={`filter-chip chip-payment ${filterType === 'payment' ? 'active' : ''}`}
                 onClick={() => setFilterType('payment')}
               >
-                पेमेंट दिया
+                Paid
               </button>
             </div>
           </div>
@@ -468,7 +468,7 @@ _धन्यवाद! फैज़ान बॉडी वर्क्स_`;
           <div className="khata-history-list">
             {loading ? (
               <div className="khata-loading-spinner">
-                <span className="spinner-dots">हिसाब लोड हो रहा है...</span>
+                <span className="spinner-dots">Loading Khata history...</span>
               </div>
             ) : filteredTransactions.length === 0 ? (
               <div className="empty-workers-state khata-empty-state">
@@ -478,11 +478,11 @@ _धन्यवाद! फैज़ान बॉडी वर्क्स_`;
                     <line x1="2" y1="10" x2="22" y2="10" />
                   </svg>
                 </div>
-                <h3>कोई लेन-देन नहीं मिला</h3>
+                <h3>No transactions found</h3>
                 <p>
                   {filterType !== 'all'
-                    ? `इस फ़िल्टर में कोई एंट्री नहीं है।`
-                    : 'इस वर्कर का अभी कोई उपाड़ या पेमेंट रिकॉर्ड नहीं है। नया हिसाब जोड़ने के लिए ऊपर बटन दबाएँ।'}
+                    ? 'No entries found in this filter category.'
+                    : 'No transaction recorded for this worker yet. Tap above to add an entry.'}
                 </p>
                 {canManage && filterType === 'all' && (
                   <button
@@ -490,7 +490,7 @@ _धन्यवाद! फैज़ान बॉडी वर्क्स_`;
                     className="btn btn-primary btn-empty-cta"
                     onClick={() => setShowAddForm(true)}
                   >
-                    + पहली एंट्री जोड़ें
+                    + Add First Entry
                   </button>
                 )}
               </div>
@@ -524,7 +524,7 @@ _धन्यवाद! फैज़ान बॉडी वर्क्स_`;
                       <div className="tx-info">
                         <div className="tx-title-row">
                           <span className={`tx-type-badge badge-${tx.type}`}>
-                            {isSalary ? '💰 कुल पेमेंट बनता' : isUpad ? '⚡ उपाड़ (Upad)' : '💳 पेमेंट दिया (Payment Diya)'}
+                            {isSalary ? '💰 Total Work' : isUpad ? '⚡ Upad (Advance)' : '💳 Payment Paid'}
                           </span>
                           <span className="tx-date-text">{tx.date}</span>
                         </div>
@@ -545,7 +545,7 @@ _धन्यवाद! फैज़ान बॉडी वर्क्स_`;
                           type="button"
                           className="tx-delete-btn"
                           onClick={() => setDeletingTx(tx)}
-                          title="एंट्री डिलीट करें"
+                          title="Delete entry"
                         >
                           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
                             <polyline points="3 6 5 6 21 6" />
@@ -579,9 +579,9 @@ _धन्यवाद! फैज़ान बॉडी वर्क्स_`;
                 <line x1="14" y1="11" x2="14" y2="17" />
               </svg>
             </div>
-            <h3 className="dialog-title">एंट्री डिलीट करें?</h3>
+            <h3 className="dialog-title">Delete Transaction?</h3>
             <p className="dialog-message">
-              क्या आप वाकई ₹{(Number(deletingTx?.amount) || 0).toLocaleString('en-IN')} की यह लेन-देन एंट्री डिलीट करना चाहते हैं? हिसाब में यह राशि दोबारा एडजस्ट हो जाएगी।
+              Are you sure you want to delete this ₹{(Number(deletingTx?.amount) || 0).toLocaleString('en-IN')} entry? The account balance will adjust automatically.
             </p>
             <div className="dialog-actions">
               <button
@@ -590,7 +590,7 @@ _धन्यवाद! फैज़ान बॉडी वर्क्स_`;
                 onClick={() => setDeletingTx(null)}
                 disabled={isDeleting}
               >
-                रद्द करें
+                Cancel
               </button>
               <button
                 type="button"
@@ -598,7 +598,7 @@ _धन्यवाद! फैज़ान बॉडी वर्क्स_`;
                 onClick={handleConfirmDelete}
                 disabled={isDeleting}
               >
-                {isDeleting ? 'हटाया जा रहा है...' : 'हाँ, डिलीट करें'}
+                {isDeleting ? 'Deleting...' : 'Yes, Delete'}
               </button>
             </div>
           </div>
