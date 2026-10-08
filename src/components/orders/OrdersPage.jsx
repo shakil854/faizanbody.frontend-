@@ -226,6 +226,7 @@ export function OrdersPage({ onBackToHome }) {
                     setEditingOrder(ord);
                     setIsFormOpen(true);
                   }}
+                  onViewJobSheet={(ord) => setViewingOrder(ord)}
                   onDelete={(ord) => setDeletingOrder(ord)}
                   onViewPhotos={(ord) => setPhotoModalOrder(ord)}
                   onOrderUpdated={(updatedOrd) => {
@@ -258,6 +259,7 @@ export function OrdersPage({ onBackToHome }) {
         }}
         initialData={editingOrder}
         onSave={handleSaveOrder}
+        onViewJobSheet={(ord) => setViewingOrder(ord)}
       />
 
       <OrderJobSheetModal

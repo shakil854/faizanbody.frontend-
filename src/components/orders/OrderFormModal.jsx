@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import { DEFAULT_ORDER_DATA, ORDER_SECTIONS, calculateOrderProgress } from './orderConstants';
 import { DigitalSignaturePad } from './DigitalSignaturePad';
 
-export function OrderFormModal({ isOpen, onClose, onSave, initialData }) {
+export function OrderFormModal({ isOpen, onClose, onSave, initialData, onViewJobSheet }) {
   const [formData, setFormData] = useState(DEFAULT_ORDER_DATA);
   const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -140,7 +140,38 @@ export function OrderFormModal({ isOpen, onClose, onSave, initialData }) {
             </h3>
           </div>
 
-          <div className="modern-header-right">
+          <div className="modern-header-right" style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+            {initialData && (
+              <button
+                type="button"
+                className="btn-modal-header-pdf"
+                style={{
+                  background: 'linear-gradient(135deg, #16a34a 0%, #15803d 100%)',
+                  color: '#ffffff',
+                  border: 'none',
+                  borderRadius: '8px',
+                  padding: '0.4rem 0.8rem',
+                  fontSize: '0.8rem',
+                  fontWeight: 800,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.35rem',
+                  cursor: 'pointer',
+                  boxShadow: '0 2px 8px rgba(22, 163, 74, 0.3)',
+                }}
+                onClick={() => {
+                  onClose();
+                  onViewJobSheet && onViewJobSheet(initialData);
+                }}
+                title="Open PDF Slips & WhatsApp Sharing"
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.3">
+                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                  <polyline points="14 2 14 8 20 8" />
+                </svg>
+                <span>📄 PDF / स्लिप</span>
+              </button>
+            )}
             <button type="button" className="btn-modern-close" onClick={onClose} aria-label="Close" title="Close">
               ✕
             </button>
@@ -162,7 +193,7 @@ export function OrderFormModal({ isOpen, onClose, onSave, initialData }) {
             MODAL BODY: ALL SECTIONS TOGETHER IN ONE VIEW
             ======================================================== */}
         <form onSubmit={handleSubmit} className="modern-modal-form-shell">
-          <div className="modern-modal-body-scroll" ref={scrollRef} id="printableSheet">
+          <div className="modern-modal-body-scroll" ref={scrollRef}>
           {/* VEHICLE & OWNER DETAILS */}
           <div className="modern-section-card basic-info-card">
             <div className="modern-card-header-line">
@@ -548,6 +579,26 @@ export function OrderFormModal({ isOpen, onClose, onSave, initialData }) {
               <button type="button" className="btn btn-secondary-luxury btn-cancel" onClick={onClose} disabled={isSubmitting}>
                 Cancel
               </button>
+              {initialData && (
+                <button
+                  type="button"
+                  className="btn btn-secondary-luxury"
+                  style={{ background: '#eff6ff', color: '#1d4ed8', borderColor: '#bfdbfe', fontWeight: 700 }}
+                  onClick={() => {
+                    onClose();
+                    onViewJobSheet && onViewJobSheet(initialData);
+                  }}
+                  title="Open Job Sheet / Print PDF Slips"
+                >
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                    <polyline points="14 2 14 8 20 8" />
+                    <line x1="16" y1="13" x2="8" y2="13" />
+                    <line x1="16" y1="17" x2="8" y2="17" />
+                  </svg>
+                  <span>PDF / स्लिप</span>
+                </button>
+              )}
             </div>
 
             <div className="footer-right">

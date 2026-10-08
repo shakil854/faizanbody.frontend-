@@ -6,6 +6,7 @@ import { capturePhotoFromCamera, pickPhotosFromGallery } from '../../utils/nativ
 export const OrderCard = React.memo(function OrderCard({
   order,
   onOpen,
+  onViewJobSheet,
   onDelete,
   onViewPhotos,
   onOrderUpdated,
@@ -183,6 +184,20 @@ export const OrderCard = React.memo(function OrderCard({
         <div className="card-actions" onClick={(e) => e.stopPropagation()}>
           <button
             type="button"
+            className="action-btn jobsheet-card-btn"
+            onClick={() => onViewJobSheet && onViewJobSheet(order)}
+            title="View Job Sheet, Print PDF Slips & WhatsApp"
+            aria-label={`View Job Sheet for ${order.truck_chassis_no || 'order'}`}
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+              <polyline points="14 2 14 8 20 8" />
+              <line x1="16" y1="13" x2="8" y2="13" />
+              <line x1="16" y1="17" x2="8" y2="17" />
+            </svg>
+          </button>
+          <button
+            type="button"
             className="action-btn edit-btn"
             onClick={() => onOpen(order)}
             title="Edit / Open Order"
@@ -241,6 +256,24 @@ export const OrderCard = React.memo(function OrderCard({
             <span className="date-value" title={order.order_date || '—'}>{order.order_date || '—'}</span>
           </div>
         </div>
+      </div>
+
+      {/* Quick Action Bar: View & Share PDF Job Sheet + Edit */}
+      <div className="order-card-quick-actions" onClick={(e) => e.stopPropagation()}>
+        <button
+          type="button"
+          className="btn-order-pdf-quick-share"
+          onClick={() => onViewJobSheet && onViewJobSheet(order)}
+          title="Open PDF Slips & WhatsApp Sharing (Full & 1-6 Functions)"
+        >
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.3" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+            <polyline points="14 2 14 8 20 8" />
+            <line x1="16" y1="13" x2="8" y2="13" />
+            <line x1="16" y1="17" x2="8" y2="17" />
+          </svg>
+          <span>PDF स्लिप & WhatsApp शेयर</span>
+        </button>
       </div>
 
       {/* Work Photos Section (Cloudflare R2 Integration) */}
