@@ -8,6 +8,9 @@ export const ENDPOINTS = {
   ITEMS: '/items',
   WORKERS: '/workers',
   WORKERS_UPLOAD_AADHAR: '/workers/upload-aadhar',
+  WORKERS_KHATA_SUMMARY: '/workers/khata/summary',
+  WORKER_TRANSACTIONS: (id) => `/workers/${id}/transactions`,
+  WORKER_TRANSACTION_DELETE: (workerId, txId) => `/workers/${workerId}/transactions/${txId}`,
   ORDERS: '/orders',
   AUTH: {
     LOGIN: '/auth/login',

@@ -154,7 +154,92 @@ export const workerService = {
 
     return response.data?.data;
   },
+
+  /**
+   * Get all Khata transactions & summary for a worker
+   */
+  async getWorkerTransactions(workerId) {
+    try {
+      const response = await axiosInstance.get(ENDPOINTS.WORKER_TRANSACTIONS(workerId));
+      const data = response.data?.data;
+      if (data && typeof data === 'object') {
+        return {
+          transactions: Array.isArray(data.transactions) ? data.transactions : [],
+          summary: {
+            total_salary: Number(data.summary?.total_salary) || 0,
+            total_upad: Number(data.summary?.total_upad) || 0,
+            total_paid: Number(data.summary?.total_paid) || 0,
+            balance: Number(data.summary?.balance) || 0,
+          },
+        };
+      }
+    } catch (err) {
+      console.warn('⚠️ [WorkerService Khata API offline fallback]:', err.message);
+    }
+    return {
+      transactions: [],
+      summary: { total_salary: 0, total_upad: 0, total_paid: 0, balance: 0 },
+    };
+  },
+
+  /**
+   * Add a new transaction (upad, payment, salary) for a worker
+   */
+  async addWorkerTransaction(workerId, transactionData) {
+    const response = await axiosInstance.post(ENDPOINTS.WORKER_TRANSACTIONS(workerId), transactionData);
+    const data = response.data?.data;
+
+    // Update in cachedWorkers immediately so cards refresh instantly
+    if (data && data.summary && cachedWorkers) {
+      const numId = Number(workerId);
+      cachedWorkers = cachedWorkers.map((w) => {
+        if (w.id === numId) {
+          return {
+            ...w,
+            khata: data.summary,
+          };
+        }
+        return w;
+      });
+      notifyListeners();
+    }
+
+    return data;
+  },
+
+  /**
+   * Delete a transaction record
+   */
+  async deleteWorkerTransaction(workerId, transactionId) {
+    const response = await axiosInstance.delete(ENDPOINTS.WORKER_TRANSACTION_DELETE(workerId, transactionId));
+    const data = response.data?.data;
+
+    if (data && data.summary && cachedWorkers) {
+      const numId = Number(workerId);
+      cachedWorkers = cachedWorkers.map((w) => {
+        if (w.id === numId) {
+          return {
+            ...w,
+            khata: data.summary,
+          };
+        }
+        return w;
+      });
+      notifyListeners();
+    }
+
+    return response.data;
+  },
+
+  /**
+   * Get overall workshop-wide Khata summary
+   */
+  async getWorkshopKhataSummary() {
+    const response = await axiosInstance.get(ENDPOINTS.WORKERS_KHATA_SUMMARY);
+    return response.data?.data;
+  },
 };
+
 
 export function getAadharFullUrl(url) {
   if (!url) return '';

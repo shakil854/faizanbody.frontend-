@@ -7043,3 +7043,807 @@
   background: rgba(37, 99, 235, 0.9);
   transform: scale(1.05);
 }
+
+/* ========================================================
+   WORKER JAMA - UDHAR (KHATA / LEDGER) LUXURY STYLES
+   ======================================================== */
+
+/* Worker Card Khata Strip */
+.worker-khata-strip {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  background: linear-gradient(135deg, #f0f7ff 0%, #f8fafc 100%);
+  border: 1px solid #bfdbfe;
+  border-radius: 11px;
+  padding: 0.55rem 0.75rem;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  box-sizing: border-box;
+}
+
+.worker-khata-strip:hover {
+  border-color: #2563eb;
+  background: #e0f2fe;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.08);
+}
+
+.khata-strip-left {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  min-width: 0;
+  flex: 1;
+}
+
+.khata-strip-icon-circle {
+  width: 28px;
+  height: 28px;
+  border-radius: 9px;
+  background: #dbeafe;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.khata-strip-text {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  min-width: 0;
+  flex: 1;
+}
+
+.khata-strip-title {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #1e40af;
+  text-transform: uppercase;
+  letter-spacing: 0.025em;
+  line-height: 1.1;
+}
+
+.khata-strip-metrics {
+  font-size: 0.74rem;
+  color: #334155;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.25rem 0.45rem;
+  line-height: 1.25;
+}
+
+.text-pay-due {
+  color: #16a34a;
+}
+
+.text-advance-due {
+  color: #d97706;
+}
+
+.text-settled {
+  color: #64748b;
+}
+
+.khata-mini-status {
+  font-size: 0.68rem;
+  color: #64748b;
+}
+
+.btn-khata-open {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.25rem;
+  font-size: 0.74rem;
+  font-weight: 700;
+  padding: 0.35rem 0.65rem;
+  border-radius: 8px;
+  background: #2563eb;
+  color: #ffffff;
+  border: none;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: all 0.18s ease;
+  font-family: inherit;
+  min-height: 32px;
+}
+
+.btn-khata-open:hover {
+  background: #1d4ed8;
+  transform: translateY(-0.5px);
+}
+
+/* ========================================================
+   Worker Khata Modal Sheet (Mobile & Tablet Responsive)
+   ======================================================== */
+.luxury-khata-sheet {
+  width: 100%;
+  max-width: 640px;
+  max-height: 92vh;
+  padding: 0.85rem 1.15rem 2rem;
+  box-sizing: border-box;
+}
+
+@media (min-width: 600px) {
+  .luxury-khata-sheet {
+    max-width: 640px;
+    padding: 1.15rem 1.65rem 2.2rem;
+    max-height: 86vh;
+    border-top-left-radius: 28px;
+    border-top-right-radius: 28px;
+  }
+}
+
+@media (min-width: 768px) {
+  .luxury-khata-sheet {
+    max-width: 680px;
+    border-radius: 26px;
+    margin-bottom: auto;
+    margin-top: auto;
+  }
+}
+
+.khata-sheet-header {
+  border-bottom: 1px solid var(--border-light);
+  margin-bottom: 0.85rem;
+  padding-bottom: 0.65rem;
+}
+
+.khata-header-icon {
+  background: #eff6ff;
+  border: 1px solid #dbeafe;
+  width: 36px;
+  height: 36px;
+  border-radius: 11px;
+}
+
+@media (min-width: 600px) {
+  .khata-header-icon {
+    width: 42px;
+    height: 42px;
+    border-radius: 13px;
+  }
+}
+
+/* 4 Summary KPI Cards Grid (Mobile 2x2, Tablet 4x1) */
+.khata-kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.45rem;
+  margin-bottom: 0.85rem;
+}
+
+@media (min-width: 520px) {
+  .khata-kpi-grid {
+    grid-template-columns: repeat(4, 1fr);
+    gap: 0.65rem;
+    margin-bottom: 1rem;
+  }
+}
+
+.khata-kpi-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  padding: 0.55rem 0.65rem;
+  border-radius: 11px;
+  border: 1px solid rgba(226, 232, 240, 0.95);
+  box-sizing: border-box;
+}
+
+@media (min-width: 600px) {
+  .khata-kpi-card {
+    padding: 0.75rem 0.9rem;
+    border-radius: 13px;
+  }
+}
+
+.card-salary {
+  background: #f0fdf4;
+  border-color: #bbf7d0;
+}
+.card-salary .kpi-amount {
+  color: #15803d;
+}
+
+.card-upad {
+  background: #fffbeb;
+  border-color: #fde68a;
+}
+.card-upad .kpi-amount {
+  color: #b45309;
+}
+
+.card-payment {
+  background: #eff6ff;
+  border-color: #bfdbfe;
+}
+.card-payment .kpi-amount {
+  color: #1d4ed8;
+}
+
+.card-balance.balance-due-pay {
+  background: #f0fdf4;
+  border-color: #86efac;
+}
+.card-balance.balance-due-pay .kpi-amount {
+  color: #15803d;
+}
+
+.card-balance.balance-advance-due {
+  background: #fef2f2;
+  border-color: #fca5a5;
+}
+.card-balance.balance-advance-due .kpi-amount {
+  color: #dc2626;
+}
+
+.card-balance.balance-settled {
+  background: #f8fafc;
+  border-color: #cbd5e1;
+}
+.card-balance.balance-settled .kpi-amount {
+  color: #475569;
+}
+
+.kpi-label {
+  font-size: 0.65rem;
+  font-weight: 700;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+@media (min-width: 600px) {
+  .kpi-label {
+    font-size: 0.7rem;
+  }
+}
+
+.kpi-amount {
+  font-size: clamp(0.95rem, 3.8vw, 1.25rem);
+  font-weight: 800;
+  letter-spacing: -0.015em;
+  line-height: 1.2;
+}
+
+.kpi-tag {
+  font-size: 0.62rem;
+  font-weight: 600;
+  color: #64748b;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+@media (min-width: 600px) {
+  .kpi-tag {
+    font-size: 0.68rem;
+  }
+}
+
+/* Action Bar */
+.khata-action-bar {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.85rem;
+}
+
+.btn-add-entry-toggle {
+  flex: 1.3;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  padding: 0.6rem 0.85rem;
+  font-size: 0.84rem;
+  min-height: 42px;
+}
+
+.btn-whatsapp-share {
+  flex: 1;
+  background: #25d366;
+  color: #ffffff;
+  border: none;
+  border-radius: 12px;
+  font-weight: 700;
+  font-size: 0.82rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  padding: 0.6rem 0.85rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-family: inherit;
+  min-height: 42px;
+}
+
+.btn-whatsapp-share:hover {
+  background: #20ba59;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(37, 211, 102, 0.25);
+}
+
+/* Add Entry Box */
+.khata-add-entry-box {
+  background: #f8fafc;
+  border: 1.5px solid #2563eb;
+  border-radius: 14px;
+  padding: 0.85rem;
+  margin-bottom: 0.95rem;
+  box-sizing: border-box;
+}
+
+@media (min-width: 600px) {
+  .khata-add-entry-box {
+    padding: 1.15rem;
+    border-radius: 16px;
+  }
+}
+
+.entry-box-title {
+  font-size: 0.88rem;
+  font-weight: 800;
+  color: #090e1a;
+  margin: 0 0 0.65rem 0;
+}
+
+@media (min-width: 600px) {
+  .entry-box-title {
+    font-size: 0.98rem;
+    margin-bottom: 0.85rem;
+  }
+}
+
+.entry-type-selector {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.35rem;
+  margin-bottom: 0.75rem;
+}
+
+@media (min-width: 600px) {
+  .entry-type-selector {
+    gap: 0.55rem;
+    margin-bottom: 0.95rem;
+  }
+}
+
+.entry-type-tab {
+  padding: 0.5rem 0.25rem;
+  border-radius: 9px;
+  font-size: clamp(0.68rem, 2.5vw, 0.82rem);
+  font-weight: 700;
+  border: 1px solid #cbd5e1;
+  background: #ffffff;
+  color: #475569;
+  cursor: pointer;
+  transition: all 0.18s ease;
+  text-align: center;
+  font-family: inherit;
+  min-height: 38px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1.15;
+}
+
+.entry-type-tab.tab-upad.active {
+  background: #fff7ed;
+  border-color: #f97316;
+  color: #c2410c;
+  box-shadow: 0 2px 6px rgba(249, 115, 22, 0.15);
+}
+
+.entry-type-tab.tab-payment.active {
+  background: #eff6ff;
+  border-color: #2563eb;
+  color: #1d4ed8;
+  box-shadow: 0 2px 6px rgba(37, 99, 235, 0.15);
+}
+
+.entry-type-tab.tab-salary.active {
+  background: #f0fdf4;
+  border-color: #16a34a;
+  color: #15803d;
+  box-shadow: 0 2px 6px rgba(22, 163, 74, 0.15);
+}
+
+.entry-inputs-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.55rem;
+  margin-bottom: 0.55rem;
+}
+
+@media (min-width: 400px) {
+  .entry-inputs-grid {
+    grid-template-columns: 1fr 1fr;
+    gap: 0.65rem;
+    margin-bottom: 0.65rem;
+  }
+}
+
+.amount-input {
+  font-size: 1.05rem;
+  font-weight: 800;
+  min-height: 42px;
+}
+
+.rupee-icon {
+  font-size: 1rem;
+  font-weight: 800;
+  color: #2563eb;
+}
+
+.select-mode {
+  cursor: pointer;
+  font-weight: 600;
+  min-height: 42px;
+}
+
+.entry-form-actions {
+  display: grid;
+  grid-template-columns: 1fr 1.4fr;
+  gap: 0.55rem;
+  margin-top: 0.75rem;
+}
+
+@media (min-width: 600px) {
+  .entry-form-actions {
+    display: flex;
+    justify-content: flex-end;
+  }
+}
+
+/* History Header & Chips (Mobile Horizontal Scroll, Tablet Centered) */
+.khata-history-header {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.45rem;
+  margin-bottom: 0.65rem;
+}
+
+@media (min-width: 480px) {
+  .khata-history-header {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+  }
+}
+
+.history-title {
+  font-size: 0.86rem;
+  font-weight: 800;
+  color: #090e1a;
+  margin: 0;
+}
+
+.khata-filter-chips {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  overflow-x: auto;
+  max-width: 100%;
+  padding-bottom: 3px;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+
+.khata-filter-chips::-webkit-scrollbar {
+  display: none;
+}
+
+.filter-chip {
+  font-size: 0.7rem;
+  font-weight: 700;
+  padding: 0.22rem 0.6rem;
+  border-radius: 999px;
+  border: 1px solid #cbd5e1;
+  background: #ffffff;
+  color: #64748b;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  font-family: inherit;
+  flex-shrink: 0;
+  min-height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.filter-chip.active {
+  background: #090e1a;
+  color: #ffffff;
+  border-color: #090e1a;
+}
+
+/* Transaction History List */
+.khata-history-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  max-height: 42vh;
+  overflow-y: auto;
+  padding-right: 2px;
+}
+
+@media (min-width: 600px) {
+  .khata-history-list {
+    max-height: 48vh;
+    gap: 0.65rem;
+  }
+}
+
+.khata-tx-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.45rem;
+  padding: 0.55rem 0.7rem;
+  border-radius: 12px;
+  border: 1px solid #e2e8f0;
+  background: #ffffff;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.03);
+  transition: all 0.18s ease;
+  box-sizing: border-box;
+}
+
+@media (min-width: 600px) {
+  .khata-tx-card {
+    padding: 0.75rem 0.95rem;
+    gap: 0.65rem;
+  }
+}
+
+.khata-tx-card:hover {
+  transform: translateY(-1px);
+  border-color: #cbd5e1;
+  box-shadow: 0 3px 10px rgba(15, 23, 42, 0.06);
+}
+
+.tx-left {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  min-width: 0;
+  flex: 1;
+}
+
+.tx-icon-pill {
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+@media (min-width: 600px) {
+  .tx-icon-pill {
+    width: 34px;
+    height: 34px;
+    border-radius: 10px;
+  }
+}
+
+.icon-salary {
+  background: #dcfce7;
+  border: 1px solid #bbf7d0;
+}
+
+.icon-upad {
+  background: #fef3c7;
+  border: 1px solid #fde68a;
+}
+
+.icon-payment {
+  background: #dbeafe;
+  border: 1px solid #bfdbfe;
+}
+
+.tx-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.12rem;
+  min-width: 0;
+}
+
+.tx-title-row {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  flex-wrap: wrap;
+}
+
+.tx-type-badge {
+  font-size: 0.66rem;
+  font-weight: 700;
+  border-radius: 5px;
+  padding: 0.1rem 0.35rem;
+}
+
+.badge-salary {
+  background: #dcfce7;
+  color: #15803d;
+}
+
+.badge-upad {
+  background: #fef3c7;
+  color: #b45309;
+}
+
+.badge-payment {
+  background: #dbeafe;
+  color: #1d4ed8;
+}
+
+.tx-date-text {
+  font-size: 0.68rem;
+  color: #64748b;
+  font-weight: 500;
+}
+
+.tx-notes-text {
+  font-size: 0.72rem;
+  color: #334155;
+  margin: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-weight: 500;
+}
+
+.tx-mode-tag {
+  font-size: 0.64rem;
+  color: #64748b;
+  font-weight: 600;
+}
+
+.tx-right {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  flex-shrink: 0;
+}
+
+.tx-amount {
+  font-size: 0.92rem;
+  font-weight: 800;
+  letter-spacing: -0.015em;
+}
+
+@media (min-width: 600px) {
+  .tx-amount {
+    font-size: 1.08rem;
+  }
+}
+
+.amount-salary {
+  color: #16a34a;
+}
+
+.amount-upad {
+  color: #d97706;
+}
+
+.amount-payment {
+  color: #2563eb;
+}
+
+.tx-delete-btn {
+  background: #fee2e2;
+  border: none;
+  color: #dc2626;
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.18s ease;
+  flex-shrink: 0;
+}
+
+.tx-delete-btn:hover {
+  background: #ef4444;
+  color: #ffffff;
+}
+
+.khata-empty-state {
+  padding: 1.5rem 1rem !important;
+}
+
+/* Workshop Khata Overview Top Bar (Mobile 2x2 Grid, Tablet Row) */
+.workshop-khata-overview-bar {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.5rem;
+  background: #ffffff;
+  border: 1px solid #bfdbfe;
+  border-radius: 12px;
+  padding: 0.6rem 0.75rem;
+  margin-bottom: 0.85rem;
+  box-shadow: 0 2px 8px rgba(37, 99, 235, 0.05);
+  box-sizing: border-box;
+}
+
+.khata-overview-divider {
+  display: none;
+}
+
+@media (min-width: 540px) {
+  .workshop-khata-overview-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-around;
+    padding: 0.65rem 1rem;
+  }
+  .khata-overview-divider {
+    display: block;
+    width: 1px;
+    height: 24px;
+    background: #e2e8f0;
+  }
+}
+
+.khata-overview-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+}
+
+@media (max-width: 539px) {
+  .khata-overview-item {
+    align-items: flex-start;
+    padding: 0.35rem 0.5rem;
+    background: #f8fafc;
+    border-radius: 8px;
+  }
+}
+
+.overview-label {
+  font-size: 0.65rem;
+  font-weight: 700;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+.overview-val {
+  font-size: 0.95rem;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+}
+
+@media (min-width: 600px) {
+  .overview-val {
+    font-size: 1.05rem;
+  }
+}
+
+.val-upad {
+  color: #d97706;
+}
+
+.val-salary {
+  color: #16a34a;
+}
+
+.val-due {
+  color: #16a34a;
+}
+
+.val-settled {
+  color: #64748b;
+}

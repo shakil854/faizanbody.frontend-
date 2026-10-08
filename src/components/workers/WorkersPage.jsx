@@ -73,6 +73,22 @@ export function WorkersPage({ onBackToHome, onAlertCountChange }) {
     return workers.filter((w) => isLeavingSoon(w.going_date)).length;
   }, [workers]);
 
+  // Overall workshop khata metrics
+  const khataOverview = useMemo(() => {
+    let totalUpad = 0;
+    let totalSalary = 0;
+    let totalPaid = 0;
+    workers.forEach((w) => {
+      if (w.khata) {
+        totalUpad += w.khata.total_upad || 0;
+        totalSalary += w.khata.total_salary || 0;
+        totalPaid += w.khata.total_paid || 0;
+      }
+    });
+    const netBalance = totalSalary - (totalUpad + totalPaid);
+    return { totalUpad, totalSalary, totalPaid, netBalance };
+  }, [workers]);
+
   // Sync alert count with parent if provided
   useEffect(() => {
     if (onAlertCountChange) {
@@ -226,6 +242,33 @@ export function WorkersPage({ onBackToHome, onAlertCountChange }) {
             <span className="alert-count-pill">
               {leavingSoonCount} Alert{leavingSoonCount > 1 ? 's' : ''}
             </span>
+          </div>
+        )}
+
+        {/* Workshop Khata Overview Quick Stats */}
+        {(khataOverview.totalUpad > 0 || khataOverview.totalSalary > 0 || khataOverview.totalPaid > 0) && !searchQuery && (
+          <div className="workshop-khata-overview-bar">
+            <div className="khata-overview-item">
+              <span className="overview-label">कुल पेमेंट</span>
+              <span className="overview-val val-salary">₹{khataOverview.totalSalary.toLocaleString('en-IN')}</span>
+            </div>
+            <div className="khata-overview-divider"></div>
+            <div className="khata-overview-item">
+              <span className="overview-label">कुल उपाड़</span>
+              <span className="overview-val val-upad">₹{khataOverview.totalUpad.toLocaleString('en-IN')}</span>
+            </div>
+            <div className="khata-overview-divider"></div>
+            <div className="khata-overview-item">
+              <span className="overview-label">पेमेंट दिया</span>
+              <span className="overview-val val-salary">₹{khataOverview.totalPaid.toLocaleString('en-IN')}</span>
+            </div>
+            <div className="khata-overview-divider"></div>
+            <div className="khata-overview-item">
+              <span className="overview-label">बाकी हिसाब</span>
+              <span className={`overview-val ${khataOverview.netBalance > 0 ? 'val-due' : khataOverview.netBalance < 0 ? 'val-upad' : 'val-settled'}`}>
+                ₹{Math.abs(khataOverview.netBalance).toLocaleString('en-IN')}
+              </span>
+            </div>
           </div>
         )}
 

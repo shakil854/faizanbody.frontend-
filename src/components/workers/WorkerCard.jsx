@@ -2,9 +2,11 @@ import React, { useState } from 'react';
 import { isLeavingSoon, getLeavingSoonLabel, getDaysUntil, formatDisplayDate } from '../../utils/dateAlerts';
 import { getAadharFullUrl } from '../../services/workerService';
 import { AadharPreviewModal } from './AadharPreviewModal';
+import { WorkerKhataModal } from './WorkerKhataModal';
 
 export const WorkerCard = React.memo(function WorkerCard({ worker, onEdit, onDelete, canManage = true }) {
   const [showAadharModal, setShowAadharModal] = useState(false);
+  const [showKhataModal, setShowKhataModal] = useState(false);
 
   const getAvatarInitials = (name) => {
     if (!name) return 'W';
@@ -48,6 +50,11 @@ export const WorkerCard = React.memo(function WorkerCard({ worker, onEdit, onDel
       window.open(waWebUrl, '_blank');
     }
   };
+
+  const khataBalance = Number(worker?.khata?.balance) || 0;
+  const khataUpad = Number(worker?.khata?.total_upad) || 0;
+  const khataSalary = Number(worker?.khata?.total_salary) || 0;
+  const khataPaid = Number(worker?.khata?.total_paid) || 0;
 
   return (
     <>
@@ -153,6 +160,57 @@ export const WorkerCard = React.memo(function WorkerCard({ worker, onEdit, onDel
           </div>
         )}
 
+        {/* Worker Khata (Jama - Udhar) Strip */}
+        <div
+          className="worker-khata-strip"
+          onClick={() => setShowKhataModal(true)}
+          role="button"
+          tabIndex={0}
+          title="खाता बही (जमा-उपाड़ हिसाब) खोलें"
+        >
+          <div className="khata-strip-left">
+            <span className="khata-strip-icon-circle">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#2563eb" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
+                <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
+                <line x1="9" y1="7" x2="15" y2="7" />
+                <line x1="9" y1="11" x2="13" y2="11" />
+              </svg>
+            </span>
+            <div className="khata-strip-text">
+              <span className="khata-strip-title">खाता हिसाब</span>
+              <span className="khata-strip-metrics">
+                कुल: <strong>₹{khataSalary.toLocaleString('en-IN')}</strong>
+                {' • '}
+                उपाड़: <strong>₹{khataUpad.toLocaleString('en-IN')}</strong>
+                {' • '}
+                दिया: <strong>₹{khataPaid.toLocaleString('en-IN')}</strong>
+                {' • '}
+                बाकी: <strong className={khataBalance > 0 ? 'text-pay-due' : khataBalance < 0 ? 'text-advance-due' : 'text-settled'}>
+                  ₹{Math.abs(khataBalance).toLocaleString('en-IN')}
+                </strong>
+                <span className="khata-mini-status">
+                  {khataBalance > 0 ? ' (देना है)' : khataBalance < 0 ? ' (उपाड़ बाकी)' : ' (बराबर)'}
+                </span>
+              </span>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            className="btn-khata-open"
+            onClick={(e) => {
+              e.stopPropagation();
+              setShowKhataModal(true);
+            }}
+          >
+            <span>खाता</span>
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="9 18 15 12 9 6" />
+            </svg>
+          </button>
+        </div>
+
         {/* Worker Aadhar Card Badge */}
         {worker.aadhar_card && (
           <div
@@ -238,8 +296,19 @@ export const WorkerCard = React.memo(function WorkerCard({ worker, onEdit, onDel
         workerName={worker.name}
         aadharUrl={worker.aadhar_card}
       />
+
+      {/* Worker Jama - Udhar Khata Modal */}
+      {showKhataModal && (
+        <WorkerKhataModal
+          isOpen={showKhataModal}
+          onClose={() => setShowKhataModal(false)}
+          worker={worker}
+          canManage={canManage}
+        />
+      )}
     </>
   );
 });
 
 export default WorkerCard;
+
