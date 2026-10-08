@@ -7048,113 +7048,217 @@
    WORKER JAMA - UDHAR (KHATA / LEDGER) LUXURY STYLES
    ======================================================== */
 
-/* Worker Card Khata Strip */
-.worker-khata-strip {
+/* ========================================================
+   Luxury Worker Khata Dashboard Card (Micro Ledger Preview)
+   ======================================================== */
+.worker-khata-card {
+  background: linear-gradient(145deg, #ffffff 0%, #f8faff 100%);
+  border: 1.5px solid #dbeafe;
+  border-radius: 14px;
+  padding: 0.75rem 0.85rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+  cursor: pointer;
+  transition: all 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: 0 2px 8px rgba(37, 99, 235, 0.04);
+  box-sizing: border-box;
+}
+
+.worker-khata-card:hover {
+  border-color: #93c5fd;
+  background: #ffffff;
+  transform: translateY(-1.5px);
+  box-shadow: 0 6px 20px rgba(37, 99, 235, 0.1);
+}
+
+/* Header Row: Title & Action Button */
+.khata-card-header-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 0.5rem;
-  background: linear-gradient(135deg, #f0f7ff 0%, #f8fafc 100%);
-  border: 1px solid #bfdbfe;
-  border-radius: 11px;
-  padding: 0.55rem 0.75rem;
-  cursor: pointer;
-  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
-  box-sizing: border-box;
 }
 
-.worker-khata-strip:hover {
-  border-color: #2563eb;
-  background: #e0f2fe;
-  transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.08);
-}
-
-.khata-strip-left {
+.khata-card-title-group {
   display: flex;
   align-items: center;
-  gap: 0.55rem;
-  min-width: 0;
-  flex: 1;
+  gap: 0.5rem;
 }
 
-.khata-strip-icon-circle {
+.khata-card-icon-squircle {
   width: 28px;
   height: 28px;
-  border-radius: 9px;
-  background: #dbeafe;
+  border-radius: 8px;
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
   display: flex;
   align-items: center;
   justify-content: center;
+  color: #2563eb;
   flex-shrink: 0;
 }
 
-.khata-strip-text {
+.khata-card-title-text {
   display: flex;
   flex-direction: column;
-  gap: 0.15rem;
-  min-width: 0;
-  flex: 1;
+  line-height: 1.15;
 }
 
-.khata-strip-title {
-  font-size: 0.72rem;
-  font-weight: 700;
-  color: #1e40af;
-  text-transform: uppercase;
-  letter-spacing: 0.025em;
-  line-height: 1.1;
+.khata-card-heading {
+  font-size: 0.82rem;
+  font-weight: 800;
+  color: #0f172a;
+  letter-spacing: -0.01em;
 }
 
-.khata-strip-metrics {
-  font-size: 0.74rem;
-  color: #334155;
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 0.25rem 0.45rem;
-  line-height: 1.25;
-}
-
-.text-pay-due {
-  color: #16a34a;
-}
-
-.text-advance-due {
-  color: #d97706;
-}
-
-.text-settled {
+.khata-card-subheading {
+  font-size: 0.65rem;
+  font-weight: 600;
   color: #64748b;
 }
 
-.khata-mini-status {
-  font-size: 0.68rem;
-  color: #64748b;
-}
-
-.btn-khata-open {
+.btn-khata-open-pill {
   display: inline-flex;
   align-items: center;
-  justify-content: center;
-  gap: 0.25rem;
-  font-size: 0.74rem;
-  font-weight: 700;
-  padding: 0.35rem 0.65rem;
-  border-radius: 8px;
-  background: #2563eb;
+  gap: 0.3rem;
+  background: linear-gradient(135deg, #1d4ed8 0%, #2563eb 100%);
   color: #ffffff;
   border: none;
-  cursor: pointer;
-  flex-shrink: 0;
-  transition: all 0.18s ease;
+  border-radius: 999px;
+  padding: 0.35rem 0.8rem;
+  font-size: 0.74rem;
+  font-weight: 700;
   font-family: inherit;
-  min-height: 32px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 6px rgba(37, 99, 235, 0.25);
+  flex-shrink: 0;
 }
 
-.btn-khata-open:hover {
-  background: #1d4ed8;
+.btn-khata-open-pill:hover {
+  background: linear-gradient(135deg, #1e40af 0%, #1d4ed8 100%);
   transform: translateY(-0.5px);
+  box-shadow: 0 4px 10px rgba(37, 99, 235, 0.35);
+}
+
+/* 3 Micro-KPIs Grid: Total, Upad, Paid */
+.khata-micro-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.45rem;
+}
+
+.khata-micro-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 0.45rem 0.35rem;
+  border-radius: 9px;
+  border: 1px solid #e2e8f0;
+  background: #ffffff;
+  text-align: center;
+  transition: all 0.15s ease;
+}
+
+.khata-micro-item.item-total {
+  background: #f8fafc;
+  border-color: #e2e8f0;
+}
+.khata-micro-item.item-total .micro-val {
+  color: #0f172a;
+}
+
+.khata-micro-item.item-upad {
+  background: #fffbeb;
+  border-color: #fde68a;
+}
+.khata-micro-item.item-upad .micro-val {
+  color: #b45309;
+}
+
+.khata-micro-item.item-paid {
+  background: #f0fdf4;
+  border-color: #bbf7d0;
+}
+.khata-micro-item.item-paid .micro-val {
+  color: #15803d;
+}
+
+.micro-label {
+  font-size: 0.65rem;
+  font-weight: 700;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  line-height: 1.1;
+  margin-bottom: 2px;
+}
+
+.micro-val {
+  font-size: clamp(0.78rem, 2.5vw, 0.88rem);
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  white-space: nowrap;
+  line-height: 1.2;
+}
+
+/* Prominent Net Balance Strip */
+.khata-balance-strip {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.45rem 0.75rem;
+  border-radius: 9px;
+  font-size: 0.76rem;
+  font-weight: 700;
+  box-sizing: border-box;
+  transition: all 0.15s ease;
+}
+
+.khata-balance-strip.strip-due {
+  background: #f0fdf4;
+  border: 1px solid #86efac;
+  color: #15803d;
+}
+
+.khata-balance-strip.strip-upad {
+  background: #fef2f2;
+  border: 1px solid #fca5a5;
+  color: #b91c1c;
+}
+
+.khata-balance-strip.strip-settled {
+  background: #f8fafc;
+  border: 1px solid #cbd5e1;
+  color: #475569;
+}
+
+.balance-strip-left {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.balance-strip-label {
+  font-size: 0.72rem;
+  font-weight: 600;
+  opacity: 0.9;
+}
+
+.balance-strip-amount {
+  font-size: 0.88rem;
+  font-weight: 800;
+}
+
+.balance-strip-badge {
+  font-size: 0.66rem;
+  font-weight: 700;
+  padding: 0.12rem 0.45rem;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.85);
+  border: 1px solid currentColor;
 }
 
 /* ========================================================
