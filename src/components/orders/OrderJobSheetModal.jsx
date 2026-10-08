@@ -275,14 +275,22 @@ export function OrderJobSheetModal({ isOpen, onClose, order, onToggleTask, onEdi
           <div className="sheet-signature-section">
             <div className="signature-box">
               <div className="signature-line">
-                <span className="signature-val">{order.md_signature || ''}</span>
+                {order.md_signature && (order.md_signature.startsWith('data:image/') || order.md_signature.startsWith('http') || order.md_signature.startsWith('/')) ? (
+                  <img src={order.md_signature} alt="M.D Signature" className="signature-rendered-img" />
+                ) : (
+                  <span className="signature-val">{order.md_signature || ''}</span>
+                )}
               </div>
               <span className="signature-title">M. D SIGNATURE</span>
             </div>
 
             <div className="signature-box">
               <div className="signature-line">
-                <span className="signature-val">{order.party_owner_signature || ''}</span>
+                {order.party_owner_signature && (order.party_owner_signature.startsWith('data:image/') || order.party_owner_signature.startsWith('http') || order.party_owner_signature.startsWith('/')) ? (
+                  <img src={order.party_owner_signature} alt="Party Owner Signature" className="signature-rendered-img" />
+                ) : (
+                  <span className="signature-val">{order.party_owner_signature || ''}</span>
+                )}
               </div>
               <span className="signature-title">PARTY OWNER SIGNATURE</span>
             </div>

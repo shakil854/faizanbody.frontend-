@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { DEFAULT_ORDER_DATA, ORDER_SECTIONS, calculateOrderProgress } from './orderConstants';
+import { DigitalSignaturePad } from './DigitalSignaturePad';
 
 export function OrderFormModal({ isOpen, onClose, onSave, initialData }) {
   const [formData, setFormData] = useState(DEFAULT_ORDER_DATA);
@@ -520,33 +521,21 @@ export function OrderFormModal({ isOpen, onClose, onSave, initialData }) {
             </div>
 
             <div className="modern-signatures-grid">
-              <div className="signature-input-group">
-                <label className="sig-lbl">M. D SIGNATURE</label>
-                <div className="sig-input-box">
-                  <input
-                    type="text"
-                    className="sig-ctrl"
-                    placeholder="M.D Name / Signature"
-                    value={formData.md_signature || ''}
-                    onChange={(e) => handleBasicChange('md_signature', e.target.value)}
-                  />
-                  <div className="sig-line-draw"></div>
-                </div>
-              </div>
+              <DigitalSignaturePad
+                label="M. D SIGNATURE"
+                value={formData.md_signature || ''}
+                onChange={(val) => handleBasicChange('md_signature', val)}
+                placeholder="Sign here with finger / stylus"
+                typePlaceholder="M.D Name / Signature"
+              />
 
-              <div className="signature-input-group">
-                <label className="sig-lbl">PARTY OWNER SIGNATURE</label>
-                <div className="sig-input-box">
-                  <input
-                    type="text"
-                    className="sig-ctrl"
-                    placeholder="Party / Owner Name"
-                    value={formData.party_owner_signature || ''}
-                    onChange={(e) => handleBasicChange('party_owner_signature', e.target.value)}
-                  />
-                  <div className="sig-line-draw"></div>
-                </div>
-              </div>
+              <DigitalSignaturePad
+                label="PARTY OWNER SIGNATURE"
+                value={formData.party_owner_signature || ''}
+                onChange={(val) => handleBasicChange('party_owner_signature', val)}
+                placeholder="Owner sign here with finger"
+                typePlaceholder="Party / Owner Name"
+              />
             </div>
 
             <div className="modern-form-field" style={{ marginTop: '1rem' }}>

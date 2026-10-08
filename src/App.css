@@ -3431,10 +3431,19 @@
 .signature-line {
   width: 100%;
   border-bottom: 1.5px solid #000000;
-  height: 28px;
+  min-height: 38px;
   display: flex;
   align-items: flex-end;
   justify-content: center;
+  padding-bottom: 2px;
+}
+
+.signature-rendered-img {
+  max-height: 42px;
+  max-width: 95%;
+  object-fit: contain;
+  pointer-events: none;
+  filter: contrast(1.1);
 }
 
 .signature-val {
@@ -7950,4 +7959,253 @@
 
 .val-settled {
   color: #64748b;
+}
+
+/* ========================================================
+   DIGITAL SIGNATURE PAD (TOUCH & MOBILE OPTIMIZED)
+   ======================================================== */
+.digital-signature-field-container {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.sig-field-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.sig-field-label {
+  font-size: 0.78rem;
+  font-weight: 800;
+  color: #1e293b;
+  letter-spacing: 0.04em;
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.sig-recorded-tag {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.12rem 0.45rem;
+  background: #dcfce7;
+  color: #15803d;
+  font-size: 0.65rem;
+  font-weight: 800;
+  border-radius: 999px;
+  letter-spacing: normal;
+}
+
+.sig-pending-tag {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.12rem 0.45rem;
+  background: #f1f5f9;
+  color: #94a3b8;
+  font-size: 0.65rem;
+  font-weight: 700;
+  border-radius: 999px;
+  letter-spacing: normal;
+}
+
+.sig-mode-pills {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  background: #f1f5f9;
+  padding: 0.18rem;
+  border-radius: 8px;
+}
+
+.sig-mode-pill {
+  border: none;
+  background: transparent;
+  color: #64748b;
+  font-size: 0.68rem;
+  font-weight: 700;
+  padding: 0.2rem 0.45rem;
+  border-radius: 6px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  transition: all 0.15s ease;
+}
+
+.sig-mode-pill:hover {
+  color: #0f172a;
+}
+
+.sig-mode-pill.active {
+  background: #ffffff;
+  color: #2563eb;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+
+.sig-pad-wrapper {
+  position: relative;
+  width: 100%;
+  height: 130px;
+  background: #ffffff;
+  border: 1.5px dashed #cbd5e1;
+  border-radius: 12px;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  touch-action: none !important;
+  user-select: none;
+  transition: border-color 0.2s, box-shadow 0.2s, background-color 0.2s;
+}
+
+.sig-pad-wrapper:hover {
+  border-color: #93c5fd;
+  background-color: #fafcff;
+}
+
+.sig-pad-canvas {
+  display: block;
+  width: 100%;
+  height: 130px;
+  touch-action: none !important;
+  cursor: crosshair;
+  z-index: 2;
+}
+
+.sig-baseline-guide {
+  position: absolute;
+  left: 1rem;
+  right: 1rem;
+  bottom: 22px;
+  pointer-events: none;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  z-index: 1;
+}
+
+.sig-x-mark {
+  font-size: 0.75rem;
+  font-weight: 800;
+  color: #cbd5e1;
+  user-select: none;
+}
+
+.sig-baseline-line {
+  flex: 1;
+  height: 1px;
+  border-bottom: 1.5px dashed #e2e8f0;
+}
+
+.sig-empty-watermark {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  pointer-events: none;
+  color: #94a3b8;
+  font-size: 0.82rem;
+  font-weight: 600;
+  z-index: 1;
+  user-select: none;
+}
+
+.sig-pad-actions-bar {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  display: flex;
+  gap: 0.35rem;
+  z-index: 3;
+}
+
+.sig-action-btn {
+  border: 1px solid #e2e8f0;
+  background: rgba(255, 255, 255, 0.92);
+  backdrop-filter: blur(4px);
+  color: #475569;
+  font-size: 0.68rem;
+  font-weight: 700;
+  padding: 0.22rem 0.5rem;
+  border-radius: 6px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+  transition: all 0.15s ease;
+}
+
+.sig-action-btn:hover {
+  background: #fef2f2;
+  border-color: #fecaca;
+  color: #dc2626;
+}
+
+/* Mobile Phone App Responsive (up to 640px) */
+@media (max-width: 640px) {
+  .modern-signatures-grid {
+    grid-template-columns: 1fr !important;
+    gap: 1.15rem !important;
+  }
+
+  .sig-pad-wrapper {
+    height: 140px !important;
+    border-radius: 14px !important;
+  }
+
+  .sig-pad-canvas {
+    height: 140px !important;
+  }
+
+  .sig-mode-pills {
+    padding: 0.22rem !important;
+    border-radius: 9px !important;
+  }
+
+  .sig-mode-pill {
+    padding: 0.35rem 0.65rem !important;
+    font-size: 0.72rem !important;
+    min-height: 32px !important;
+  }
+
+  .sig-action-btn {
+    padding: 0.35rem 0.7rem !important;
+    font-size: 0.74rem !important;
+    min-height: 32px !important;
+    border-radius: 8px !important;
+  }
+}
+
+/* Tablet App Responsive (641px to 1024px, iPads, Android Tablets) */
+@media (min-width: 641px) and (max-width: 1024px) {
+  .modern-signatures-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 1.25rem !important;
+  }
+
+  .sig-pad-wrapper {
+    height: 155px !important;
+    border-radius: 14px !important;
+  }
+
+  .sig-pad-canvas {
+    height: 155px !important;
+  }
+
+  .sig-mode-pill {
+    padding: 0.32rem 0.65rem !important;
+    font-size: 0.74rem !important;
+    min-height: 34px !important;
+  }
+
+  .sig-action-btn {
+    padding: 0.32rem 0.65rem !important;
+    font-size: 0.74rem !important;
+    min-height: 34px !important;
+    border-radius: 8px !important;
+  }
 }
