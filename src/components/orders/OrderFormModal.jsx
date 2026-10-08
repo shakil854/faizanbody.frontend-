@@ -516,7 +516,7 @@ export function OrderFormModal({ isOpen, onClose, onSave, initialData }) {
             <div className="modern-card-header-line">
               <div className="card-title-group">
                 <span className="card-num-badge">7</span>
-                <h4 className="card-heading-title">हस्ताक्षर और नोट <span className="eng-sub">(Signature & Note)</span></h4>
+                <h4 className="card-heading-title">हस्ताक्षर <span className="eng-sub">(Signatures)</span></h4>
               </div>
             </div>
 
@@ -535,17 +535,6 @@ export function OrderFormModal({ isOpen, onClose, onSave, initialData }) {
                 onChange={(val) => handleBasicChange('party_owner_signature', val)}
                 placeholder="Owner sign here with finger"
                 typePlaceholder="Party / Owner Name"
-              />
-            </div>
-
-            <div className="modern-form-field" style={{ marginTop: '1rem' }}>
-              <label className="field-lbl">Notes / Special Instructions</label>
-              <textarea
-                className="modern-input-ctrl notes-textarea"
-                rows={2}
-                placeholder="Any special fabrication instructions or terms..."
-                value={formData.notes || ''}
-                onChange={(e) => handleBasicChange('notes', e.target.value)}
               />
             </div>
           </div>
