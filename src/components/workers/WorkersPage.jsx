@@ -139,7 +139,11 @@ export function WorkersPage({ onBackToHome, onAlertCountChange }) {
     let list = uniqueList;
     if (searchQuery.trim()) {
       const query = searchQuery.trim().toLowerCase();
-      list = list.filter((w) => w.name && w.name.toLowerCase().includes(query));
+      list = list.filter(
+        (w) =>
+          (w.name && w.name.toLowerCase().includes(query)) ||
+          (w.mobile && w.mobile.toLowerCase().includes(query))
+      );
     }
 
     return [...list].sort((a, b) => {

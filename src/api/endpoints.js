@@ -7,6 +7,7 @@ export const ENDPOINTS = {
   WELCOME: '/welcome',
   ITEMS: '/items',
   WORKERS: '/workers',
+  WORKERS_UPLOAD_AADHAR: '/workers/upload-aadhar',
   ORDERS: '/orders',
   AUTH: {
     LOGIN: '/auth/login',

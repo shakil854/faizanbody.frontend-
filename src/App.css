@@ -6596,3 +6596,450 @@
   text-overflow: ellipsis;
   z-index: 10002;
 }
+
+/* ========================================================
+   WORKER MOBILE & AADHAR CARD LUXURY STYLES
+   ======================================================== */
+
+.worker-contact-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  background: rgba(241, 245, 249, 0.75);
+  border: 1px solid rgba(226, 232, 240, 0.9);
+  border-radius: 10px;
+  padding: 0.35rem 0.65rem;
+  box-sizing: border-box;
+}
+
+.contact-mobile-link {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  min-width: 0;
+}
+
+.phone-icon-pill {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: #eff6ff;
+  border: 1px solid #dbeafe;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.mobile-number-text {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: #1e293b;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.contact-quick-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  flex-shrink: 0;
+}
+
+.quick-contact-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 0.2rem 0.5rem;
+  border-radius: 7px;
+  text-decoration: none;
+  cursor: pointer;
+  font-family: inherit;
+  transition: all 0.2s ease;
+  line-height: 1.2;
+}
+
+.quick-call-btn {
+  color: #2563eb;
+  background: #eff6ff;
+  border: 1px solid #dbeafe;
+}
+
+.quick-call-btn:hover {
+  background: #2563eb;
+  color: #ffffff;
+}
+
+.quick-whatsapp-btn {
+  color: #16a34a;
+  background: #f0fdf4;
+  border: 1px solid #dcfce7;
+}
+
+.quick-whatsapp-btn:hover {
+  background: #16a34a;
+  color: #ffffff;
+}
+
+/* Worker Card Aadhar Badge */
+.worker-aadhar-badge-clickable {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
+  border: 1px solid #e2e8f0;
+  border-radius: 11px;
+  padding: 0.4rem 0.65rem;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  box-sizing: border-box;
+}
+
+.worker-aadhar-badge-clickable:hover {
+  border-color: #2563eb;
+  background: #eff6ff;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.08);
+}
+
+.aadhar-mini-thumbnail {
+  width: 36px;
+  height: 26px;
+  border-radius: 6px;
+  overflow: hidden;
+  border: 1px solid #cbd5e1;
+  background: #e2e8f0;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.mini-thumb-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.aadhar-badge-info {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+  gap: 0.1rem;
+}
+
+.aadhar-badge-title {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: #0f172a;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  line-height: 1.2;
+}
+
+.aadhar-badge-action {
+  font-size: 0.68rem;
+  color: #2563eb;
+  font-weight: 600;
+}
+
+.aadhar-view-icon-box {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #2563eb;
+  flex-shrink: 0;
+}
+
+/* Worker Form Modal Aadhar Controls */
+.aadhar-form-group {
+  margin-top: 0.15rem;
+}
+
+.aadhar-header-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.35rem;
+}
+
+.badge-attached-success {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #16a34a;
+  background: #f0fdf4;
+  border: 1px solid #bbf7d0;
+  border-radius: 999px;
+  padding: 0.15rem 0.55rem;
+}
+
+.aadhar-upload-actions-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem;
+}
+
+.aadhar-action-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.85rem 0.6rem;
+  border-radius: 14px;
+  cursor: pointer;
+  transition: all 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+  text-align: center;
+  box-sizing: border-box;
+}
+
+.aadhar-camera-btn {
+  background: #eff6ff;
+  border: 1.5px dashed #93c5fd;
+}
+
+.aadhar-camera-btn:hover {
+  background: #dbeafe;
+  border-color: #2563eb;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 14px rgba(37, 99, 235, 0.12);
+}
+
+.aadhar-gallery-btn {
+  background: #faf5ff;
+  border: 1.5px dashed #d8b4fe;
+}
+
+.aadhar-gallery-btn:hover {
+  background: #f3e8ff;
+  border-color: #7c3aed;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 14px rgba(124, 58, 237, 0.12);
+}
+
+.aadhar-action-icon-circle {
+  width: 38px;
+  height: 38px;
+  border-radius: 11px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.camera-circle {
+  background: #ffffff;
+  box-shadow: 0 2px 8px rgba(37, 99, 235, 0.14);
+}
+
+.gallery-circle {
+  background: #ffffff;
+  box-shadow: 0 2px 8px rgba(124, 58, 237, 0.14);
+}
+
+.aadhar-action-text {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.1rem;
+}
+
+.action-title {
+  font-size: 0.84rem;
+  font-weight: 700;
+  color: #0f172a;
+  line-height: 1.2;
+}
+
+.action-subtitle {
+  font-size: 0.7rem;
+  color: #64748b;
+  font-weight: 500;
+}
+
+/* Attached Aadhar Preview Card in Form */
+.aadhar-preview-card {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+  background: #ffffff;
+  border: 1.5px solid #2563eb;
+  border-radius: 13px;
+  padding: 0.6rem 0.8rem;
+  box-shadow: 0 4px 16px rgba(37, 99, 235, 0.08);
+  box-sizing: border-box;
+}
+
+.aadhar-preview-thumbnail-box {
+  width: 68px;
+  height: 48px;
+  border-radius: 8px;
+  overflow: hidden;
+  position: relative;
+  cursor: pointer;
+  flex-shrink: 0;
+  border: 1px solid #cbd5e1;
+  background: #f1f5f9;
+}
+
+.aadhar-preview-thumb-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.aadhar-zoom-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.aadhar-preview-thumbnail-box:hover .aadhar-zoom-overlay {
+  opacity: 1;
+}
+
+.aadhar-preview-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  flex: 1;
+  min-width: 0;
+}
+
+.aadhar-preview-name {
+  font-size: 0.84rem;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.aadhar-preview-sub {
+  font-size: 0.7rem;
+  color: #16a34a;
+  font-weight: 600;
+}
+
+.aadhar-preview-btn-row {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin-top: 0.25rem;
+  flex-wrap: wrap;
+}
+
+.btn-text-action {
+  border: none;
+  background: transparent;
+  font-size: 0.72rem;
+  font-weight: 700;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.2rem 0.45rem;
+  border-radius: 6px;
+  transition: all 0.15s ease;
+}
+
+.btn-retake-action {
+  color: #2563eb;
+  background: #eff6ff;
+}
+
+.btn-retake-action:hover {
+  background: #dbeafe;
+}
+
+.btn-upload-again-action {
+  color: #7c3aed;
+  background: #faf5ff;
+}
+
+.btn-upload-again-action:hover {
+  background: #f3e8ff;
+}
+
+.btn-remove-action {
+  color: #dc2626;
+  background: #fef2f2;
+}
+
+.btn-remove-action:hover {
+  background: #fee2e2;
+}
+
+/* Aadhar Preview Dialog Modal */
+.aadhar-preview-dialog {
+  max-width: 480px;
+  width: 92%;
+}
+
+.aadhar-dialog-icon {
+  background: #eff6ff;
+  border: 1px solid #dbeafe;
+}
+
+.aadhar-modal-img-container {
+  width: 100%;
+  max-height: 52vh;
+  background: #090e1a;
+  border-radius: 14px;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0.9rem 0;
+  border: 1px solid #1e293b;
+}
+
+.aadhar-modal-img {
+  max-width: 100%;
+  max-height: 52vh;
+  object-fit: contain;
+  display: block;
+}
+
+.aadhar-zoom-hint-pill {
+  position: absolute;
+  bottom: 12px;
+  right: 12px;
+  background: rgba(15, 23, 42, 0.82);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 999px;
+  padding: 4px 12px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: #ffffff;
+  font-size: 0.74rem;
+  font-weight: 600;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.4);
+  transition: all 0.2s ease;
+}
+
+.aadhar-modal-img-container:hover .aadhar-zoom-hint-pill {
+  background: rgba(37, 99, 235, 0.9);
+  transform: scale(1.05);
+}

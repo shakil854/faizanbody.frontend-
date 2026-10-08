@@ -137,6 +137,33 @@ export const workerService = {
 
     return response.data;
   },
+
+  /**
+   * Upload Aadhar Card photo (captured via camera or selected from gallery)
+   */
+  async uploadAadharPhoto(file, workerId = 'common') {
+    const formData = new FormData();
+    formData.append('photo', file);
+    formData.append('workerId', String(workerId));
+
+    const response = await axiosInstance.post(ENDPOINTS.WORKERS_UPLOAD_AADHAR, formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+
+    return response.data?.data;
+  },
 };
 
+export function getAadharFullUrl(url) {
+  if (!url) return '';
+  if (url.startsWith('http://') || url.startsWith('https://') || url.startsWith('blob:') || url.startsWith('data:')) {
+    return url;
+  }
+  const base = (import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api/v1').replace(/\/api\/v1\/?$/, '');
+  return `${base}${url.startsWith('/') ? '' : '/'}${url}`;
+}
+
 export default workerService;
+
