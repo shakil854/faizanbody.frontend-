@@ -4,9 +4,10 @@ import React, { useRef, useState, useEffect, useCallback } from 'react';
  * DigitalSignaturePad Component
  * 100% Mobile & Tablet App Responsive Touch Signature Pad.
  * Engineered specifically for Android / iOS WebView and Tablet usage:
+ * - Natural letter-by-letter signing with ZERO zoom, jump, or stretch
  * - Direct non-passive touch listeners ({ passive: false }) preventing screen scroll/jitter
  * - High-DPR Retina/AMOLED anti-aliasing with quadratic curve smoothing
- * - Auto-preserves signature upon device rotation (Portrait <-> Landscape)
+ * - Bounding-box crop only on export so database stays ultra-lightweight (~3KB - 5KB)
  * - Finger & Stylus (S-Pen / Apple Pencil) precision tracking
  * - 44px+ touch-friendly buttons for easy mobile tapping
  */
@@ -30,22 +31,15 @@ export function DigitalSignaturePad({
   const containerRef = useRef(null);
   const isDrawingRef = useRef(false);
   const lastPosRef = useRef({ x: 0, y: 0 });
-  const savedDataUrlRef = useRef(isImageValue ? value : '');
   const boundsRef = useRef(null);
 
-  // Keep savedDataUrlRef in sync when value changes externally
-  useEffect(() => {
-    if (isImageValue) {
-      savedDataUrlRef.current = value;
-      setHasDrawn(true);
-    } else if (!value && mode === 'draw') {
-      savedDataUrlRef.current = '';
-      setHasDrawn(false);
-    }
-  }, [value, isImageValue, mode]);
+  // Guards to prevent canvas re-clearing / zooming during live signing
+  const isCanvasInitializedRef = useRef(false);
+  const hasUserDrawnRef = useRef(false);
+  const savedDataUrlRef = useRef(isImageValue ? value : '');
 
   // Setup canvas size according to container dimensions & DPR
-  const setupCanvas = useCallback(() => {
+  const setupCanvas = useCallback((forceReloadImage = false) => {
     const canvas = canvasRef.current;
     const container = containerRef.current;
     if (!canvas || !container) return;
@@ -55,50 +49,88 @@ export function DigitalSignaturePad({
 
     const dpr = Math.max(window.devicePixelRatio || 1, 2);
     const displayWidth = rect.width;
-    // Responsive height: slightly taller on tablets for comfortable signing
     const isTablet = window.innerWidth >= 600 && window.innerWidth <= 1024;
     const displayHeight = isTablet ? 155 : 140;
 
-    canvas.width = Math.floor(displayWidth * dpr);
-    canvas.height = Math.floor(displayHeight * dpr);
-    canvas.style.width = `${displayWidth}px`;
-    canvas.style.height = `${displayHeight}px`;
+    // Check if canvas dimensions actually need changing
+    const needDimensionChange =
+      canvas.width !== Math.floor(displayWidth * dpr) ||
+      canvas.height !== Math.floor(displayHeight * dpr);
 
-    const ctx = canvas.getContext('2d');
-    ctx.scale(dpr, dpr);
-    ctx.lineCap = 'round';
-    ctx.lineJoin = 'round';
-    ctx.strokeStyle = '#0f172a'; // Deep ink color
-    ctx.lineWidth = 2.6;
+    if (needDimensionChange || !isCanvasInitializedRef.current) {
+      // Save existing strokes if resizing
+      let existingImgData = null;
+      if (isCanvasInitializedRef.current && hasUserDrawnRef.current) {
+        try {
+          existingImgData = canvas.toDataURL('image/png');
+        } catch {
+          // ignore
+        }
+      }
 
-    // Restore any existing signature image upon resize/orientation change
-    const signatureToLoad = savedDataUrlRef.current || (isImageValue ? value : '');
-    if (signatureToLoad) {
-      const img = new Image();
-      img.crossOrigin = 'anonymous';
-      img.onload = () => {
-        ctx.clearRect(0, 0, displayWidth, displayHeight);
-        ctx.drawImage(img, 0, 0, displayWidth, displayHeight);
-        setHasDrawn(true);
-      };
-      img.src = signatureToLoad;
+      canvas.width = Math.floor(displayWidth * dpr);
+      canvas.height = Math.floor(displayHeight * dpr);
+      canvas.style.width = `${displayWidth}px`;
+      canvas.style.height = `${displayHeight}px`;
+
+      const ctx = canvas.getContext('2d');
+      ctx.scale(dpr, dpr);
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+      ctx.strokeStyle = '#0f172a'; // Deep ink color
+      ctx.lineWidth = 2.6;
+
+      isCanvasInitializedRef.current = true;
+
+      // If user was already drawing and screen resized, preserve their live drawing
+      if (existingImgData) {
+        const img = new Image();
+        img.onload = () => {
+          ctx.drawImage(img, 0, 0, displayWidth, displayHeight);
+        };
+        img.src = existingImgData;
+        return;
+      }
+
+      // Load initial saved signature image (only once on load or explicit mode switch)
+      const initialImg = savedDataUrlRef.current || (isImageValue ? value : '');
+      if (initialImg && (forceReloadImage || !hasUserDrawnRef.current)) {
+        const img = new Image();
+        img.crossOrigin = 'anonymous';
+        img.onload = () => {
+          ctx.clearRect(0, 0, displayWidth, displayHeight);
+          // Center and preserve aspect ratio cleanly
+          const hRatio = displayWidth / img.width;
+          const vRatio = displayHeight / img.height;
+          const ratio = Math.min(hRatio, vRatio, 1);
+          const drawW = img.width * ratio;
+          const drawH = img.height * ratio;
+          const posX = (displayWidth - drawW) / 2;
+          const posY = (displayHeight - drawH) / 2;
+
+          ctx.drawImage(img, posX, posY, drawW, drawH);
+          setHasDrawn(true);
+        };
+        img.src = initialImg;
+      }
     }
   }, [isImageValue, value]);
 
+  // Initial mount setup
   useEffect(() => {
     if (mode === 'draw') {
-      setupCanvas();
+      setupCanvas(false);
     }
   }, [mode, setupCanvas]);
 
-  // Orientation and window resize handler (preserves drawing without loss)
+  // Orientation and window resize handler
   useEffect(() => {
     let timeoutId;
     const handleResize = () => {
       clearTimeout(timeoutId);
       timeoutId = setTimeout(() => {
         if (mode === 'draw') {
-          setupCanvas();
+          setupCanvas(false);
         }
       }, 100);
     };
@@ -148,6 +180,8 @@ export function DigitalSignaturePad({
       e.stopPropagation();
 
       isDrawingRef.current = true;
+      hasUserDrawnRef.current = true;
+
       const coords = getCoordinates(e, canvas);
       lastPosRef.current = coords;
 
@@ -172,7 +206,7 @@ export function DigitalSignaturePad({
       const coords = getCoordinates(e, canvas);
       const prev = lastPosRef.current;
 
-      // Track bounding box for ultra-lightweight cropping
+      // Track bounding box for cropping later without disrupting live drawing
       if (boundsRef.current) {
         boundsRef.current.minX = Math.min(boundsRef.current.minX, coords.x);
         boundsRef.current.minY = Math.min(boundsRef.current.minY, coords.y);
@@ -196,13 +230,15 @@ export function DigitalSignaturePad({
       if (e && e.cancelable) e.preventDefault();
       isDrawingRef.current = false;
 
+      // DO NOT clear or reload the canvas here!
+      // All user strokes remain completely undisturbed on screen as they write letter-by-letter.
       try {
         const dpr = Math.max(window.devicePixelRatio || 1, 2);
         let dataUrl;
 
-        // Tightly crop around signature strokes to save 85%+ database space (tiny 3KB - 6KB file)
+        // Auto-crop to bounds for the data payload so the database stays ultra-lightweight
         if (boundsRef.current && boundsRef.current.maxX > boundsRef.current.minX) {
-          const padding = 10;
+          const padding = 12;
           const cropX = Math.max(0, (boundsRef.current.minX - padding) * dpr);
           const cropY = Math.max(0, (boundsRef.current.minY - padding) * dpr);
           const cropW = Math.min(canvas.width - cropX, (boundsRef.current.maxX - boundsRef.current.minX + padding * 2) * dpr);
@@ -271,6 +307,7 @@ export function DigitalSignaturePad({
 
     savedDataUrlRef.current = '';
     boundsRef.current = null;
+    hasUserDrawnRef.current = false;
     setHasDrawn(false);
     onChange('');
   };
@@ -279,6 +316,8 @@ export function DigitalSignaturePad({
     setMode('draw');
     if (!isImageValue) {
       savedDataUrlRef.current = '';
+      boundsRef.current = null;
+      hasUserDrawnRef.current = false;
       setHasDrawn(false);
       onChange('');
     }
@@ -319,6 +358,7 @@ export function DigitalSignaturePad({
             </svg>
             Draw Sign
           </button>
+
           <button
             type="button"
             className={`sig-mode-pill ${mode === 'type' ? 'active' : ''}`}
