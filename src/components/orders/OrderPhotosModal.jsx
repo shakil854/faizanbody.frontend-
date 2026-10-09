@@ -1,11 +1,13 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import orderService, { getPhotoFullUrl } from '../../services/orderService';
 import { capturePhotoFromCamera, pickPhotosFromGallery } from '../../utils/nativeCamera';
+import { sharePhoto } from '../../utils/photoShare';
 
 export function OrderPhotosModal({ isOpen, onClose, order, onOrderUpdated }) {
   const [isUploading, setIsUploading] = useState(false);
   const [uploadError, setUploadError] = useState('');
   const [activePhotoIndex, setActivePhotoIndex] = useState(null); // For fullscreen preview
+  const [sharingPhotoId, setSharingPhotoId] = useState(null);
   const [zoomScale, setZoomScale] = useState(1);
   const [panOffset, setPanOffset] = useState({ x: 0, y: 0 });
   const [isDragging, setIsDragging] = useState(false);
@@ -249,6 +251,25 @@ export function OrderPhotosModal({ isOpen, onClose, order, onOrderUpdated }) {
     }
   };
 
+  const handleShareSinglePhoto = async (photo, e) => {
+    e?.stopPropagation();
+    if (!photo) return;
+    try {
+      setSharingPhotoId(photo.id || 'active');
+      const url = getPhotoFullUrl(photo.url);
+      await sharePhoto({
+        photoUrl: url,
+        truckNo: order.truck_chassis_no,
+        shadeNo: order.shade_no,
+        ownerName: order.owner_name,
+      });
+    } catch (err) {
+      console.error('Failed to share photo:', err);
+    } finally {
+      setSharingPhotoId(null);
+    }
+  };
+
   return (
     <div className="order-photos-overlay" onClick={onClose}>
       <div className="order-photos-modal" onClick={(e) => e.stopPropagation()}>
@@ -360,6 +381,21 @@ export function OrderPhotosModal({ isOpen, onClose, order, onOrderUpdated }) {
             {photos.length > 0 && (
               <button
                 type="button"
+                className="photos-share-latest-btn"
+                onClick={() => handleShareSinglePhoto(sortedPhotos[0])}
+                disabled={sharingPhotoId !== null}
+                title="लेटेस्ट फोटो WhatsApp पर शेयर करें"
+              >
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.3">
+                  <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" />
+                </svg>
+                <span>{sharingPhotoId ? 'Sharing...' : 'Share'}</span>
+              </button>
+            )}
+
+            {photos.length > 0 && (
+              <button
+                type="button"
                 className="photos-delete-all-btn"
                 onClick={handleDeleteAllPhotos}
                 disabled={isDeletingAll || isUploading}
@@ -436,6 +472,20 @@ export function OrderPhotosModal({ isOpen, onClose, order, onOrderUpdated }) {
                       
                       {/* Latest badge on top left */}
                       {isLatest && <span className="latest-photo-tag">Latest</span>}
+
+                      {/* WhatsApp Share button on photo */}
+                      <button
+                        type="button"
+                        className="photo-card-share-overlay-btn"
+                        onClick={(e) => handleShareSinglePhoto(photo, e)}
+                        disabled={sharingPhotoId === photo.id}
+                        title="यह फोटो WhatsApp पर शेयर करें"
+                        aria-label="Share photo"
+                      >
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.3">
+                          <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" />
+                        </svg>
+                      </button>
 
                       {/* Delete button directly over the photo on top right */}
                       <button
@@ -547,19 +597,49 @@ export function OrderPhotosModal({ isOpen, onClose, order, onOrderUpdated }) {
                   )}
                 </div>
 
-                {/* Close Button */}
-                <button
-                  type="button"
-                  className="lightbox-close"
-                  onClick={handleCloseLightbox}
-                  title="Close Full View"
-                  aria-label="Close"
-                >
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                    <line x1="18" y1="6" x2="6" y2="18" />
-                    <line x1="6" y1="6" x2="18" y2="18" />
-                  </svg>
-                </button>
+                <div className="lightbox-right-tools" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  {/* WhatsApp Share in Lightbox */}
+                  <button
+                    type="button"
+                    className="lightbox-tool-btn share-btn"
+                    onClick={() => handleShareSinglePhoto(sortedPhotos[activePhotoIndex])}
+                    title="यह फोटो WhatsApp पर शेयर करें"
+                    aria-label="Share photo"
+                    style={{
+                      background: '#16a34a',
+                      color: '#ffffff',
+                      borderColor: '#15803d',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '5px',
+                      padding: '0 10px',
+                      width: 'auto',
+                      height: '34px',
+                      borderRadius: '8px',
+                      cursor: 'pointer',
+                      border: 'none',
+                    }}
+                  >
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.3">
+                      <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" />
+                    </svg>
+                    <span style={{ fontSize: '12px', fontWeight: 700 }}>WhatsApp</span>
+                  </button>
+
+                  {/* Close Button */}
+                  <button
+                    type="button"
+                    className="lightbox-close"
+                    onClick={handleCloseLightbox}
+                    title="Close Full View"
+                    aria-label="Close"
+                  >
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                      <line x1="18" y1="6" x2="6" y2="18" />
+                      <line x1="6" y1="6" x2="18" y2="18" />
+                    </svg>
+                  </button>
+                </div>
               </div>
 
               {/* Zoomable & Pannable Image Stage (Double-tap, Pinch or Drag) */}

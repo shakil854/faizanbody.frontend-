@@ -52,15 +52,17 @@ export async function generatePdfBlob(element, customFileName = 'Order_Slip.pdf'
 
   const renderPageCanvas = async (domElem) => {
     const sbox = document.createElement('div');
+    sbox.id = 'pdf-render-sandbox';
     sbox.style.position = 'fixed';
     sbox.style.top = '0px';
     sbox.style.left = '0px';
     sbox.style.width = '720px';
     sbox.style.backgroundColor = '#ffffff';
-    sbox.style.zIndex = '-99999';
+    sbox.style.zIndex = '999999';
     sbox.style.visibility = 'visible';
     sbox.style.opacity = '1';
     sbox.style.overflow = 'visible';
+    sbox.style.pointerEvents = 'none';
 
     const clone = domElem.cloneNode(true);
     clone.style.width = '720px';
@@ -74,20 +76,28 @@ export async function generatePdfBlob(element, customFileName = 'Order_Slip.pdf'
       if (origImgs[i]) img.src = origImgs[i].src;
     });
 
+    const origCanvases = domElem.querySelectorAll('canvas');
+    const cloneCanvases = clone.querySelectorAll('canvas');
+    origCanvases.forEach((origCvs, i) => {
+      const targetCvs = cloneCanvases[i];
+      if (targetCvs) {
+        targetCvs.width = origCvs.width;
+        targetCvs.height = origCvs.height;
+        const ctx = targetCvs.getContext('2d');
+        if (ctx) ctx.drawImage(origCvs, 0, 0);
+      }
+    });
+
     sbox.appendChild(clone);
     document.body.appendChild(sbox);
 
-    await new Promise((r) => setTimeout(r, 60));
+    await new Promise((r) => setTimeout(r, 80));
     const cvs = await html2canvas(clone, {
       scale: 2,
       useCORS: true,
       backgroundColor: '#ffffff',
       scrollY: 0,
       scrollX: 0,
-      x: 0,
-      y: 0,
-      width: 720,
-      windowWidth: 720,
       logging: false,
     });
 

@@ -2,6 +2,7 @@ import React, { useState, useRef } from 'react';
 import { calculateOrderProgress } from './orderConstants';
 import orderService, { getPhotoFullUrl } from '../../services/orderService';
 import { capturePhotoFromCamera, pickPhotosFromGallery } from '../../utils/nativeCamera';
+import { sharePhoto } from '../../utils/photoShare';
 
 export const OrderCard = React.memo(function OrderCard({
   order,
@@ -14,11 +15,31 @@ export const OrderCard = React.memo(function OrderCard({
   const { total, done } = calculateOrderProgress(order);
   const isCompleted = order.status === 'Completed' || (total > 0 && done === total);
   const [isUploading, setIsUploading] = useState(false);
+  const [isSharingPhoto, setIsSharingPhoto] = useState(false);
   const fileInputRef = useRef(null);
   const cameraInputRef = useRef(null);
 
   const photos = Array.isArray(order.photos) ? order.photos : [];
   const latestPhoto = photos.length > 0 ? photos[photos.length - 1] : null;
+
+  const handleShareLatestPhoto = async (e) => {
+    e?.stopPropagation();
+    if (!latestPhoto) return;
+    try {
+      setIsSharingPhoto(true);
+      const url = getPhotoFullUrl(latestPhoto.url);
+      await sharePhoto({
+        photoUrl: url,
+        truckNo: order.truck_chassis_no,
+        shadeNo: order.shade_no,
+        ownerName: order.owner_name,
+      });
+    } catch (err) {
+      console.error('Error sharing photo:', err);
+    } finally {
+      setIsSharingPhoto(false);
+    }
+  };
 
   const formatPhotoDate = (photo) => {
     if (!photo) return '';
@@ -347,9 +368,23 @@ export const OrderCard = React.memo(function OrderCard({
                 </svg>
                 <span>{photos.length}</span>
               </div>
+
+              {/* Quick WhatsApp / Share button over photo */}
+              <button
+                type="button"
+                className="latest-photo-share-badge"
+                onClick={handleShareLatestPhoto}
+                disabled={isSharingPhoto}
+                title="फोटो WhatsApp पर भेजें"
+              >
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.3">
+                  <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" />
+                </svg>
+                <span>{isSharingPhoto ? '...' : 'Share'}</span>
+              </button>
             </div>
 
-            {/* Bottom Actions: View More, Camera & Quick Upload */}
+            {/* Bottom Actions: View More, Share, Camera & Quick Upload */}
             <div className="order-card-photo-actions">
               <button
                 type="button"
@@ -362,6 +397,19 @@ export const OrderCard = React.memo(function OrderCard({
                   <circle cx="12" cy="12" r="3" />
                 </svg>
                 <span>View ({photos.length})</span>
+              </button>
+
+              <button
+                type="button"
+                className="btn-card-share-photo"
+                onClick={handleShareLatestPhoto}
+                disabled={isSharingPhoto}
+                title="फोटो WhatsApp पर भेजें"
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.3">
+                  <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" />
+                </svg>
+                <span>{isSharingPhoto ? '...' : 'Share'}</span>
               </button>
 
               <button

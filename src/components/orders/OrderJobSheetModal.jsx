@@ -22,7 +22,7 @@ export function OrderJobSheetModal({ isOpen, onClose, order }) {
       setPdfToast('⏳ PDF तैयार हो रही है, WhatsApp खुल रहा है...');
 
       // Allow DOM to update #printableSheet with the chosen section
-      await new Promise((r) => setTimeout(r, 80));
+      await new Promise((r) => setTimeout(r, 150));
 
       const cleanTruck = (order.truck_chassis_no || 'order').replace(/[^a-zA-Z0-9_-]/g, '_');
       const activeSec = sectionKey !== 'all'
@@ -71,7 +71,7 @@ export function OrderJobSheetModal({ isOpen, onClose, order }) {
       setSelectedSection(sectionKey);
       setPdfToast('Downloading PDF...');
 
-      await new Promise((r) => setTimeout(r, 80));
+      await new Promise((r) => setTimeout(r, 150));
 
       const cleanTruck = (order.truck_chassis_no || 'order').replace(/[^a-zA-Z0-9_-]/g, '_');
       const activeSec = sectionKey !== 'all'
@@ -398,9 +398,9 @@ export function OrderJobSheetModal({ isOpen, onClose, order }) {
         style={{
           position: 'fixed',
           top: '0px',
-          left: '0px',
+          left: '-9999px',
           width: '720px',
-          zIndex: -99999,
+          zIndex: -1,
           pointerEvents: 'none',
           visibility: 'visible',
           opacity: 1,
