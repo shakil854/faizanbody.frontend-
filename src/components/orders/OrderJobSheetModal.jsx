@@ -853,7 +853,7 @@ export function OrderJobSheetModal({ isOpen, onClose, order }) {
               </div>
 
               {/* Signatures for Single Slip */}
-              <div className="paper-signatures-block" style={{ marginTop: '60px' }}>
+              <div className="paper-signatures-block" style={{ marginTop: '40px' }}>
                 <div className="paper-sig-col">
                   <span className="paper-sig-label">M. D SIGNATURE</span>
                   <div className="paper-sig-underline">
@@ -863,11 +863,6 @@ export function OrderJobSheetModal({ isOpen, onClose, order }) {
                       <span className="paper-sig-text">{order.md_signature || ''}</span>
                     )}
                   </div>
-                </div>
-
-                <div className="paper-sig-col">
-                  <span className="paper-sig-label">कारीगर हस्ताक्षर (WORKER SIGN)</span>
-                  <div className="paper-sig-underline"></div>
                 </div>
               </div>
             </div>
