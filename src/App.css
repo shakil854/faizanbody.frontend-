@@ -10071,3 +10071,206 @@
   background: #15803d;
   transform: scale(1.1);
 }
+
+/* ========================================================
+   📦 ULTRA-LUXURY RESPONSIVE STOCK & INVENTORY MODALS
+   Mobile & Tablet Friendly with Full Touch Scroll
+   ======================================================== */
+
+.stock-modal-overlay {
+  position: fixed !important;
+  inset: 0 !important;
+  top: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
+  width: 100vw !important;
+  height: 100vh !important;
+  height: 100dvh !important;
+  background: rgba(9, 14, 26, 0.75) !important;
+  backdrop-filter: blur(12px) !important;
+  -webkit-backdrop-filter: blur(12px) !important;
+  z-index: 10000 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  padding: 1rem !important;
+  box-sizing: border-box !important;
+  animation: stockBackdropFade 0.2s cubic-bezier(0.16, 1, 0.3, 1) !important;
+}
+
+@keyframes stockBackdropFade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes stockModalScale {
+  from { opacity: 0; transform: scale(0.94) translateY(12px); }
+  to { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+.stock-modal-card {
+  background: #ffffff !important;
+  width: 100% !important;
+  max-width: 540px !important;
+  max-height: 88vh !important;
+  max-height: 88dvh !important;
+  border-radius: 20px !important;
+  box-shadow: 0 25px 65px rgba(15, 23, 42, 0.35), 0 0 0 1px rgba(226, 232, 240, 0.8) !important;
+  border: 1px solid #e2e8f0 !important;
+  display: flex !important;
+  flex-direction: column !important;
+  overflow: hidden !important;
+  position: relative !important;
+  margin: auto !important;
+  animation: stockModalScale 0.22s cubic-bezier(0.16, 1, 0.3, 1) !important;
+}
+
+.stock-modal-card.modal-sm {
+  max-width: 460px !important;
+}
+
+.stock-modal-card.modal-lg {
+  max-width: 620px !important;
+}
+
+.stock-modal-header {
+  background: #ffffff !important;
+  border-bottom: 1px solid #e2e8f0 !important;
+  padding: 1rem 1.25rem !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  gap: 0.75rem !important;
+  flex-shrink: 0 !important;
+  position: relative !important;
+  z-index: 2 !important;
+}
+
+.stock-header-title-box {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 2px !important;
+  min-width: 0 !important;
+}
+
+.stock-header-badge {
+  display: inline-block !important;
+  align-self: flex-start !important;
+  font-size: 0.7rem !important;
+  font-weight: 700 !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.05em !important;
+  color: #2563eb !important;
+  background: #eff6ff !important;
+  border: 1px solid #dbeafe !important;
+  padding: 1px 7px !important;
+  border-radius: 4px !important;
+  margin-bottom: 2px !important;
+}
+
+.stock-header-title {
+  margin: 0 !important;
+  font-size: 1.18rem !important;
+  font-weight: 800 !important;
+  color: #0f172a !important;
+  letter-spacing: -0.01em !important;
+  line-height: 1.25 !important;
+}
+
+.stock-header-subtitle {
+  margin: 0 !important;
+  font-size: 0.78rem !important;
+  color: #64748b !important;
+  line-height: 1.3 !important;
+}
+
+.stock-close-circle-btn {
+  width: 34px !important;
+  height: 34px !important;
+  border-radius: 50% !important;
+  background: #f1f5f9 !important;
+  border: 1px solid #e2e8f0 !important;
+  color: #64748b !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  cursor: pointer !important;
+  flex-shrink: 0 !important;
+  font-size: 0.95rem !important;
+  transition: all 0.2s ease !important;
+}
+
+.stock-close-circle-btn:hover {
+  background: #fee2e2 !important;
+  color: #dc2626 !important;
+  border-color: #fecaca !important;
+}
+
+.stock-modal-form-shell {
+  display: flex !important;
+  flex-direction: column !important;
+  flex: 1 1 auto !important;
+  min-height: 0 !important;
+  overflow: hidden !important;
+}
+
+.stock-modal-body {
+  flex: 1 1 auto !important;
+  min-height: 0 !important;
+  overflow-y: auto !important;
+  -webkit-overflow-scrolling: touch !important;
+  padding: 1.25rem !important;
+  background: #ffffff !important;
+  overscroll-behavior: contain !important;
+}
+
+.stock-modal-footer {
+  flex-shrink: 0 !important;
+  padding: 0.85rem 1.25rem !important;
+  background: #f8fafc !important;
+  border-top: 1px solid #e2e8f0 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: flex-end !important;
+  gap: 0.75rem !important;
+  z-index: 2 !important;
+}
+
+.stock-two-col-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.85rem;
+}
+
+/* Tablet & Mobile Responsiveness */
+@media (max-width: 640px) {
+  .stock-modal-overlay {
+    align-items: flex-end !important;
+    padding: 0 !important;
+  }
+
+  .stock-modal-card {
+    max-width: 100% !important;
+    max-height: 90vh !important;
+    max-height: 90dvh !important;
+    border-bottom-left-radius: 0 !important;
+    border-bottom-right-radius: 0 !important;
+    border-top-left-radius: 22px !important;
+    border-top-right-radius: 22px !important;
+    margin: 0 !important;
+  }
+
+  .stock-modal-body {
+    padding: 1rem !important;
+  }
+
+  .stock-two-col-grid {
+    grid-template-columns: 1fr !important;
+    gap: 0.75rem !important;
+  }
+
+  .stock-modal-footer {
+    padding: 0.75rem 1rem !important;
+  }
+}

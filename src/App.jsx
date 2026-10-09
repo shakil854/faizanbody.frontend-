@@ -6,10 +6,12 @@ import { AppHeader } from './components/common/AppHeader';
 import { HomePage } from './components/home/HomePage';
 import { WorkersPage } from './components/workers/WorkersPage';
 import { OrdersPage } from './components/orders/OrdersPage';
+import { StockPage } from './components/stock/StockPage';
 import { WorkerFormModal } from './components/workers/WorkerFormModal';
 import { Snackbar } from './components/workers/Snackbar';
 import { BottomNav } from './components/common/BottomNav';
 import { workerService } from './services/workerService';
+import { stockService } from './services/stockService';
 import { isLeavingSoon } from './utils/dateAlerts';
 import './App.css';
 
@@ -20,6 +22,7 @@ export function App() {
     const hash = window.location.hash;
     if (hash === '#workers') return 'workers';
     if (hash === '#orders') return 'orders';
+    if (hash === '#stock') return 'stock';
     return 'home';
   });
 
@@ -28,8 +31,10 @@ export function App() {
   const [snackbar, setSnackbar] = useState({ message: '', type: 'info' });
   const [workerCount, setWorkerCount] = useState(0);
   const [alertCount, setAlertCount] = useState(0);
+  const [stockCount, setStockCount] = useState(0);
+  const [lowStockCount, setLowStockCount] = useState(0);
 
-  // Keep track of worker count & 5-day leaving alerts for nav badge
+  // Keep track of worker count & 5-day leaving alerts & stock counts for nav badges
   useEffect(() => {
     if (!isAuthenticated) return;
 
@@ -43,6 +48,25 @@ export function App() {
         }
       })
       .catch(() => {});
+
+    stockService
+      .getItems()
+      .then((res) => {
+        if (res && res.data) {
+          setStockCount(res.data.length);
+          const low = res.data.filter((i) => Number(i.quantity) <= Number(i.min_alert_quantity)).length;
+          setLowStockCount(low);
+        }
+      })
+      .catch(() => {});
+
+    const unsubStock = stockService.subscribeItems((items) => {
+      setStockCount(items.length);
+      const low = items.filter((i) => Number(i.quantity) <= Number(i.min_alert_quantity)).length;
+      setLowStockCount(low);
+    });
+
+    return () => unsubStock();
   }, [currentPage, isAuthenticated]);
 
   // Sync hash with browser history for Android back gesture / back button
@@ -51,12 +75,14 @@ export function App() {
       const hash = window.location.hash;
       if (hash === '#workers') setCurrentPage('workers');
       else if (hash === '#orders') setCurrentPage('orders');
+      else if (hash === '#stock') setCurrentPage('stock');
       else setCurrentPage('home');
     };
 
     window.addEventListener('hashchange', handleHashChange);
     return () => window.removeEventListener('hashchange', handleHashChange);
   }, []);
+
 
   // Native Android Capacitor hardware back button & status bar integration
   useEffect(() => {
@@ -175,6 +201,12 @@ export function App() {
           />
         )}
 
+        {currentPage === 'stock' && (
+          <StockPage
+            onBackToHome={() => navigateTo('home')}
+          />
+        )}
+
         {currentPage === 'workers' && (
           <WorkersPage
             onBackToHome={() => navigateTo('home')}
@@ -189,6 +221,8 @@ export function App() {
           onTabChange={navigateTo}
           workerCount={workerCount}
           alertCount={alertCount}
+          stockCount={stockCount}
+          lowStockCount={lowStockCount}
         />
       </div>
 

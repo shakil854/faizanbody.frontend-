@@ -4,7 +4,7 @@ import React from 'react';
  * Ultra-Luxury Bottom Navigation Bar (Compact & Sleek)
  * High-fidelity vector icons, smooth pill indicator, and red notification badge for leaving alerts.
  */
-export function BottomNav({ activeTab, onTabChange, workerCount, alertCount = 0 }) {
+export function BottomNav({ activeTab, onTabChange, workerCount, alertCount = 0, stockCount = 0, lowStockCount = 0 }) {
   return (
     <nav className="mobile-bottom-bar android-nav-bar luxury-bottom-bar" aria-label="App Navigation">
       <div className="bottom-nav-container">
@@ -109,7 +109,66 @@ export function BottomNav({ activeTab, onTabChange, workerCount, alertCount = 0 
           <span className="nav-label">Orders</span>
         </button>
 
-        {/* Tab 3: Workers */}
+        {/* Tab 3: Stock / Materials Inventory */}
+        <button
+          type="button"
+          className={`bottom-nav-item ${activeTab === 'stock' ? 'active' : ''}`}
+          onClick={() => onTabChange('stock')}
+          aria-label="Stock Inventory"
+        >
+          <div className="nav-icon-pill">
+            <svg
+              className="nav-svg-icon"
+              width="20"
+              height="20"
+              viewBox="0 0 24 24"
+              fill="none"
+              xmlns="http://www.w3.org/2000/svg"
+            >
+              {activeTab === 'stock' ? (
+                <>
+                  <path
+                    d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"
+                    fill="url(#navActiveStockGrad)"
+                  />
+                  <path d="m3.3 7 8.7 5 8.7-5" stroke="#ffffff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                  <path d="M12 22V12" stroke="#ffffff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                  <defs>
+                    <linearGradient id="navActiveStockGrad" x1="2" y1="2" x2="22" y2="22" gradientUnits="userSpaceOnUse">
+                      <stop stopColor="#2563eb" />
+                      <stop offset="1" stopColor="#1d4ed8" />
+                    </linearGradient>
+                  </defs>
+                </>
+              ) : (
+                <>
+                  <path
+                    d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"
+                    stroke="#64748b"
+                    strokeWidth="1.8"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                  <path d="m3.3 7 8.7 5 8.7-5" stroke="#64748b" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+                  <path d="M12 22V12" stroke="#64748b" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+                </>
+              )}
+            </svg>
+
+            {/* Red Alert Notification Badge for low stock materials */}
+            {lowStockCount > 0 ? (
+              <span className="nav-alert-badge" title={`${lowStockCount} material(s) low on stock`}>
+                <span className="alert-pulse-ring"></span>
+                {lowStockCount}
+              </span>
+            ) : stockCount !== undefined && stockCount > 0 ? (
+              <span className="nav-badge-dot">{stockCount}</span>
+            ) : null}
+          </div>
+          <span className="nav-label">Stock</span>
+        </button>
+
+        {/* Tab 4: Workers */}
         <button
           type="button"
           className={`bottom-nav-item ${activeTab === 'workers' ? 'active' : ''}`}
@@ -194,3 +253,4 @@ export function BottomNav({ activeTab, onTabChange, workerCount, alertCount = 0 
 }
 
 export default BottomNav;
+
