@@ -20,7 +20,7 @@ export function StockDeleteModal({ isOpen, onClose, onConfirm, item, isDeleting,
   );
 
   return (
-    <div className="modal-backdrop" onClick={onClose}>
+    <div className="modal-backdrop stock-delete-backdrop" onClick={onClose}>
       <div
         className="android-dialog luxury-dialog"
         onClick={(e) => e.stopPropagation()}

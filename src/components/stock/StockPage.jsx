@@ -140,6 +140,9 @@ export function StockPage({ onBackToHome }) {
       setIsDeleting(true);
       await stockService.deleteCategory(catId);
       showSnackbar('Category deleted successfully', 'success');
+      if (deletingCategory && selectedCategory === deletingCategory.name) {
+        setSelectedCategory('all');
+      }
       setDeletingCategory(null);
       fetchData({ force: true });
     } catch (err) {

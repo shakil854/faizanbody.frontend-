@@ -1396,7 +1396,7 @@
   bottom: 84px;
   left: 50%;
   transform: translateX(-50%);
-  z-index: 120;
+  z-index: 25000 !important;
   min-width: 280px;
   max-width: 90%;
   background: #090e1a;
@@ -10097,6 +10097,10 @@
   padding: 1rem !important;
   box-sizing: border-box !important;
   animation: stockBackdropFade 0.2s cubic-bezier(0.16, 1, 0.3, 1) !important;
+}
+
+.modal-backdrop.stock-delete-backdrop {
+  z-index: 20000 !important;
 }
 
 @keyframes stockBackdropFade {
