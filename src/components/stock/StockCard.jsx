@@ -7,6 +7,7 @@ export const StockCard = React.memo(function StockCard({
   onDelete,
   onAdjust,
   onViewHistory,
+  onOrder,
 }) {
   const isLow = Number(item.quantity) <= Number(item.min_alert_quantity);
 
@@ -26,6 +27,19 @@ export const StockCard = React.memo(function StockCard({
 
         {/* Compact Action Icons */}
         <div className="stock-card-actions">
+          {/* WhatsApp Order Button */}
+          <button
+            type="button"
+            className="stock-mini-btn order"
+            onClick={() => onOrder && onOrder(item)}
+            title="Order Material on WhatsApp (PDF)"
+            aria-label={`Order ${item.name} on WhatsApp`}
+          >
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" />
+            </svg>
+          </button>
+
           <button
             type="button"
             className="stock-mini-btn"
@@ -79,9 +93,14 @@ export const StockCard = React.memo(function StockCard({
 
         <div className="stock-status-wrap">
           {isLow ? (
-            <span className="stock-alert-pill">
+            <span
+              className="stock-alert-pill"
+              onClick={() => onOrder && onOrder(item)}
+              style={{ cursor: 'pointer' }}
+              title="Click to Order Material on WhatsApp (PDF)"
+            >
               <span className="pulse-alert-dot"></span>
-              Low Stock (Min {item.min_alert_quantity})
+              Low Stock (Order 📲)
             </span>
           ) : (
             <span className="stock-healthy-pill">

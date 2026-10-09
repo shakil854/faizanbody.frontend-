@@ -89,10 +89,31 @@ export async function generatePdfBlob(element, customFileName = 'Order_Slip.pdf'
     sbox.style.pointerEvents = 'none';
 
     const clone = domElem.cloneNode(true);
+    // Ensure clone is positioned at (0,0) and never retains offscreen (-9999px) styles
+    clone.style.position = 'relative';
+    clone.style.left = '0px';
+    clone.style.top = '0px';
+    clone.style.right = 'auto';
+    clone.style.bottom = 'auto';
+    clone.style.transform = 'none';
+    clone.style.margin = '0px';
     clone.style.width = '720px';
     clone.style.maxWidth = '720px';
+    clone.style.minHeight = 'auto';
     clone.style.boxSizing = 'border-box';
     clone.style.backgroundColor = '#ffffff';
+    clone.style.display = 'block';
+    clone.style.visibility = 'visible';
+    clone.style.opacity = '1';
+
+    // Strip any negative coordinates from children
+    clone.querySelectorAll('*').forEach((el) => {
+      if (el.style.left === '-9999px' || el.style.position === 'fixed') {
+        el.style.position = 'relative';
+        el.style.left = '0px';
+        el.style.top = '0px';
+      }
+    });
 
     const origImgs = domElem.querySelectorAll('img');
     const cloneImgs = clone.querySelectorAll('img');

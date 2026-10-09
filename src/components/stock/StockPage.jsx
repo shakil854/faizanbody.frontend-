@@ -6,6 +6,7 @@ import { StockQuickAdjustModal } from './StockQuickAdjustModal';
 import { StockCategoryModal } from './StockCategoryModal';
 import { StockHistoryModal } from './StockHistoryModal';
 import { StockDeleteModal } from './StockDeleteModal';
+import { StockOrderModal } from './StockOrderModal';
 import { StockFab } from './StockFab';
 import { Snackbar } from '../workers/Snackbar';
 import { useAuth } from '../../context/AuthContext';
@@ -33,6 +34,9 @@ export function StockPage({ onBackToHome }) {
 
   const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
   const [historyItem, setHistoryItem] = useState(null);
+
+  const [isOrderModalOpen, setIsOrderModalOpen] = useState(false);
+  const [orderingItem, setOrderingItem] = useState(null);
 
   const [deletingItem, setDeletingItem] = useState(null);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -454,6 +458,10 @@ export function StockPage({ onBackToHome }) {
                     setHistoryItem(it);
                     setIsHistoryModalOpen(true);
                   }}
+                  onOrder={(it) => {
+                    setOrderingItem(it);
+                    setIsOrderModalOpen(true);
+                  }}
                 />
               ))}
             </div>
@@ -533,6 +541,16 @@ export function StockPage({ onBackToHome }) {
         isDeleting={isDeleting}
         onClose={() => setDeletingCategory(null)}
         onConfirm={handleDeleteCategoryConfirm}
+      />
+
+      {/* Material WhatsApp Purchase Order Modal */}
+      <StockOrderModal
+        isOpen={isOrderModalOpen}
+        item={orderingItem}
+        onClose={() => {
+          setIsOrderModalOpen(false);
+          setOrderingItem(null);
+        }}
       />
 
       {/* Global Snackbar Toast */}

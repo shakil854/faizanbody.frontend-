@@ -10391,6 +10391,19 @@
   border-color: #bfdbfe !important;
 }
 
+.stock-mini-btn.order {
+  background: #f0fdf4 !important;
+  color: #16a34a !important;
+  border-color: #bbf7d0 !important;
+}
+
+.stock-mini-btn.order:hover {
+  background: #dcfce7 !important;
+  color: #15803d !important;
+  border-color: #86efac !important;
+  transform: scale(1.06) !important;
+}
+
 .stock-mini-btn.delete:hover {
   background: #fef2f2 !important;
   color: #dc2626 !important;
