@@ -295,106 +295,99 @@ export function StockPage({ onBackToHome }) {
           </div>
         </div>
 
-        {/* Category Filter Tabs Bar (with inline + Category button as requested) */}
-        <div
-          style={{
-            display: 'flex',
-            gap: '0.5rem',
-            overflowX: 'auto',
-            paddingBottom: '0.75rem',
-            marginBottom: '0.85rem',
-            scrollbarWidth: 'none',
-          }}
-        >
-          {/* All Tab */}
-          <button
-            type="button"
-            onClick={() => setSelectedCategory('all')}
-            style={{
-              whiteSpace: 'nowrap',
-              padding: '0.4rem 0.85rem',
-              borderRadius: '20px',
-              border: selectedCategory === 'all' ? '1px solid #2563eb' : '1px solid #e2e8f0',
-              background: selectedCategory === 'all' ? '#2563eb' : '#ffffff',
-              color: selectedCategory === 'all' ? '#ffffff' : '#475569',
-              fontWeight: 600,
-              fontSize: '0.85rem',
-              cursor: 'pointer',
-              boxShadow: '0 1px 2px rgba(0,0,0,0.03)',
-            }}
-          >
-            All Items ({totalItemsCount})
-          </button>
+        {/* Smart Category & Status Filter Bar (Zero Horizontal Scroll) */}
+        <div className="stock-filter-bar">
+          {/* Status Quick Filters */}
+          <div className="stock-filter-left">
+            <button
+              type="button"
+              className={`stock-filter-tab ${selectedCategory === 'all' ? 'active' : ''}`}
+              onClick={() => setSelectedCategory('all')}
+            >
+              All Items ({totalItemsCount})
+            </button>
 
-          {/* Low Stock Filter Tab */}
-          <button
-            type="button"
-            onClick={() => setSelectedCategory('low_stock')}
-            style={{
-              whiteSpace: 'nowrap',
-              padding: '0.4rem 0.85rem',
-              borderRadius: '20px',
-              border: selectedCategory === 'low_stock' ? '1px solid #dc2626' : '1px solid #fecaca',
-              background: selectedCategory === 'low_stock' ? '#dc2626' : '#fef2f2',
-              color: selectedCategory === 'low_stock' ? '#ffffff' : '#991b1b',
-              fontWeight: 600,
-              fontSize: '0.85rem',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '4px',
-            }}
-          >
-            ⚠️ Low Stock ({lowStockCount})
-          </button>
+            <button
+              type="button"
+              className={`stock-filter-tab low-stock ${selectedCategory === 'low_stock' ? 'active' : ''}`}
+              onClick={() => setSelectedCategory('low_stock')}
+            >
+              ⚠️ Low Stock ({lowStockCount})
+            </button>
+          </div>
 
-          {/* Dynamic Categories */}
-          {categories.map((cat) => {
-            const isSelected = selectedCategory === cat.name;
-            const catItemCount = items.filter((i) => i.category_name === cat.name).length;
-            return (
-              <button
-                key={cat.id || cat.name}
-                type="button"
-                onClick={() => setSelectedCategory(cat.name)}
-                style={{
-                  whiteSpace: 'nowrap',
-                  padding: '0.4rem 0.85rem',
-                  borderRadius: '20px',
-                  border: isSelected ? '1px solid #2563eb' : '1px solid #e2e8f0',
-                  background: isSelected ? '#2563eb' : '#ffffff',
-                  color: isSelected ? '#ffffff' : '#475569',
-                  fontWeight: 600,
-                  fontSize: '0.85rem',
-                  cursor: 'pointer',
-                  boxShadow: '0 1px 2px rgba(0,0,0,0.03)',
+          {/* Category Dropdown Picker & Inline Add */}
+          <div className="stock-filter-right">
+            <div className="stock-category-dropdown-wrap">
+              <span className="stock-category-dropdown-icon">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
+                </svg>
+              </span>
+              <select
+                value={selectedCategory === 'all' || selectedCategory === 'low_stock' ? '' : selectedCategory}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  if (val === '__add__') {
+                    setIsCategoryModalOpen(true);
+                  } else if (val === '') {
+                    setSelectedCategory('all');
+                  } else {
+                    setSelectedCategory(val);
+                  }
                 }}
+                className={`stock-category-select ${selectedCategory !== 'all' && selectedCategory !== 'low_stock' ? 'has-selection' : ''}`}
+                aria-label="Filter by category"
               >
-                {cat.name} ({catItemCount})
-              </button>
-            );
-          })}
+                <option value="">
+                  {categories.length === 0 ? 'No Categories' : `Categories (${categories.length}) ▾`}
+                </option>
+                {categories.map((cat) => {
+                  const catItemCount = items.filter((i) => i.category_name === cat.name).length;
+                  return (
+                    <option key={cat.id || cat.name} value={cat.name}>
+                      {cat.name} ({catItemCount})
+                    </option>
+                  );
+                })}
+                <option value="__add__">+ Add / Manage Categories...</option>
+              </select>
+              <svg className="stock-chevron-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="6 9 12 15 18 9" />
+              </svg>
+            </div>
 
-          {/* Inline "+ Category" button right in the category tabs row */}
-          <button
-            type="button"
-            onClick={() => setIsCategoryModalOpen(true)}
-            style={{
-              whiteSpace: 'nowrap',
-              padding: '0.4rem 0.85rem',
-              borderRadius: '20px',
-              border: '1px dashed #2563eb',
-              background: '#eff6ff',
-              color: '#2563eb',
-              fontWeight: 700,
-              fontSize: '0.85rem',
-              cursor: 'pointer',
-            }}
-            title="Add category directly here"
-          >
-            + Add Category
-          </button>
+            <button
+              type="button"
+              className="stock-inline-add-cat-btn"
+              onClick={() => setIsCategoryModalOpen(true)}
+              title="Add new category"
+            >
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+                <line x1="12" y1="5" x2="12" y2="19" />
+                <line x1="5" y1="12" x2="19" y2="12" />
+              </svg>
+              Category
+            </button>
+          </div>
         </div>
+
+        {/* Active Category Filter Tag with 1-Click Clear */}
+        {selectedCategory !== 'all' && selectedCategory !== 'low_stock' && (
+          <div className="stock-active-filter-banner">
+            <span className="stock-active-filter-label">
+              Category: <strong>{selectedCategory}</strong> ({filteredItems.length} items)
+            </span>
+            <button
+              type="button"
+              className="stock-active-filter-clear-btn"
+              onClick={() => setSelectedCategory('all')}
+              title="Clear category filter"
+            >
+              ✕ Clear Filter
+            </button>
+          </div>
+        )}
 
         {/* Stock Items Grid */}
         <div className="workers-list-wrapper">

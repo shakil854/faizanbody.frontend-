@@ -22,7 +22,7 @@ export function StockCategoryModal({
     e.preventDefault();
     const trimmed = newCategoryName.trim();
     if (!trimmed) {
-      setError('Please enter category name (कैटेगरी का नाम लिखें)');
+      setError('Please enter category name');
       return;
     }
 
