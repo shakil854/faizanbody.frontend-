@@ -390,169 +390,369 @@ export function OrderJobSheetModal({ isOpen, onClose, order }) {
 
       {/* ========================================================
           BACKGROUND PRINTABLE PAPER CONTAINER
-          Used by pdfGenerator to create exact 2-page or 1-page A4 PDF.
+          Exact 1:1 replica of Faizan Body physical paper job sheets.
+          - Full Order: Strictly 2 Pages (#pdf-page-1 and #pdf-page-2)
+          - Single Module: Strictly 1 Page (#pdf-single-page) with ONLY Chassis & Shade No
           ======================================================== */}
       <div
         style={{
           position: 'fixed',
-          top: '0',
-          left: '-9999px',
-          width: '794px',
+          top: '0px',
+          left: '0px',
+          width: '720px',
           zIndex: -99999,
           pointerEvents: 'none',
-          opacity: 0.01,
+          visibility: 'visible',
+          opacity: 1,
           backgroundColor: '#ffffff',
         }}
         aria-hidden="true"
       >
-        <div className="printable-sheet-paper" id="printableSheet">
+        <div id="printableSheet">
           {selectedSection === 'all' ? (
             /* ========================================================
-               CASE A: FULL COMPLETE WORK ORDER (STRICTLY 2 PAGES)
+               CASE A: FULL COMPLETE WORK ORDER (EXACTLY 2 PAGES)
                ======================================================== */
-            <div className="pdf-two-page-wrapper">
-              {/* --- PAGE 1 OF 2 --- */}
-              <div className="pdf-page-container pdf-page-1">
-                <div className="sheet-top-header">
-                  <div className="sheet-brand-heading">
-                    <h2 className="workshop-name-title">FAIZAN BODY WORKS</h2>
-                    <span className="workshop-slip-type">COMPLETE WORK ORDER (पेज 1/2)</span>
+            <div className="paper-full-wrapper">
+              {/* ===== PAGE 1 OF 2 (Matches Photo 2) ===== */}
+              <div className="paper-sheet-page" id="pdf-page-1">
+                {/* Header Rows */}
+                <div className="paper-header-block">
+                  <div className="paper-hdr-row">
+                    <div className="paper-hdr-field">
+                      <span className="paper-hdr-label">Order DATE :</span>
+                      <span className="paper-hdr-underline">{order.order_date || ''}</span>
+                    </div>
+                    <div className="paper-hdr-field">
+                      <span className="paper-hdr-label">Condison :</span>
+                      <span className="paper-hdr-underline">{order.condition_text || ''}</span>
+                    </div>
                   </div>
 
-                  {/* Prominent Truck / Chassis No & Shade No */}
-                  <div className="sheet-prominent-truck-strip">
-                    <div className="truck-prominent-card">
-                      <span className="prominent-card-title">Truck / Chassis No *</span>
-                      <div className="prominent-card-val-row">
-                        <span className="truck-card-icon">
-                          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#1d4ed8" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
-                            <rect x="1" y="3" width="15" height="13" />
-                            <polygon points="16 8 20 8 23 11 23 16 16 8" />
-                            <circle cx="5.5" cy="18.5" r="2.5" />
-                            <circle cx="18.5" cy="18.5" r="2.5" />
-                          </svg>
-                        </span>
-                        <span className="truck-chassis-prominent-number">
-                          {order.truck_chassis_no || '________________'}
-                        </span>
+                  <div className="paper-hdr-row">
+                    <div className="paper-hdr-field" style={{ width: '100%' }}>
+                      <span className="paper-hdr-label">Owener Name :</span>
+                      <span className="paper-hdr-underline">{order.owner_name || ''}</span>
+                    </div>
+                  </div>
+
+                  <div className="paper-hdr-row">
+                    <div className="paper-hdr-field">
+                      <span className="paper-hdr-label">Mo. Number :</span>
+                      <span className="paper-hdr-underline">{order.mobile_number || ''}</span>
+                    </div>
+                    <div className="paper-hdr-field">
+                      <span className="paper-hdr-label">ENTRY DATE:</span>
+                      <span className="paper-hdr-underline">{order.entry_date || ''}</span>
+                    </div>
+                  </div>
+
+                  <div className="paper-hdr-row">
+                    <div className="paper-hdr-field">
+                      <span className="paper-hdr-label">Truck/Chassis No :</span>
+                      <span className="paper-hdr-underline highlight-bold">{order.truck_chassis_no || ''}</span>
+                    </div>
+                    <div className="paper-hdr-field">
+                      <span className="paper-hdr-label">Shade No :</span>
+                      <span className="paper-hdr-underline highlight-bold">{order.shade_no || ''}</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="paper-line-divider"></div>
+
+                {/* Section 1: केबिन वर्क (CABIN WORK) */}
+                <div className="paper-section-block">
+                  <div className="paper-sec-top-line">
+                    <span className="paper-sec-title">केबिन वर्क (CABIN WORK)</span>
+                    <div className="paper-three-boxes">
+                      <div className="paper-rect-box">{order.cabin_work?.boxes?.[0] || ''}</div>
+                      <div className="paper-rect-box">{order.cabin_work?.boxes?.[1] || ''}</div>
+                      <div className="paper-rect-box">{order.cabin_work?.boxes?.[2] || ''}</div>
+                    </div>
+                  </div>
+
+                  <div className="paper-items-list">
+                    {[
+                      { key: 'moro', label: 'मोरो:' },
+                      { key: 'peeth', label: 'पीठ:' },
+                      { key: 'panal_chhapni', label: 'पानल / दरवाज़ा की छापनी:' },
+                      { key: 'paga_khidki', label: 'पगा की खिड़की:' },
+                      { key: 'dashboard_prakar', label: 'डेस्कबोर्ड प्रकार:' },
+                      { key: 'anya_kaam', label: 'अन्य काम:' },
+                    ].map((item) => {
+                      const itemData = order.cabin_work?.items?.[item.key] || { value: '', done: false };
+                      return (
+                        <div key={item.key} className="paper-item-row right-check">
+                          <span className="paper-item-label">{item.label}</span>
+                          <span className="paper-item-underline">{itemData.value || ''}</span>
+                          <div className={`paper-checkbox-box ${itemData.done ? 'checked' : ''}`}>
+                            {itemData.done && '✓'}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                <div className="paper-line-divider"></div>
+
+                {/* Section 2: अंदर का काम: */}
+                <div className="paper-section-block">
+                  <div className="paper-sec-top-line">
+                    <span className="paper-sec-title">अंदर का काम:</span>
+                    <div className="paper-three-boxes">
+                      <div className="paper-rect-box">{order.inside_work?.boxes?.[0] || ''}</div>
+                      <div className="paper-rect-box">{order.inside_work?.boxes?.[1] || ''}</div>
+                      <div className="paper-rect-box">{order.inside_work?.boxes?.[2] || ''}</div>
+                    </div>
+                  </div>
+
+                  <div className="paper-items-list">
+                    {[
+                      { key: 'niyamit_furniture_four_t', label: 'नियमित / फर्नीचर / फोर टी:' },
+                      { key: 'speaker_size', label: 'स्पीकर साइज:' },
+                      { key: 'sofa_seat', label: 'सोफा सीट:' },
+                      { key: 'carrier', label: 'कैरियल:' },
+                      { key: 'anya_kaam', label: 'अन्य काम:' },
+                    ].map((item) => {
+                      const itemData = order.inside_work?.items?.[item.key] || { value: '', done: false };
+                      return (
+                        <div key={item.key} className="paper-item-row right-check">
+                          <span className="paper-item-label">{item.label}</span>
+                          <span className="paper-item-underline">{itemData.value || ''}</span>
+                          <div className={`paper-checkbox-box ${itemData.done ? 'checked' : ''}`}>
+                            {itemData.done && '✓'}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                <div className="paper-line-divider"></div>
+
+                {/* Section 3: बॉडी वर्क (BODY WORK) */}
+                <div className="paper-section-block">
+                  <div className="paper-sec-top-line">
+                    <span className="paper-sec-title">बॉडी वर्क (BODY WORK)</span>
+                    <div className="paper-three-boxes">
+                      <div className="paper-rect-box">{order.body_work?.boxes?.[0] || ''}</div>
+                      <div className="paper-rect-box">{order.body_work?.boxes?.[1] || ''}</div>
+                      <div className="paper-rect-box">{order.body_work?.boxes?.[2] || ''}</div>
+                    </div>
+                  </div>
+
+                  <div className="paper-items-list">
+                    <div className="paper-item-row right-check">
+                      <span className="paper-item-label">रनर:</span>
+                      <span className="paper-item-underline">{order.body_work?.items?.runner?.value || ''}</span>
+                      <div className={`paper-checkbox-box ${order.body_work?.items?.runner?.done ? 'checked' : ''}`}>
+                        {order.body_work?.items?.runner?.done && '✓'}
                       </div>
                     </div>
 
-                    <div className="shade-prominent-card">
-                      <span className="prominent-card-title">Shade No</span>
-                      <span className="shade-prominent-number">
-                        {order.shade_no || '—'}
-                      </span>
+                    <div className="paper-item-row right-check">
+                      <span className="paper-item-label">धोखा: लम्बाई/मात्रा :</span>
+                      <span className="paper-item-underline">{order.body_work?.items?.dhokha_lambai_matra?.value || ''}</span>
+                      <div className={`paper-checkbox-box ${order.body_work?.items?.dhokha_lambai_matra?.done ? 'checked' : ''}`}>
+                        {order.body_work?.items?.dhokha_lambai_matra?.done && '✓'}
+                      </div>
+                    </div>
+
+                    <div className="paper-item-row right-check">
+                      <span className="paper-item-label">साइड ऊँचाई:</span>
+                      <span className="paper-item-underline">{order.body_work?.items?.side_oonchai?.value || ''}</span>
+                      <div className={`paper-checkbox-box ${order.body_work?.items?.side_oonchai?.done ? 'checked' : ''}`}>
+                        {order.body_work?.items?.side_oonchai?.done && '✓'}
+                      </div>
+                    </div>
+
+                    <div className="paper-item-row right-check">
+                      <span className="paper-item-label">साइड प्रकार: पतरा / प्लाई:</span>
+                      <span className="paper-item-underline">{order.body_work?.items?.side_prakar?.value || ''}</span>
+                      <div className={`paper-checkbox-box ${order.body_work?.items?.side_prakar?.done ? 'checked' : ''}`}>
+                        {order.body_work?.items?.side_prakar?.done && '✓'}
+                      </div>
+                    </div>
+
+                    <div className="paper-item-row right-check">
+                      <span className="paper-item-label">प्लेट की मोटाई/mm</span>
+                      <span className="paper-item-underline">{order.body_work?.items?.plate_motai_mm?.value || ''}</span>
+                      <div className={`paper-checkbox-box ${order.body_work?.items?.plate_motai_mm?.done ? 'checked' : ''}`}>
+                        {order.body_work?.items?.plate_motai_mm?.done && '✓'}
+                      </div>
+                    </div>
+
+                    <div className="paper-item-row right-check">
+                      <span className="paper-item-label">फालका प्रकार: लोखंड / प्लाई / लकड़ी:</span>
+                      <span className="paper-item-underline">{order.body_work?.items?.falka_prakar?.value || ''}</span>
+                      <div className={`paper-checkbox-box ${order.body_work?.items?.falka_prakar?.done ? 'checked' : ''}`}>
+                        {order.body_work?.items?.falka_prakar?.done && '✓'}
+                      </div>
+                    </div>
+
+                    <div className="paper-item-row right-check">
+                      <span className="paper-item-label">पीछे की जाली प्रकार :</span>
+                      <span className="paper-item-underline">{order.body_work?.items?.peeche_jaali_prakar?.value || ''}</span>
+                      <div className={`paper-checkbox-box ${order.body_work?.items?.peeche_jaali_prakar?.done ? 'checked' : ''}`}>
+                        {order.body_work?.items?.peeche_jaali_prakar?.done && '✓'}
+                      </div>
+                    </div>
+
+                    <div className="paper-item-row right-check">
+                      <span className="paper-item-label">साइड में खिड़की: ऊँचाई / लंबाई:</span>
+                      <span className="paper-item-underline" style={{ flex: 1.2 }}>{order.body_work?.items?.side_khidki?.value || ''}</span>
+                      <span className="paper-item-label" style={{ marginLeft: '8px' }}>बेल:</span>
+                      <span className="paper-item-underline" style={{ flex: 0.8 }}>{order.body_work?.items?.peeche_vel?.value || ''}</span>
+                      <div className={`paper-checkbox-box ${order.body_work?.items?.side_khidki?.done ? 'checked' : ''}`}>
+                        {order.body_work?.items?.side_khidki?.done && '✓'}
+                      </div>
+                    </div>
+
+                    <div className="paper-item-row right-check">
+                      <span className="paper-item-label">अन्य काम:</span>
+                      <span className="paper-item-underline">{order.body_work?.items?.anya_kaam?.value || ''}</span>
+                      <div className={`paper-checkbox-box ${order.body_work?.items?.anya_kaam?.done ? 'checked' : ''}`}>
+                        {order.body_work?.items?.anya_kaam?.done && '✓'}
+                      </div>
                     </div>
                   </div>
-
-                  {/* Full Order Header Rows */}
-                  <div className="sheet-header-line line-1">
-                    <div className="sheet-field-group">
-                      <span className="sheet-field-label">Order DATE :</span>
-                      <span className="sheet-field-underline">{order.order_date || '________________'}</span>
-                    </div>
-                    <div className="sheet-field-group">
-                      <span className="sheet-field-label">Condison :</span>
-                      <span className="sheet-field-underline">{order.condition_text || '________________'}</span>
-                    </div>
-                  </div>
-
-                  <div className="sheet-header-line line-2">
-                    <div className="sheet-field-group">
-                      <span className="sheet-field-label">Owener Name :</span>
-                      <span className="sheet-field-underline">{order.owner_name || '________________'}</span>
-                    </div>
-                    <div className="sheet-field-group">
-                      <span className="sheet-field-label">ENTRY DATE :</span>
-                      <span className="sheet-field-underline">{order.entry_date || '________________'}</span>
-                    </div>
-                  </div>
-
-                  <div className="sheet-header-line line-3">
-                    <div className="sheet-field-group">
-                      <span className="sheet-field-label">Mo. Number :</span>
-                      <span className="sheet-field-underline">{order.mobile_number || '________________'}</span>
-                    </div>
-                    <div className="sheet-field-group">
-                      <span className="sheet-field-label">Order No :</span>
-                      <span className="sheet-field-underline highlight-bold">{order.order_no || `#${order.id}`}</span>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="sheet-divider-line"></div>
-
-                {/* Page 1: Sections 1. Cabin Work, 2. Inside Work, 3. Body Work */}
-                <div className="sheet-sections-group">
-                  {page1Sections.map(renderSection)}
-                </div>
-
-                <div className="sheet-page-number-footer">
-                  <span>Faizan Body Works — Complete Order • Page 1 of 2</span>
                 </div>
               </div>
 
-              {/* STRICT HARD PAGE BREAK */}
-              <div className="html2pdf__page-break" style={{ pageBreakBefore: 'always', breakBefore: 'page' }}></div>
+              {/* ===== PAGE 2 OF 2 (Matches Photo 1) ===== */}
+              <div className="paper-sheet-page" id="pdf-page-2">
+                {/* Section 4: ऐसेसरीज (ACCESSORIES) */}
+                <div className="paper-section-block">
+                  <div className="paper-sec-top-line">
+                    <div className="paper-head-left-with-check">
+                      <div className="paper-checkbox-box"></div>
+                      <span className="paper-sec-title">ऐसेसरीज (ACCESSORIES)</span>
+                    </div>
+                    <div className="paper-three-boxes">
+                      <div className="paper-rect-box">{order.accessories?.boxes?.[0] || ''}</div>
+                      <div className="paper-rect-box">{order.accessories?.boxes?.[1] || ''}</div>
+                      <div className="paper-rect-box">{order.accessories?.boxes?.[2] || ''}</div>
+                    </div>
+                  </div>
 
-              {/* --- PAGE 2 OF 2 --- */}
-              <div className="pdf-page-container pdf-page-2">
-                <div className="sheet-top-header sheet-page2-header">
-                  <div className="sheet-page2-substrip">
-                    <div className="page2-brand">
-                      <strong>FAIZAN BODY WORKS</strong> — COMPLETE WORK ORDER (पेज 2/2)
-                    </div>
-                    <div className="page2-vehicle-ref">
-                      <span>Truck No: <strong>{order.truck_chassis_no || '—'}</strong></span>
-                      <span>Shade No: <strong>{order.shade_no || '—'}</strong></span>
-                      <span>Order: <strong>{order.order_no || `#${order.id}`}</strong></span>
-                    </div>
+                  <div className="paper-items-list">
+                    {[
+                      { key: 'bari_prakar', label: 'बारी प्रकार:' },
+                      { key: 'niyamit', label: 'नियमित:' },
+                      { key: 'anya_kaam', label: 'अन्य काम:' },
+                    ].map((item) => {
+                      const itemData = order.accessories?.items?.[item.key] || { value: '', done: false };
+                      return (
+                        <div key={item.key} className="paper-item-row left-check">
+                          <div className={`paper-checkbox-box ${itemData.done ? 'checked' : ''}`}>
+                            {itemData.done && '✓'}
+                          </div>
+                          <span className="paper-item-label">{item.label}</span>
+                          <span className="paper-item-underline">{itemData.value || ''}</span>
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
 
-                <div className="sheet-divider-line"></div>
+                {/* Section 5: माछरो (MACHRO) */}
+                <div className="paper-section-block" style={{ marginTop: '16px' }}>
+                  <div className="paper-sec-top-line">
+                    <div className="paper-head-left-with-check">
+                      <div className="paper-checkbox-box"></div>
+                      <span className="paper-sec-title">माछरो (MACHRO)</span>
+                    </div>
+                    <div className="paper-three-boxes">
+                      <div className="paper-rect-box">{order.machro?.boxes?.[0] || ''}</div>
+                      <div className="paper-rect-box">{order.machro?.boxes?.[1] || ''}</div>
+                      <div className="paper-rect-box">{order.machro?.boxes?.[2] || ''}</div>
+                    </div>
+                  </div>
 
-                {/* Page 2: Sections 4. Machro, 5. Accessories, 6. Finishing Work */}
-                <div className="sheet-sections-group">
-                  {page2Sections.map(renderSection)}
+                  <div className="paper-items-list">
+                    {[
+                      { key: 'plate_oonchai_thambhla', label: 'प्लेट से ऊँचाई / थांभला मात्रा:' },
+                      { key: 'side_pipe_matra_prakar', label: 'साइड में पाइप / मात्रा/प्रकार' },
+                      { key: 'bhaya_matra_prakar', label: 'भथा: मात्रा/प्रकार' },
+                      { key: 'dhar', label: 'द्वार:' },
+                      { key: 'top_pipe_angle_prakar', label: 'टोप पर पाइप / एंगल/ प्रकार' },
+                    ].map((item) => {
+                      const itemData = order.machro?.items?.[item.key] || { value: '', done: false };
+                      return (
+                        <div key={item.key} className="paper-item-row left-check">
+                          <div className={`paper-checkbox-box ${itemData.done ? 'checked' : ''}`}>
+                            {itemData.done && '✓'}
+                          </div>
+                          <span className="paper-item-label">{item.label}</span>
+                          <span className="paper-item-underline">{itemData.value || ''}</span>
+                        </div>
+                      );
+                    })}
+                  </div>
                 </div>
 
-                {/* Notes if present */}
+                <div className="paper-line-divider" style={{ margin: '14px 0' }}></div>
+
+                {/* Section 6: फिनिशिंग (Finishing) */}
+                <div className="paper-section-block">
+                  <div className="paper-items-list">
+                    {[
+                      { key: 'color', label: 'कलर (COLOR)' },
+                      { key: 'redium', label: 'रेडियम (REDIUM)' },
+                      { key: 'painting', label: 'पेंटिंग (PAINTING)' },
+                      { key: 'vayring', label: 'वायरिंग (VAYRING)' },
+                    ].map((item) => {
+                      const itemData = order.finishing_work?.[item.key] || { value: '', boxes: ['', '', ''], done: false };
+                      return (
+                        <div key={item.key} className="paper-item-row finishing-layout">
+                          <div className={`paper-checkbox-box ${itemData.done ? 'checked' : ''}`}>
+                            {itemData.done && '✓'}
+                          </div>
+                          <span className="paper-item-label">{item.label}</span>
+                          <span className="paper-item-underline">{itemData.value || ''}</span>
+                          <div className="paper-three-boxes">
+                            <div className="paper-rect-box">{itemData.boxes?.[0] || ''}</div>
+                            <div className="paper-rect-box">{itemData.boxes?.[1] || ''}</div>
+                            <div className="paper-rect-box">{itemData.boxes?.[2] || ''}</div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
                 {order.notes && (
-                  <div className="sheet-notes-section">
-                    <span className="notes-label">विशेष टिप्पणी / Notes:</span>
-                    <span className="notes-content">{order.notes}</span>
+                  <div className="paper-notes-box" style={{ marginTop: '16px' }}>
+                    <span className="paper-notes-label">विशेष टिप्पणी / Notes:</span>
+                    <span className="paper-notes-text">{order.notes}</span>
                   </div>
                 )}
 
-                {/* Signatures on Page 2 */}
-                <div className="sheet-signature-section">
-                  <div className="signature-box">
-                    <div className="signature-line">
+                {/* Bottom Signatures (Matches Photo 1) */}
+                <div className="paper-signatures-block">
+                  <div className="paper-sig-col">
+                    <span className="paper-sig-label">M. D SIGNATURE</span>
+                    <div className="paper-sig-underline">
                       {order.md_signature && (order.md_signature.startsWith('data:image/') || order.md_signature.startsWith('http') || order.md_signature.startsWith('/')) ? (
-                        <img src={order.md_signature} alt="M.D Signature" className="signature-rendered-img" />
+                        <img src={order.md_signature} alt="M.D Signature" className="paper-sig-img" />
                       ) : (
-                        <span className="signature-val">{order.md_signature || ''}</span>
+                        <span className="paper-sig-text">{order.md_signature || ''}</span>
                       )}
                     </div>
-                    <span className="signature-title">M. D SIGNATURE</span>
                   </div>
 
-                  <div className="signature-box">
-                    <div className="signature-line">
+                  <div className="paper-sig-col">
+                    <span className="paper-sig-label">PARTY OWNER SIGNATURE</span>
+                    <div className="paper-sig-underline">
                       {order.party_owner_signature && (order.party_owner_signature.startsWith('data:image/') || order.party_owner_signature.startsWith('http') || order.party_owner_signature.startsWith('/')) ? (
-                        <img src={order.party_owner_signature} alt="Party Owner Signature" className="signature-rendered-img" />
+                        <img src={order.party_owner_signature} alt="Party Owner Signature" className="paper-sig-img" />
                       ) : (
-                        <span className="signature-val">{order.party_owner_signature || ''}</span>
+                        <span className="paper-sig-text">{order.party_owner_signature || ''}</span>
                       )}
                     </div>
-                    <span className="signature-title">PARTY OWNER SIGNATURE</span>
                   </div>
-                </div>
-
-                <div className="sheet-page-number-footer">
-                  <span>Faizan Body Works — Complete Order • Page 2 of 2</span>
                 </div>
               </div>
             </div>
@@ -560,73 +760,115 @@ export function OrderJobSheetModal({ isOpen, onClose, order }) {
             /* ========================================================
                CASE B: SINGLE MODULE SLIP (STRICTLY 1 PAGE)
                ONLY Chassis No & Shade No & Selected Module Details!
-               NO Owner Name, NO Mobile, NO Condition, NO Entry Date!
+               (NO Owner Name, NO Mobile, NO Condition, NO Entry Date!)
                ======================================================== */
-            <div className="pdf-single-page-wrapper">
-              <div className="sheet-single-module-header">
-                <div className="sheet-brand-heading">
-                  <h2 className="workshop-name-title">FAIZAN BODY WORKS</h2>
-                  <span className="workshop-slip-type">
-                    {ORDER_SECTIONS.findIndex((s) => s.key === selectedSection) + 1}. {activeSectionInfo?.titleHindi} ({activeSectionInfo?.titleEnglish}) — कार्य स्लिप
+            <div className="paper-sheet-page" id="pdf-single-page">
+              <div className="paper-single-header-strip">
+                <div className="paper-single-title-row">
+                  <h2 className="paper-shop-heading">FAIZAN BODY WORKS</h2>
+                  <span className="paper-slip-badge">
+                    {ORDER_SECTIONS.findIndex((s) => s.key === selectedSection) + 1}. {activeSectionInfo?.titleHindi} ({activeSectionInfo?.titleEnglish}) — कारीगर कार्य स्लिप
                   </span>
                 </div>
 
-                {/* ONLY Chassis No & Shade No (NO Owner, NO Date, NO Mobile!) */}
-                <div className="sheet-prominent-truck-strip">
-                  <div className="truck-prominent-card">
-                    <span className="prominent-card-title">Truck / Chassis No *</span>
-                    <div className="prominent-card-val-row">
-                      <span className="truck-card-icon">
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#1d4ed8" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
-                          <rect x="1" y="3" width="15" height="13" />
-                          <polygon points="16 8 20 8 23 11 23 16 16 8" />
-                          <circle cx="5.5" cy="18.5" r="2.5" />
-                          <circle cx="18.5" cy="18.5" r="2.5" />
-                        </svg>
-                      </span>
-                      <span className="truck-chassis-prominent-number">
-                        {order.truck_chassis_no || '________________'}
-                      </span>
+                {/* ONLY Chassis No & Shade No */}
+                <div className="paper-hdr-row" style={{ marginTop: '10px' }}>
+                  <div className="paper-hdr-field">
+                    <span className="paper-hdr-label">Truck/Chassis No :</span>
+                    <span className="paper-hdr-underline highlight-bold">{order.truck_chassis_no || ''}</span>
+                  </div>
+                  <div className="paper-hdr-field">
+                    <span className="paper-hdr-label">Shade No :</span>
+                    <span className="paper-hdr-underline highlight-bold">{order.shade_no || ''}</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="paper-line-divider" style={{ margin: '12px 0 16px' }}></div>
+
+              {/* RENDER THE SELECTED MODULE DETAILS ONLY */}
+              <div className="paper-single-module-content">
+                {selectedSection === 'finishing_work' ? (
+                  <div className="paper-section-block">
+                    <div className="paper-items-list">
+                      {[
+                        { key: 'color', label: 'कलर (COLOR)' },
+                        { key: 'redium', label: 'रेडियम (REDIUM)' },
+                        { key: 'painting', label: 'पेंटिंग (PAINTING)' },
+                        { key: 'vayring', label: 'वायरिंग (VAYRING)' },
+                      ].map((item) => {
+                        const itemData = order.finishing_work?.[item.key] || { value: '', boxes: ['', '', ''], done: false };
+                        return (
+                          <div key={item.key} className="paper-item-row finishing-layout" style={{ margin: '8px 0' }}>
+                            <div className={`paper-checkbox-box ${itemData.done ? 'checked' : ''}`}>
+                              {itemData.done && '✓'}
+                            </div>
+                            <span className="paper-item-label">{item.label}</span>
+                            <span className="paper-item-underline">{itemData.value || ''}</span>
+                            <div className="paper-three-boxes">
+                              <div className="paper-rect-box">{itemData.boxes?.[0] || ''}</div>
+                              <div className="paper-rect-box">{itemData.boxes?.[1] || ''}</div>
+                              <div className="paper-rect-box">{itemData.boxes?.[2] || ''}</div>
+                            </div>
+                          </div>
+                        );
+                      })}
                     </div>
                   </div>
+                ) : (
+                  <div className="paper-section-block">
+                    <div className="paper-sec-top-line">
+                      <span className="paper-sec-title">
+                        {activeSectionInfo?.titleHindi} ({activeSectionInfo?.titleEnglish})
+                      </span>
+                      <div className="paper-three-boxes">
+                        <div className="paper-rect-box">{order[selectedSection]?.boxes?.[0] || ''}</div>
+                        <div className="paper-rect-box">{order[selectedSection]?.boxes?.[1] || ''}</div>
+                        <div className="paper-rect-box">{order[selectedSection]?.boxes?.[2] || ''}</div>
+                      </div>
+                    </div>
 
-                  <div className="shade-prominent-card">
-                    <span className="prominent-card-title">Shade No</span>
-                    <span className="shade-prominent-number">
-                      {order.shade_no || '—'}
-                    </span>
+                    <div className="paper-items-list" style={{ marginTop: '12px' }}>
+                      {activeSectionInfo?.items.map((item) => {
+                        const itemData = order[selectedSection]?.items?.[item.key] || { value: '', done: false };
+                        return (
+                          <div key={item.key} className="paper-item-row right-check" style={{ margin: '8px 0' }}>
+                            <span className="paper-item-label">{item.label}:</span>
+                            <span className="paper-item-underline">{itemData.value || ''}</span>
+                            {item.extraKey && (
+                              <>
+                                <span className="paper-item-label" style={{ marginLeft: '8px' }}>{item.extraLabel}:</span>
+                                <span className="paper-item-underline" style={{ flex: 0.6 }}>{order[selectedSection]?.items?.[item.extraKey]?.value || ''}</span>
+                              </>
+                            )}
+                            <div className={`paper-checkbox-box ${itemData.done ? 'checked' : ''}`}>
+                              {itemData.done && '✓'}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
                   </div>
-                </div>
+                )}
               </div>
 
-              <div className="sheet-divider-line"></div>
-
-              {/* ONLY SELECTED MODULE CONTENT */}
-              <div className="sheet-single-section-body">
-                {renderSection(activeSectionInfo)}
-              </div>
-
-              {/* Worker & M.D Signatures */}
-              <div className="sheet-signature-section" style={{ marginTop: '2.5rem' }}>
-                <div className="signature-box">
-                  <div className="signature-line">
+              {/* Signatures for Single Slip */}
+              <div className="paper-signatures-block" style={{ marginTop: '60px' }}>
+                <div className="paper-sig-col">
+                  <span className="paper-sig-label">M. D SIGNATURE</span>
+                  <div className="paper-sig-underline">
                     {order.md_signature && (order.md_signature.startsWith('data:image/') || order.md_signature.startsWith('http') || order.md_signature.startsWith('/')) ? (
-                      <img src={order.md_signature} alt="M.D Signature" className="signature-rendered-img" />
+                      <img src={order.md_signature} alt="M.D Signature" className="paper-sig-img" />
                     ) : (
-                      <span className="signature-val">{order.md_signature || ''}</span>
+                      <span className="paper-sig-text">{order.md_signature || ''}</span>
                     )}
                   </div>
-                  <span className="signature-title">M. D SIGNATURE</span>
                 </div>
 
-                <div className="signature-box">
-                  <div className="signature-line"></div>
-                  <span className="signature-title">कारीगर हस्ताक्षर (WORKER SIGN)</span>
+                <div className="paper-sig-col">
+                  <span className="paper-sig-label">कारीगर हस्ताक्षर (WORKER SIGN)</span>
+                  <div className="paper-sig-underline"></div>
                 </div>
-              </div>
-
-              <div className="sheet-page-number-footer">
-                <span>Faizan Body Works — {activeSectionInfo?.titleHindi} स्लिप • 1 Page Slip</span>
               </div>
             </div>
           )}

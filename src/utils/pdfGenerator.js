@@ -39,86 +39,117 @@ export async function ensureHtml2PdfLoaded() {
  * Generate PDF Blob from an HTML element using an isolated sandbox
  */
 export async function generatePdfBlob(element, customFileName = 'Order_Slip.pdf') {
-  const html2pdf = await ensureHtml2PdfLoaded();
+  await ensureHtml2PdfLoaded();
 
-  // Create an off-screen sandbox container at fixed desktop A4 width (794px = standard A4 width at 96 DPI)
-  // This guarantees:
-  // 1. scrollY is ALWAYS 0 (never cuts off top header / Truck No / Shade No!)
-  // 2. Mobile screen width doesn't squash or wrap table cells
-  // 3. Independent of modal scroll state or user scroll position
-  const sandbox = document.createElement('div');
-  sandbox.id = 'pdf-render-sandbox';
-  sandbox.style.position = 'fixed';
-  sandbox.style.top = '0px';
-  sandbox.style.left = '0px';
-  sandbox.style.width = '794px';
-  sandbox.style.backgroundColor = '#ffffff';
-  sandbox.style.zIndex = '-99999';
-  sandbox.style.opacity = '0.01'; // Visible to DOM/canvas engine, hidden to user
-  sandbox.style.pointerEvents = 'none';
-  sandbox.style.overflow = 'visible';
+  const getJsPdf = () => {
+    if (window.jspdf && window.jspdf.jsPDF) return window.jspdf.jsPDF;
+    if (typeof window.jsPDF === 'function') return window.jsPDF;
+    return null;
+  };
 
-  // Clone the printable element
-  const clone = element.cloneNode(true);
-  clone.id = 'pdf-printable-clone';
-  clone.style.width = '794px';
-  clone.style.maxWidth = '794px';
-  clone.style.margin = '0';
-  clone.style.padding = '20px 24px';
-  clone.style.boxSizing = 'border-box';
-  clone.style.backgroundColor = '#ffffff';
-  clone.style.color = '#000000';
+  const JsPdf = getJsPdf();
+  const html2canvas = window.html2canvas;
 
-  // Ensure all signatures and images are properly linked in clone
-  const origImages = element.querySelectorAll('img');
-  const cloneImages = clone.querySelectorAll('img');
-  cloneImages.forEach((cImg, i) => {
-    if (origImages[i]) {
-      cImg.src = origImages[i].src;
-    }
-  });
+  const renderPageCanvas = async (domElem) => {
+    const sbox = document.createElement('div');
+    sbox.style.position = 'fixed';
+    sbox.style.top = '0px';
+    sbox.style.left = '0px';
+    sbox.style.width = '720px';
+    sbox.style.backgroundColor = '#ffffff';
+    sbox.style.zIndex = '-99999';
+    sbox.style.visibility = 'visible';
+    sbox.style.opacity = '1';
+    sbox.style.overflow = 'visible';
 
-  sandbox.appendChild(clone);
-  document.body.appendChild(sandbox);
+    const clone = domElem.cloneNode(true);
+    clone.style.width = '720px';
+    clone.style.maxWidth = '720px';
+    clone.style.boxSizing = 'border-box';
+    clone.style.backgroundColor = '#ffffff';
 
-  // Allow DOM to finish layout calculation
-  await new Promise((r) => setTimeout(r, 80));
+    const origImgs = domElem.querySelectorAll('img');
+    const cloneImgs = clone.querySelectorAll('img');
+    cloneImgs.forEach((img, i) => {
+      if (origImgs[i]) img.src = origImgs[i].src;
+    });
 
-  try {
-    const opt = {
-      margin: [6, 6, 6, 6],
-      filename: customFileName,
-      image: { type: 'jpeg', quality: 0.98 },
-      html2canvas: {
-        scale: 2,
-        useCORS: true,
-        logging: false,
-        backgroundColor: '#ffffff',
-        scrollY: 0,
-        scrollX: 0,
-        windowWidth: 794,
-        x: 0,
-        y: 0,
-      },
-      jsPDF: {
-        unit: 'mm',
-        format: 'a4',
-        orientation: 'portrait',
-      },
-      pagebreak: {
-        mode: ['css', 'legacy'],
-        before: '.html2pdf__page-break',
-      },
-    };
+    sbox.appendChild(clone);
+    document.body.appendChild(sbox);
 
-    const worker = html2pdf().set(opt).from(clone);
-    const blob = await worker.output('blob');
-    return blob;
-  } finally {
-    if (document.body.contains(sandbox)) {
-      document.body.removeChild(sandbox);
-    }
+    await new Promise((r) => setTimeout(r, 60));
+    const cvs = await html2canvas(clone, {
+      scale: 2,
+      useCORS: true,
+      backgroundColor: '#ffffff',
+      scrollY: 0,
+      scrollX: 0,
+      x: 0,
+      y: 0,
+      width: 720,
+      windowWidth: 720,
+      logging: false,
+    });
+
+    document.body.removeChild(sbox);
+    return cvs;
+  };
+
+  // Check if printing 2-page full order (has #pdf-page-1 and #pdf-page-2)
+  const p1 = document.getElementById('pdf-page-1');
+  const p2 = document.getElementById('pdf-page-2');
+
+  if (p1 && p2 && JsPdf && html2canvas) {
+    const canvas1 = await renderPageCanvas(p1);
+    const canvas2 = await renderPageCanvas(p2);
+
+    const pdf = new JsPdf('p', 'mm', 'a4');
+    const pdfWidth = pdf.internal.pageSize.getWidth(); // 210mm
+    const pdfHeight = pdf.internal.pageSize.getHeight(); // 297mm
+    const margin = 8;
+    const printWidth = pdfWidth - (margin * 2); // 194mm
+
+    // PAGE 1
+    const imgData1 = canvas1.toDataURL('image/jpeg', 0.98);
+    const printHeight1 = (canvas1.height * printWidth) / canvas1.width;
+    pdf.addImage(imgData1, 'JPEG', margin, margin, printWidth, Math.min(printHeight1, pdfHeight - (margin * 2)));
+
+    // PAGE 2 (EXACTLY 2 PAGES TOTAL!)
+    pdf.addPage();
+    const imgData2 = canvas2.toDataURL('image/jpeg', 0.98);
+    const printHeight2 = (canvas2.height * printWidth) / canvas2.width;
+    pdf.addImage(imgData2, 'JPEG', margin, margin, printWidth, Math.min(printHeight2, pdfHeight - (margin * 2)));
+
+    return pdf.output('blob');
   }
+
+  // Single Page Slip (1 Page)
+  const singleTarget = document.getElementById('pdf-single-page') || element;
+  if (JsPdf && html2canvas && singleTarget) {
+    const cvs = await renderPageCanvas(singleTarget);
+
+    const pdf = new JsPdf('p', 'mm', 'a4');
+    const pdfWidth = pdf.internal.pageSize.getWidth();
+    const pdfHeight = pdf.internal.pageSize.getHeight();
+    const margin = 8;
+    const printWidth = pdfWidth - (margin * 2);
+    const printHeight = (cvs.height * printWidth) / cvs.width;
+    const imgData = cvs.toDataURL('image/jpeg', 0.98);
+    pdf.addImage(imgData, 'JPEG', margin, margin, printWidth, Math.min(printHeight, pdfHeight - (margin * 2)));
+
+    return pdf.output('blob');
+  }
+
+  // Fallback
+  const html2pdf = window.html2pdf;
+  const worker = html2pdf().set({
+    margin: [8, 8, 8, 8],
+    filename: customFileName,
+    image: { type: 'jpeg', quality: 0.98 },
+    html2canvas: { scale: 2, useCORS: true, width: 720 },
+    jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
+  }).from(element);
+  return await worker.output('blob');
 }
 
 /**
