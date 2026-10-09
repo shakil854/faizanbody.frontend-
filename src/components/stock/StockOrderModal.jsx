@@ -29,7 +29,7 @@ export function StockOrderModal({ isOpen, onClose, item }) {
 
       setSupplierName('');
       setSupplierPhone('');
-      setOrderNotes('');
+      setOrderNotes(item.notes || '');
       setStatusMessage('');
 
       const now = new Date();
@@ -81,10 +81,8 @@ ${supplierName.trim() ? `🏢 *Supplier:* ${supplierName.trim()}\n` : ''}
 📦 *Material:* ${item.name}
 📂 *Category:* ${item.category_name || 'Fabrication'}
 🔢 *Order Quantity Required:* *${orderQuantity} ${item.unit}*
-📊 *Current Stock on Hand:* ${item.quantity} ${item.unit}
-${item.location ? `📍 *Location / Rack:* ${item.location}\n` : ''}
 ${item.unit_price ? `💰 *Est. Unit Rate:* ₹${item.unit_price}/${item.unit}\n` : ''}
-${orderNotes.trim() ? `📝 *Special Notes:* ${orderNotes.trim()}\n` : ''}
+${orderNotes.trim() ? `📝 *Note:* ${orderNotes.trim()}\n` : (item.notes ? `📝 *Note:* ${item.notes}\n` : '')}
 ━━━━━━━━━━━━━━━━━━━━━━━━
 📍 *Delivery Address:*
 Faizan Body Builders Workshop
@@ -527,13 +525,12 @@ Faizan Body Builders Workshop
           </div>
 
           {/* Material Order Table */}
-          <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: '24px' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: '20px' }}>
             <thead>
               <tr style={{ background: '#0f172a', color: '#ffffff', textAlign: 'left', fontSize: '12px', textTransform: 'uppercase' }}>
                 <th style={{ padding: '10px 12px', width: '45px', textAlign: 'center' }}>#</th>
                 <th style={{ padding: '10px 12px' }}>Material / Item Description</th>
                 <th style={{ padding: '10px 12px' }}>Category</th>
-                <th style={{ padding: '10px 12px', textAlign: 'right' }}>Current Stock</th>
                 <th style={{ padding: '10px 12px', textAlign: 'right' }}>Order Qty</th>
                 <th style={{ padding: '10px 12px' }}>Unit</th>
               </tr>
@@ -543,19 +540,13 @@ Faizan Body Builders Workshop
                 <td style={{ padding: '14px 12px', textAlign: 'center', fontWeight: 700, color: '#64748b' }}>1</td>
                 <td style={{ padding: '14px 12px' }}>
                   <strong style={{ fontSize: '15px', color: '#0f172a', display: 'block' }}>{item.name}</strong>
-                  {item.location && (
-                    <span style={{ fontSize: '11px', color: '#64748b', display: 'block', marginTop: '2px' }}>
-                      Storage Location: {item.location}
-                    </span>
-                  )}
-                  {item.notes && (
-                    <span style={{ fontSize: '11px', color: '#64748b', fontStyle: 'italic', display: 'block' }}>
-                      Specs: {item.notes}
+                  {(orderNotes.trim() || item.notes) && (
+                    <span style={{ fontSize: '12px', color: '#334155', display: 'block', marginTop: '4px' }}>
+                      <strong>Note:</strong> {orderNotes.trim() || item.notes}
                     </span>
                   )}
                 </td>
                 <td style={{ padding: '14px 12px', color: '#334155', fontWeight: 600 }}>{item.category_name}</td>
-                <td style={{ padding: '14px 12px', textAlign: 'right', color: '#64748b' }}>{item.quantity} {item.unit}</td>
                 <td style={{ padding: '14px 12px', textAlign: 'right', fontWeight: 900, fontSize: '16px', color: '#15803d' }}>
                   {orderQuantity}
                 </td>
@@ -564,36 +555,14 @@ Faizan Body Builders Workshop
             </tbody>
           </table>
 
-          {/* Notes & Special Instructions */}
-          {orderNotes.trim() && (
-            <div style={{ background: '#fefce8', border: '1px solid #fef08a', borderRadius: '8px', padding: '12px 16px', marginBottom: '24px' }}>
-              <span style={{ fontSize: '11px', textTransform: 'uppercase', fontWeight: 800, color: '#854d0e', display: 'block' }}>
-                SPECIAL NOTES & INSTRUCTIONS:
-              </span>
-              <p style={{ margin: '4px 0 0 0', fontSize: '13px', color: '#713f12', fontWeight: 600 }}>
-                {orderNotes.trim()}
-              </p>
-            </div>
-          )}
-
-          {/* Authorization & Terms Box */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1.4fr 1fr', gap: '20px', marginTop: '30px', paddingTop: '20px', borderTop: '1px solid #e2e8f0' }}>
-            <div>
-              <span style={{ fontSize: '11px', fontWeight: 800, textTransform: 'uppercase', color: '#475569', display: 'block' }}>
-                TERMS & CONDITIONS:
-              </span>
-              <ul style={{ margin: '6px 0 0 0', paddingLeft: '16px', fontSize: '11px', color: '#64748b', lineHeight: 1.6 }}>
-                <li>All materials supplied must adhere to truck body building standard quality.</li>
-                <li>Delivery challan / invoice must specify the Purchase Order Number: <strong>{poNumber}</strong>.</li>
-                <li>Defective or damaged material will be returned immediately at supplier's cost.</li>
-              </ul>
-            </div>
-
-            <div style={{ textAlign: 'center', display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', alignItems: 'center' }}>
-              <div style={{ width: '180px', borderBottom: '1px solid #0f172a', marginBottom: '6px', height: '50px' }}></div>
-              <strong style={{ fontSize: '12px', color: '#0f172a', display: 'block' }}>Authorized Signatory</strong>
-              <span style={{ fontSize: '11px', color: '#64748b' }}>For Faizan Body Builders</span>
-            </div>
+          {/* Clean Note Box */}
+          <div style={{ background: '#f8fafc', border: '1.5px solid #cbd5e1', borderRadius: '8px', padding: '14px 18px', marginTop: '16px' }}>
+            <span style={{ fontSize: '12px', fontWeight: 800, textTransform: 'uppercase', color: '#0f172a', display: 'block', letterSpacing: '0.04em' }}>
+              NOTE:
+            </span>
+            <p style={{ margin: '5px 0 0 0', fontSize: '13px', color: '#0f172a', lineHeight: 1.5, fontWeight: 600 }}>
+              {orderNotes.trim() || item.notes || `Please deliver standard quality materials. Delivery challan / invoice must specify PO Number: ${poNumber}.`}
+            </p>
           </div>
         </div>
       </div>
