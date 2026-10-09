@@ -1,3 +1,27 @@
+import { Capacitor } from '@capacitor/core';
+import { Share } from '@capacitor/share';
+import { Filesystem, Directory } from '@capacitor/filesystem';
+
+/**
+ * Converts a Blob to pure Base64 string (without data: URL prefix)
+ */
+function blobToBase64(blob) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      const dataUrl = reader.result;
+      if (typeof dataUrl === 'string') {
+        const commaIdx = dataUrl.indexOf(',');
+        resolve(commaIdx !== -1 ? dataUrl.substring(commaIdx + 1) : dataUrl);
+      } else {
+        resolve('');
+      }
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(blob);
+  });
+}
+
 /**
  * Client-Side PDF Generation and Sharing Utility
  * Uses html2pdf.js with an isolated, fixed-width A4 sandbox clone
@@ -163,13 +187,12 @@ export async function generatePdfBlob(element, customFileName = 'Order_Slip.pdf'
 }
 
 /**
- * Share PDF file directly (WhatsApp, Telegram, Android Share Sheet, etc.)
+ * Share PDF file directly (WhatsApp, Android Share Sheet, etc.)
+ * Strictly shares the pure PDF file without unwanted text or URLs.
  */
 export async function sharePdfFile({
   elementId = 'printableSheet',
   fileName = 'FaizanBody_JobSheet.pdf',
-  title = 'Faizan Body Works - Job Slip',
-  text = 'Faizan Body Works Job Sheet PDF',
 }) {
   const element = document.getElementById(elementId);
   if (!element) {
@@ -177,15 +200,54 @@ export async function sharePdfFile({
   }
 
   const pdfBlob = await generatePdfBlob(element, fileName);
-  const pdfFile = new File([pdfBlob], fileName, { type: 'application/pdf' });
+  const cleanFileName = (fileName || 'FaizanBody_JobSheet.pdf')
+    .replace(/[^\w\.-]/gi, '_')
+    .replace(/_+/g, '_');
+  const safeFileName = cleanFileName.endsWith('.pdf') ? cleanFileName : `${cleanFileName}.pdf`;
 
-  // If browser supports native file sharing (Android Chrome, WebView, iOS Safari)
+  // 1. CAPACITOR ANDROID NATIVE SHARING (Opens WhatsApp with pure PDF file)
+  if (Capacitor.isNativePlatform()) {
+    try {
+      const base64Data = await blobToBase64(pdfBlob);
+      if (base64Data) {
+        await Filesystem.writeFile({
+          path: safeFileName,
+          data: base64Data,
+          directory: Directory.Cache,
+          recursive: true,
+        });
+
+        const uriResult = await Filesystem.getUri({
+          path: safeFileName,
+          directory: Directory.Cache,
+        });
+
+        if (uriResult && uriResult.uri) {
+          await Share.share({
+            files: [uriResult.uri],
+            dialogTitle: 'Share PDF via WhatsApp',
+          });
+          return { success: true, method: 'capacitor_share' };
+        }
+      }
+    } catch (nativeErr) {
+      if (
+        nativeErr?.message?.includes('cancel') ||
+        nativeErr?.message?.includes('closed') ||
+        nativeErr?.name === 'AbortError'
+      ) {
+        return { success: false, cancelled: true };
+      }
+      console.warn('Capacitor native PDF share failed, trying Web Share API:', nativeErr);
+    }
+  }
+
+  // 2. WEB BROWSER NATIVE FILE SHARING (Android Chrome, etc.)
+  const pdfFile = new File([pdfBlob], safeFileName, { type: 'application/pdf' });
   if (navigator.canShare && navigator.canShare({ files: [pdfFile] })) {
     try {
       await navigator.share({
         files: [pdfFile],
-        title,
-        text,
       });
       return { success: true, method: 'shared' };
     } catch (err) {
@@ -196,15 +258,15 @@ export async function sharePdfFile({
     }
   }
 
-  // Fallback: Trigger direct file download
+  // 3. Fallback: Browser download via Blob URL
   const downloadUrl = URL.createObjectURL(pdfBlob);
   const a = document.createElement('a');
   a.href = downloadUrl;
-  a.download = fileName;
+  a.download = safeFileName;
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);
-  setTimeout(() => URL.revokeObjectURL(downloadUrl), 3000);
+  setTimeout(() => URL.revokeObjectURL(downloadUrl), 4000);
 
   return { success: true, method: 'downloaded' };
 }
@@ -222,14 +284,65 @@ export async function downloadPdfFile({
   }
 
   const pdfBlob = await generatePdfBlob(element, fileName);
+  const cleanFileName = (fileName || 'FaizanBody_JobSheet.pdf')
+    .replace(/[^\w\.-]/gi, '_')
+    .replace(/_+/g, '_');
+  const safeFileName = cleanFileName.endsWith('.pdf') ? cleanFileName : `${cleanFileName}.pdf`;
+
+  // 1. CAPACITOR ANDROID NATIVE DOWNLOAD
+  if (Capacitor.isNativePlatform()) {
+    try {
+      const base64Data = await blobToBase64(pdfBlob);
+      if (base64Data) {
+        let savedUri = null;
+
+        // Try writing to Documents directory
+        try {
+          const res = await Filesystem.writeFile({
+            path: safeFileName,
+            data: base64Data,
+            directory: Directory.Documents,
+            recursive: true,
+          });
+          savedUri = res?.uri;
+        } catch {
+          // Fallback to Cache directory if Documents permissions blocked
+          const res = await Filesystem.writeFile({
+            path: safeFileName,
+            data: base64Data,
+            directory: Directory.Cache,
+            recursive: true,
+          });
+          savedUri = res?.uri;
+        }
+
+        if (savedUri) {
+          // Open Android native share / view sheet so user can view with PDF viewer or save
+          try {
+            await Share.share({
+              files: [savedUri],
+              dialogTitle: 'PDF Downloaded - View or Save',
+            });
+          } catch {
+            // Dismissed by user is fine
+          }
+          return { success: true, uri: savedUri };
+        }
+      }
+    } catch (nativeErr) {
+      console.warn('Capacitor PDF download failed, falling back to web download:', nativeErr);
+    }
+  }
+
+  // 2. WEB BROWSER DOWNLOAD
   const downloadUrl = URL.createObjectURL(pdfBlob);
   const a = document.createElement('a');
   a.href = downloadUrl;
-  a.download = fileName;
+  a.download = safeFileName;
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);
-  setTimeout(() => URL.revokeObjectURL(downloadUrl), 3000);
+  setTimeout(() => URL.revokeObjectURL(downloadUrl), 4000);
 
   return { success: true };
 }

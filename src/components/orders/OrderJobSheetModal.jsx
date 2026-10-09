@@ -34,8 +34,8 @@ export function OrderJobSheetModal({ isOpen, onClose, order }) {
         : null;
 
       const secName = activeSec
-        ? `${secIndex}_${activeSec.titleHindi.replace(/\s+/g, '_')}`
-        : 'पूरा_आर्डर';
+        ? `${secIndex}_${(activeSec.titleEnglish || 'Work').replace(/\s+/g, '_')}`
+        : 'Full_Order';
 
       const fileName = `FaizanBody_${cleanTruck}_${secName}.pdf`;
       const slipTitle = activeSec
@@ -83,8 +83,8 @@ export function OrderJobSheetModal({ isOpen, onClose, order }) {
         : null;
 
       const secName = activeSec
-        ? `${secIndex}_${activeSec.titleHindi.replace(/\s+/g, '_')}`
-        : 'पूरा_आर्डर';
+        ? `${secIndex}_${(activeSec.titleEnglish || 'Work').replace(/\s+/g, '_')}`
+        : 'Full_Order';
 
       const fileName = `FaizanBody_${cleanTruck}_${secName}.pdf`;
 
