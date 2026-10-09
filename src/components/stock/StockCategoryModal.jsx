@@ -48,7 +48,7 @@ export function StockCategoryModal({
           <div className="stock-header-title-box">
             <span className="stock-header-badge">Categories</span>
             <h2 className="stock-header-title">Manage Categories</h2>
-            <p className="stock-header-subtitle">कैटेगरी जोड़ें और मैनेज करें</p>
+            <p className="stock-header-subtitle">Add and organize material categories</p>
           </div>
           <button
             type="button"
@@ -65,7 +65,7 @@ export function StockCategoryModal({
           {/* Add Category Form */}
           <form onSubmit={handleSubmit} style={{ marginBottom: '1.25rem' }}>
             <label className="form-label" style={{ fontWeight: 600, display: 'block', marginBottom: '0.5rem' }}>
-              Add New Category (नई कैटेगरी का नाम):
+              New Category Name:
             </label>
             <div style={{ display: 'flex', gap: '0.5rem' }}>
               <input

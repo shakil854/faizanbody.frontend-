@@ -438,7 +438,7 @@ export function StockPage({ onBackToHome }) {
               )}
             </div>
           ) : (
-            <div className="workers-grid">
+            <div className="stock-cards-grid">
               {filteredItems.map((item) => (
                 <StockCard
                   key={item.id}

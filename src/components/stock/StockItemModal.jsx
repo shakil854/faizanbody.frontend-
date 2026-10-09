@@ -149,7 +149,7 @@ export function StockItemModal({
               {isEditing ? 'Edit Item' : 'New Stock Item'}
             </span>
             <h2 className="stock-header-title">
-              {isEditing ? 'Update Stock Item' : 'Add Stock Item (स्टॉक आइटम)'}
+              {isEditing ? 'Update Stock Item' : 'Add Stock Item'}
             </h2>
             <p className="stock-header-subtitle">
               Truck body fabrication material inventory entry
@@ -171,7 +171,7 @@ export function StockItemModal({
             {/* Item Name */}
             <div className="form-group" style={{ marginBottom: '1rem' }}>
               <label className="form-label" style={{ fontWeight: 600 }}>
-                Item Name (आइटम का नाम) <span style={{ color: '#ef4444' }}>*</span>
+                Item Name <span style={{ color: '#ef4444' }}>*</span>
               </label>
               <input
                 type="text"
@@ -190,7 +190,7 @@ export function StockItemModal({
             <div className="form-group" style={{ marginBottom: '1rem' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.35rem' }}>
                 <label className="form-label" style={{ fontWeight: 600, margin: 0 }}>
-                  Category (कैटेगरी) <span style={{ color: '#ef4444' }}>*</span>
+                  Category <span style={{ color: '#ef4444' }}>*</span>
                 </label>
                 {!isAddingInlineCat && (
                   <button
@@ -272,7 +272,7 @@ export function StockItemModal({
             <div className="stock-two-col-grid" style={{ marginBottom: '1rem' }}>
               <div className="form-group">
                 <label className="form-label" style={{ fontWeight: 600 }}>
-                  Unit of Measure (यूनिट)
+                  Unit of Measure
                 </label>
                 <select
                   name="unit"
@@ -291,7 +291,7 @@ export function StockItemModal({
 
               <div className="form-group">
                 <label className="form-label" style={{ fontWeight: 600 }}>
-                  {isEditing ? 'Current Stock (स्टॉक मात्रा)' : 'Opening Stock (शुरुआती स्टॉक)'}
+                  {isEditing ? 'Current Stock' : 'Opening Stock'}
                 </label>
                 <input
                   type="number"
@@ -315,7 +315,7 @@ export function StockItemModal({
             <div className="stock-two-col-grid" style={{ marginBottom: '1rem' }}>
               <div className="form-group">
                 <label className="form-label" style={{ fontWeight: 600 }}>
-                  Min Alert Level (कम स्टॉक चेतावनी)
+                  Min Alert Level
                 </label>
                 <input
                   type="number"
@@ -334,7 +334,7 @@ export function StockItemModal({
 
               <div className="form-group">
                 <label className="form-label" style={{ fontWeight: 600 }}>
-                  Unit Price ₹ (कीमत प्रति यूनिट - ऐच्छिक)
+                  Unit Price ₹ (Optional)
                 </label>
                 <input
                   type="number"
@@ -352,7 +352,7 @@ export function StockItemModal({
             {/* Location / Rack */}
             <div className="form-group" style={{ marginBottom: '1rem' }}>
               <label className="form-label" style={{ fontWeight: 600 }}>
-                Rack / Location (रैक या गोदाम की जगह)
+                Rack / Storage Location
               </label>
               <input
                 type="text"
@@ -368,7 +368,7 @@ export function StockItemModal({
             {/* Notes / Specs */}
             <div className="form-group">
               <label className="form-label" style={{ fontWeight: 600 }}>
-                Notes / Specs (विवरण / ब्रांड / साइज)
+                Notes / Specifications
               </label>
               <textarea
                 name="notes"

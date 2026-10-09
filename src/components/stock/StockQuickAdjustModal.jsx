@@ -85,7 +85,7 @@ export function StockQuickAdjustModal({
                 borderColor: type === 'IN' ? '#bbf7d0' : '#fecaca',
               }}
             >
-              {type === 'IN' ? '+ Stock IN (माल आया)' : '- Stock OUT (माल निकला)'}
+              {type === 'IN' ? '+ Stock IN' : '- Stock OUT'}
             </span>
             <h2 className="stock-header-title">{item.name}</h2>
             <p className="stock-header-subtitle">
@@ -135,7 +135,7 @@ export function StockQuickAdjustModal({
                   transition: 'all 0.2s ease',
                 }}
               >
-                + Stock IN (खरीद)
+                + Stock IN
               </button>
               <button
                 type="button"
@@ -155,14 +155,14 @@ export function StockQuickAdjustModal({
                   transition: 'all 0.2s ease',
                 }}
               >
-                - Stock OUT (इस्तेमाल)
+                - Stock OUT
               </button>
             </div>
 
             {/* Quantity */}
             <div className="form-group" style={{ marginBottom: '1rem' }}>
               <label className="form-label" style={{ fontWeight: 600 }}>
-                Quantity to {type === 'IN' ? 'Add' : 'Deduct'} ({item.unit}) <span style={{ color: '#ef4444' }}>*</span>
+                Quantity ({item.unit}) <span style={{ color: '#ef4444' }}>*</span>
               </label>
               <input
                 type="number"
@@ -205,7 +205,7 @@ export function StockQuickAdjustModal({
             {/* Date */}
             <div className="form-group" style={{ marginBottom: '1rem' }}>
               <label className="form-label" style={{ fontWeight: 600 }}>
-                Date (तारीख)
+                Date
               </label>
               <input
                 type="date"
@@ -219,7 +219,7 @@ export function StockQuickAdjustModal({
             {/* Reference Note / Reason */}
             <div className="form-group">
               <label className="form-label" style={{ fontWeight: 600 }}>
-                Reference / Reason (बिल नंबर / ट्रक चेसिस नं / विवरण)
+                Reference / Reason (Bill No / Truck Chassis No / Note)
               </label>
               <input
                 type="text"
