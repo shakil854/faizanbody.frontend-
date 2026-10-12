@@ -19,6 +19,7 @@ export function OrdersPage({ onBackToHome }) {
 
   // Modals state
   const [isFormOpen, setIsFormOpen] = useState(false);
+  const [formMode, setFormMode] = useState('view');
   const [editingOrder, setEditingOrder] = useState(null);
   const [viewingOrder, setViewingOrder] = useState(null);
   const [deletingOrder, setDeletingOrder] = useState(null);
@@ -84,18 +85,26 @@ export function OrdersPage({ onBackToHome }) {
   };
 
   // Toggle task done
-  const handleToggleTask = async (section, itemKey, done) => {
-    if (!viewingOrder) return;
+  const handleToggleTask = async (section, itemKey, done, targetOrderId = null) => {
+    const orderId = targetOrderId || editingOrder?.id || viewingOrder?.id;
+    if (!orderId) return;
     try {
-      const res = await orderService.toggleTaskDone(viewingOrder.id, {
+      const res = await orderService.toggleTaskDone(orderId, {
         section,
         itemKey,
         done,
       });
       if (res && res.data) {
-        setViewingOrder(res.data);
+        const updated = res.data;
+        if (viewingOrder?.id === orderId) {
+          setViewingOrder(updated);
+        }
+        if (editingOrder?.id === orderId) {
+          setEditingOrder(updated);
+        }
+        setOrders((prev) => prev.map((o) => (o.id === orderId ? updated : o)));
       }
-      showSnackbar(done ? 'Task marked complete (✓)' : 'Task unmarked', 'info');
+      showSnackbar(done ? '✓ Task marked complete' : 'Task unmarked', 'info');
     } catch (err) {
       console.error('Error toggling task:', err);
       showSnackbar('Failed to update task', 'error');
@@ -222,8 +231,9 @@ export function OrdersPage({ onBackToHome }) {
                 <OrderCard
                   key={order.id}
                   order={order}
-                  onOpen={(ord) => {
+                  onOpen={(ord, mode = 'view') => {
                     setEditingOrder(ord);
+                    setFormMode(mode);
                     setIsFormOpen(true);
                   }}
                   onViewJobSheet={(ord) => setViewingOrder(ord)}
@@ -246,6 +256,7 @@ export function OrdersPage({ onBackToHome }) {
       <OrderFab
         onAddNew={() => {
           setEditingOrder(null);
+          setFormMode('edit');
           setIsFormOpen(true);
         }}
       />
@@ -258,7 +269,9 @@ export function OrdersPage({ onBackToHome }) {
           setEditingOrder(null);
         }}
         initialData={editingOrder}
+        mode={formMode}
         onSave={handleSaveOrder}
+        onToggleTask={handleToggleTask}
         onViewJobSheet={(ord) => setViewingOrder(ord)}
       />
 
@@ -271,6 +284,7 @@ export function OrdersPage({ onBackToHome }) {
         onEdit={(ord) => {
           setViewingOrder(null);
           setEditingOrder(ord);
+          setFormMode('edit');
           setIsFormOpen(true);
         }}
         onDelete={(ord) => {

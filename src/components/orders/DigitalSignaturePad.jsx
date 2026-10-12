@@ -48,6 +48,7 @@ export function DigitalSignaturePad({
   onChange,
   placeholder = 'Sign here with finger / stylus',
   typePlaceholder = 'Type name...',
+  readOnly = false,
 }) {
   const isImageValue = Boolean(
     value &&
@@ -324,6 +325,7 @@ export function DigitalSignaturePad({
     const ctx = canvas.getContext('2d');
 
     const onPointerDown = (e) => {
+      if (readOnly) return;
       if (e.cancelable) e.preventDefault();
       e.stopPropagation();
 
@@ -548,36 +550,38 @@ export function DigitalSignaturePad({
           )}
         </label>
 
-        <div className="sig-mode-pills">
-          <button
-            type="button"
-            className={`sig-mode-pill ${mode === 'draw' ? 'active' : ''}`}
-            onClick={handleSwitchToDraw}
-            title="Sign with finger or stylus on mobile/tablet"
-          >
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M12 19l7-7 3 3-7 7-3-3z" />
-              <path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z" />
-              <path d="M2 2l7.586 7.586" />
-              <circle cx="11" cy="11" r="2" />
-            </svg>
-            Draw Sign
-          </button>
+        {!readOnly && (
+          <div className="sig-mode-pills">
+            <button
+              type="button"
+              className={`sig-mode-pill ${mode === 'draw' ? 'active' : ''}`}
+              onClick={handleSwitchToDraw}
+              title="Sign with finger or stylus on mobile/tablet"
+            >
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M12 19l7-7 3 3-7 7-3-3z" />
+                <path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z" />
+                <path d="M2 2l7.586 7.586" />
+                <circle cx="11" cy="11" r="2" />
+              </svg>
+              Draw Sign
+            </button>
 
-          <button
-            type="button"
-            className={`sig-mode-pill ${mode === 'type' ? 'active' : ''}`}
-            onClick={handleSwitchToType}
-            title="Type name using keyboard"
-          >
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
-              <polyline points="4 7 4 4 20 4 20 7" />
-              <line x1="9" y1="20" x2="15" y2="20" />
-              <line x1="12" y1="4" x2="12" y2="20" />
-            </svg>
-            Type
-          </button>
-        </div>
+            <button
+              type="button"
+              className={`sig-mode-pill ${mode === 'type' ? 'active' : ''}`}
+              onClick={handleSwitchToType}
+              title="Type name using keyboard"
+            >
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="4 7 4 4 20 4 20 7" />
+                <line x1="9" y1="20" x2="15" y2="20" />
+                <line x1="12" y1="4" x2="12" y2="20" />
+              </svg>
+              Type
+            </button>
+          </div>
+        )}
       </div>
 
       {/* DRAW MODE: Mobile Touch Canvas Pad */}
@@ -586,6 +590,7 @@ export function DigitalSignaturePad({
           <canvas
             ref={canvasRef}
             className="sig-pad-canvas"
+            style={readOnly ? { pointerEvents: 'none' } : undefined}
           />
 
           {/* Dotted Signing Baseline Guide */}
@@ -605,52 +610,54 @@ export function DigitalSignaturePad({
           )}
 
           {/* Action Buttons: Undo, Redo, Clear */}
-          <div className="sig-pad-actions-bar">
-            {canUndo && (
-              <button
-                type="button"
-                className="sig-action-btn sig-undo-btn"
-                onClick={handleUndo}
-                title="Undo last stroke/part (आखरी हिस्सा हटाएं)"
-              >
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.3" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M3 7v6h6" />
-                  <path d="M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6 2.3L3 13" />
-                </svg>
-                Undo
-              </button>
-            )}
+          {!readOnly && (
+            <div className="sig-pad-actions-bar">
+              {canUndo && (
+                <button
+                  type="button"
+                  className="sig-action-btn sig-undo-btn"
+                  onClick={handleUndo}
+                  title="Undo last stroke/part (आखरी हिस्सा हटाएं)"
+                >
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.3" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M3 7v6h6" />
+                    <path d="M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6 2.3L3 13" />
+                  </svg>
+                  Undo
+                </button>
+              )}
 
-            {canRedo && (
-              <button
-                type="button"
-                className="sig-action-btn sig-redo-btn"
-                onClick={handleRedo}
-                title="Redo stroke/part (वापस लाएं)"
-              >
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.3" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M21 7v6h-6" />
-                  <path d="M3 17a9 9 0 0 1 9-9 9 9 0 0 1 6 2.3L21 13" />
-                </svg>
-                Redo
-              </button>
-            )}
+              {canRedo && (
+                <button
+                  type="button"
+                  className="sig-action-btn sig-redo-btn"
+                  onClick={handleRedo}
+                  title="Redo stroke/part (वापस लाएं)"
+                >
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.3" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M21 7v6h-6" />
+                    <path d="M3 17a9 9 0 0 1 9-9 9 9 0 0 1 6 2.3L21 13" />
+                  </svg>
+                  Redo
+                </button>
+              )}
 
-            {hasDrawn && (
-              <button
-                type="button"
-                className="sig-action-btn sig-clear-btn"
-                onClick={handleClear}
-                title="Clear and sign again (पूरा साफ़ करें)"
-              >
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.3" strokeLinecap="round" strokeLinejoin="round">
-                  <polyline points="3 6 5 6 21 6" />
-                  <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
-                </svg>
-                Clear
-              </button>
-            )}
-          </div>
+              {hasDrawn && (
+                <button
+                  type="button"
+                  className="sig-action-btn sig-clear-btn"
+                  onClick={handleClear}
+                  title="Clear and sign again (पूरा साफ़ करें)"
+                >
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.3" strokeLinecap="round" strokeLinejoin="round">
+                    <polyline points="3 6 5 6 21 6" />
+                    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                  </svg>
+                  Clear
+                </button>
+              )}
+            </div>
+          )}
         </div>
       ) : (
         /* TYPE MODE: Text input */
@@ -661,6 +668,7 @@ export function DigitalSignaturePad({
             placeholder={typePlaceholder}
             value={value || ''}
             onChange={(e) => onChange(e.target.value)}
+            readOnly={readOnly}
           />
           <div className="sig-line-draw"></div>
         </div>

@@ -6355,6 +6355,39 @@
   box-shadow: 0 6px 20px rgba(22, 163, 74, 0.45);
 }
 
+/* Modern Order Modal: Header Edit Button */
+.btn-modal-header-edit {
+  background: linear-gradient(135deg, #1e3a8a 0%, #2563eb 100%);
+  color: #ffffff;
+  border: none;
+  border-radius: 8px;
+  padding: 0.4rem 0.8rem;
+  font-size: 0.8rem;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(37, 99, 235, 0.3);
+  transition: all 0.2s ease;
+}
+
+.btn-modal-header-edit:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 14px rgba(37, 99, 235, 0.45);
+}
+
+.modern-input-ctrl[readonly],
+.box-rect-input[readonly] {
+  cursor: default;
+  user-select: text;
+}
+
+.modern-select-pill:disabled {
+  opacity: 0.95;
+  cursor: default;
+}
+
 /* Mobile Adjustments for Modern Modal */
 @media (max-width: 640px) {
   .luxury-glass-backdrop {

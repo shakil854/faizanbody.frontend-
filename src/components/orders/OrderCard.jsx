@@ -140,10 +140,10 @@ export const OrderCard = React.memo(function OrderCard({
   return (
     <div
       className={`worker-card luxury-worker-card ${isCompleted ? 'order-card-completed' : ''}`}
-      onClick={() => onOpen(order)}
+      onClick={() => onOpen(order, 'view')}
       role="button"
       tabIndex={0}
-      title="Click to open work order form"
+      title="Click to view work order details"
     >
       {/* Hidden file input for quick card upload (Gallery) */}
       <input
@@ -220,8 +220,11 @@ export const OrderCard = React.memo(function OrderCard({
           <button
             type="button"
             className="action-btn edit-btn"
-            onClick={() => onOpen(order)}
-            title="Edit / Open Order"
+            onClick={(e) => {
+              e.stopPropagation();
+              onOpen(order, 'edit');
+            }}
+            title="Edit Order Details"
             aria-label={`Edit ${order.truck_chassis_no || 'order'}`}
           >
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
