@@ -35,10 +35,10 @@ function getCanvasBoundingBox(ctx, width, height) {
 /**
  * DigitalSignaturePad Component
  * 100% Mobile & Tablet App Responsive Touch Signature Pad.
- * Engineered with Pixel-Perfect Snapshot History:
- * - Fine-grained incremental snapshots during live signing (every letter/segment)
- * - True Undo: Removes ONLY the last drawn part, leaving the rest 100% undisturbed
- * - True Redo: Brings back the undone part instantly
+ * Engineered for Both New Signatures AND Existing Saved Signatures:
+ * - Reliably loads and displays existing saved signatures when editing orders
+ * - Full Undo & Redo working on both fresh signings and revisions of saved signatures
+ * - Pixel-perfect incremental snapshot history
  * - Single PointerEvent listener preventing duplicate touch/pointer firing
  * - Lightweight bounding-box cropped PNG export
  */
@@ -56,7 +56,7 @@ export function DigitalSignaturePad({
   );
 
   const [mode, setMode] = useState(isImageValue || !value ? 'draw' : 'type');
-  const [hasDrawn, setHasDrawn] = useState(isImageValue);
+  const [hasDrawn, setHasDrawn] = useState(Boolean(value));
   const [canUndo, setCanUndo] = useState(false);
   const [canRedo, setCanRedo] = useState(false);
 
@@ -120,7 +120,7 @@ export function DigitalSignaturePad({
   };
 
   // Setup canvas size according to container dimensions & DPR
-  const setupCanvas = useCallback((forceReload = false) => {
+  const setupCanvas = useCallback(() => {
     const canvas = canvasRef.current;
     const container = containerRef.current;
     if (!canvas || !container) return;
@@ -136,81 +136,124 @@ export function DigitalSignaturePad({
     const targetWidth = Math.floor(displayWidth * dpr);
     const targetHeight = Math.floor(displayHeight * dpr);
 
-    if (canvas.width !== targetWidth || canvas.height !== targetHeight || !isCanvasInitializedRef.current || forceReload) {
-      // Save existing bitmap if resizing
-      let existingImgData = null;
-      if (isCanvasInitializedRef.current && historyRef.current.length > 1) {
-        try {
-          existingImgData = canvas.toDataURL('image/png');
-        } catch {
-          // ignore
-        }
-      }
-
-      canvas.width = targetWidth;
-      canvas.height = targetHeight;
-      canvas.style.width = `${displayWidth}px`;
-      canvas.style.height = `${displayHeight}px`;
-
-      const ctx = canvas.getContext('2d');
-      ctx.scale(dpr, dpr);
-      ctx.lineCap = 'round';
-      ctx.lineJoin = 'round';
-      ctx.strokeStyle = '#0f172a';
-      ctx.fillStyle = '#0f172a';
-      ctx.lineWidth = 2.6;
-
-      isCanvasInitializedRef.current = true;
-
-      if (existingImgData) {
-        const img = new Image();
-        img.onload = () => {
-          ctx.drawImage(img, 0, 0, displayWidth, displayHeight);
-        };
-        img.src = existingImgData;
-        return;
-      }
-
-      // Load initial saved signature image if exists
-      const initialImg = savedDataUrlRef.current || (isImageValue ? value : '');
-      if (initialImg) {
-        const img = new Image();
-        img.crossOrigin = 'anonymous';
-        img.onload = () => {
-          ctx.clearRect(0, 0, displayWidth, displayHeight);
-          const hRatio = displayWidth / img.width;
-          const vRatio = displayHeight / img.height;
-          const ratio = Math.min(hRatio, vRatio, 1);
-          const drawW = img.width * ratio;
-          const drawH = img.height * ratio;
-          const posX = (displayWidth - drawW) / 2;
-          const posY = (displayHeight - drawH) / 2;
-          ctx.drawImage(img, posX, posY, drawW, drawH);
-          setHasDrawn(true);
-
-          // Baseline clean snapshot
-          historyRef.current = [ctx.getImageData(0, 0, canvas.width, canvas.height)];
-          redoStackRef.current = [];
-          setCanUndo(false);
-          setCanRedo(false);
-        };
-        img.src = initialImg;
-      } else {
-        // Empty clean snapshot
-        historyRef.current = [ctx.getImageData(0, 0, canvas.width, canvas.height)];
-        redoStackRef.current = [];
-        setCanUndo(false);
-        setCanRedo(false);
+    // Save existing bitmap if resizing
+    let existingImgData = null;
+    if (isCanvasInitializedRef.current && historyRef.current.length > 1) {
+      try {
+        existingImgData = canvas.toDataURL('image/png');
+      } catch {
+        // ignore
       }
     }
-  }, [isImageValue, value]);
+
+    canvas.width = targetWidth;
+    canvas.height = targetHeight;
+    canvas.style.width = `${displayWidth}px`;
+    canvas.style.height = `${displayHeight}px`;
+
+    const ctx = canvas.getContext('2d');
+    ctx.scale(dpr, dpr);
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    ctx.strokeStyle = '#0f172a';
+    ctx.fillStyle = '#0f172a';
+    ctx.lineWidth = 2.6;
+
+    isCanvasInitializedRef.current = true;
+
+    if (existingImgData) {
+      const img = new Image();
+      img.onload = () => {
+        ctx.drawImage(img, 0, 0, displayWidth, displayHeight);
+      };
+      img.src = existingImgData;
+      return;
+    }
+
+    try {
+      historyRef.current = [ctx.getImageData(0, 0, canvas.width, canvas.height)];
+    } catch {
+      historyRef.current = [];
+    }
+    redoStackRef.current = [];
+    setCanUndo(false);
+    setCanRedo(false);
+  }, []);
+
+  // Load existing saved signature image onto canvas
+  const loadImageOntoCanvas = useCallback((imgSrc) => {
+    const canvas = canvasRef.current;
+    const container = containerRef.current;
+    if (!canvas || !container || !imgSrc) return;
+
+    const rect = container.getBoundingClientRect();
+    if (rect.width === 0) {
+      // If modal is still animating open, retry shortly
+      const timer = setTimeout(() => loadImageOntoCanvas(imgSrc), 60);
+      return () => clearTimeout(timer);
+    }
+
+    const dpr = Math.max(window.devicePixelRatio || 1, 2);
+    const displayWidth = rect.width;
+    const isTablet = window.innerWidth >= 600 && window.innerWidth <= 1024;
+    const displayHeight = isTablet ? 155 : 140;
+
+    const targetWidth = Math.floor(displayWidth * dpr);
+    const targetHeight = Math.floor(displayHeight * dpr);
+
+    canvas.width = targetWidth;
+    canvas.height = targetHeight;
+    canvas.style.width = `${displayWidth}px`;
+    canvas.style.height = `${displayHeight}px`;
+
+    const ctx = canvas.getContext('2d');
+    ctx.scale(dpr, dpr);
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    ctx.strokeStyle = '#0f172a';
+    ctx.fillStyle = '#0f172a';
+    ctx.lineWidth = 2.6;
+
+    isCanvasInitializedRef.current = true;
+
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = () => {
+      ctx.clearRect(0, 0, displayWidth, displayHeight);
+      const hRatio = displayWidth / img.width;
+      const vRatio = displayHeight / img.height;
+      const ratio = Math.min(hRatio, vRatio, 1);
+      const drawW = img.width * ratio;
+      const drawH = img.height * ratio;
+      const posX = (displayWidth - drawW) / 2;
+      const posY = (displayHeight - drawH) / 2;
+
+      ctx.drawImage(img, posX, posY, drawW, drawH);
+      setHasDrawn(true);
+
+      try {
+        // Base state is the loaded saved signature
+        historyRef.current = [ctx.getImageData(0, 0, canvas.width, canvas.height)];
+      } catch {
+        historyRef.current = [];
+      }
+      redoStackRef.current = [];
+      setCanUndo(false);
+      setCanRedo(false);
+    };
+    img.src = imgSrc;
+  }, []);
 
   // Initial mount setup
   useEffect(() => {
     if (mode === 'draw') {
-      setupCanvas(false);
+      if (value && isImageValue) {
+        loadImageOntoCanvas(value);
+      } else {
+        setupCanvas();
+      }
     }
-  }, [mode, setupCanvas]);
+  }, [mode]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Orientation and window resize handler
   useEffect(() => {
@@ -219,7 +262,13 @@ export function DigitalSignaturePad({
       clearTimeout(timeoutId);
       timeoutId = setTimeout(() => {
         if (mode === 'draw') {
-          setupCanvas(false);
+          if (historyRef.current.length > 1) {
+            setupCanvas();
+          } else if (value && isImageValue) {
+            loadImageOntoCanvas(value);
+          } else {
+            setupCanvas();
+          }
         }
       }, 120);
     };
@@ -231,14 +280,17 @@ export function DigitalSignaturePad({
       window.removeEventListener('resize', handleResize);
       window.removeEventListener('orientationchange', handleResize);
     };
-  }, [mode, setupCanvas]);
+  }, [mode, value, isImageValue, loadImageOntoCanvas, setupCanvas]);
 
-  // Sync with external form reset / clear
+  // Sync when an existing order's signature value loads or updates from outside
   useEffect(() => {
+    // If value matches what was just exported by this pad, avoid redundant reload
     if (value === savedDataUrlRef.current) return;
 
+    savedDataUrlRef.current = value || '';
+
     if (!value) {
-      savedDataUrlRef.current = '';
+      // External clear
       initialDataUrlRef.current = '';
       redoStackRef.current = [];
       setCanUndo(false);
@@ -250,10 +302,18 @@ export function DigitalSignaturePad({
         const ctx = canvas.getContext('2d');
         const dpr = Math.max(window.devicePixelRatio || 1, 2);
         ctx.clearRect(0, 0, canvas.width / dpr, canvas.height / dpr);
-        historyRef.current = [ctx.getImageData(0, 0, canvas.width, canvas.height)];
+        try {
+          historyRef.current = [ctx.getImageData(0, 0, canvas.width, canvas.height)];
+        } catch {
+          historyRef.current = [];
+        }
       }
+    } else if (isImageValue) {
+      // Existing saved signature loaded from database
+      initialDataUrlRef.current = value;
+      loadImageOntoCanvas(value);
     }
-  }, [value]);
+  }, [value, isImageValue, loadImageOntoCanvas]);
 
   // Pointer Drawing Listeners (Universal for Touch, Pen, Mouse)
   useEffect(() => {
@@ -301,18 +361,22 @@ export function DigitalSignaturePad({
       setHasDrawn(true);
 
       // Save incremental micro-snapshots during continuous drawing
-      // Every ~18 points (approx one letter or flourish) or on subtle pause (~160ms)
+      // Every ~18 points or on slight pause (~160ms)
       if (
         pointsSinceSnapshotRef.current >= 18 ||
         (timeDelta > 160 && pointsSinceSnapshotRef.current >= 6)
       ) {
-        const snapshot = ctx.getImageData(0, 0, canvas.width, canvas.height);
-        historyRef.current.push(snapshot);
-        if (historyRef.current.length > 50) historyRef.current.shift();
-        redoStackRef.current = [];
-        setCanUndo(true);
-        setCanRedo(false);
-        pointsSinceSnapshotRef.current = 0;
+        try {
+          const snapshot = ctx.getImageData(0, 0, canvas.width, canvas.height);
+          historyRef.current.push(snapshot);
+          if (historyRef.current.length > 50) historyRef.current.shift();
+          redoStackRef.current = [];
+          setCanUndo(true);
+          setCanRedo(false);
+          pointsSinceSnapshotRef.current = 0;
+        } catch {
+          // ignore
+        }
       }
     };
 
@@ -329,12 +393,17 @@ export function DigitalSignaturePad({
       }
 
       // Save snapshot of this finished stroke
-      const snapshot = ctx.getImageData(0, 0, canvas.width, canvas.height);
-      historyRef.current.push(snapshot);
-      if (historyRef.current.length > 50) historyRef.current.shift();
-      redoStackRef.current = [];
-      setCanUndo(historyRef.current.length > 1);
-      setCanRedo(false);
+      try {
+        const snapshot = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        historyRef.current.push(snapshot);
+        if (historyRef.current.length > 50) historyRef.current.shift();
+        redoStackRef.current = [];
+        setCanUndo(historyRef.current.length > 1);
+        setCanRedo(false);
+      } catch {
+        // ignore
+      }
+
       setHasDrawn(true);
       pointsSinceSnapshotRef.current = 0;
 
@@ -377,7 +446,9 @@ export function DigitalSignaturePad({
 
     // Restore previous state
     const prevSnap = historyRef.current[historyRef.current.length - 1];
-    ctx.putImageData(prevSnap, 0, 0);
+    if (prevSnap) {
+      ctx.putImageData(prevSnap, 0, 0);
+    }
 
     const hasRemainingDrawn = historyRef.current.length > 1;
     setCanUndo(hasRemainingDrawn);
@@ -407,8 +478,10 @@ export function DigitalSignaturePad({
     const ctx = canvas.getContext('2d');
 
     const nextSnap = redoStackRef.current.pop();
-    ctx.putImageData(nextSnap, 0, 0);
-    historyRef.current.push(nextSnap);
+    if (nextSnap) {
+      ctx.putImageData(nextSnap, 0, 0);
+      historyRef.current.push(nextSnap);
+    }
 
     setCanRedo(redoStackRef.current.length > 0);
     setCanUndo(historyRef.current.length > 1);
@@ -429,13 +502,20 @@ export function DigitalSignaturePad({
       const ctx = canvas.getContext('2d');
       const dpr = Math.max(window.devicePixelRatio || 1, 2);
       ctx.clearRect(0, 0, canvas.width / dpr, canvas.height / dpr);
-      historyRef.current = [ctx.getImageData(0, 0, canvas.width, canvas.height)];
+
+      try {
+        const blankSnap = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        // Push blank snapshot so if user cleared by mistake, Undo can bring it back!
+        historyRef.current.push(blankSnap);
+        setCanUndo(historyRef.current.length > 1);
+      } catch {
+        historyRef.current = [];
+        setCanUndo(false);
+      }
     }
 
     redoStackRef.current = [];
-    initialDataUrlRef.current = '';
     savedDataUrlRef.current = '';
-    setCanUndo(false);
     setCanRedo(false);
     setHasDrawn(false);
     onChange('');
