@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { stockService } from '../../services/stockService';
 import { StockCard } from './StockCard';
+import { StockCategoryCard } from './StockCategoryCard';
+import { StockCategoryItemsModal } from './StockCategoryItemsModal';
 import { StockItemModal } from './StockItemModal';
 import { StockQuickAdjustModal } from './StockQuickAdjustModal';
 import { StockCategoryModal } from './StockCategoryModal';
@@ -20,10 +22,12 @@ export function StockPage({ onBackToHome }) {
   const [loading, setLoading] = useState(() => stockService.getCachedItems().length === 0);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all'); // 'all', 'low_stock', or category_name
+  const [viewMode, setViewMode] = useState('categories'); // 'categories' (default) | 'items'
 
   // Modals
   const [isItemModalOpen, setIsItemModalOpen] = useState(false);
   const [editingItem, setEditingItem] = useState(null);
+  const [defaultCategoryForNewItem, setDefaultCategoryForNewItem] = useState('');
 
   const [isAdjustModalOpen, setIsAdjustModalOpen] = useState(false);
   const [adjustingItem, setAdjustingItem] = useState(null);
@@ -35,8 +39,13 @@ export function StockPage({ onBackToHome }) {
   const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
   const [historyItem, setHistoryItem] = useState(null);
 
+  // Category Items Modal
+  const [activeCategoryModal, setActiveCategoryModal] = useState(null); // { name }
+
+  // Purchase Order (Single Item or Category Bulk)
   const [isOrderModalOpen, setIsOrderModalOpen] = useState(false);
   const [orderingItem, setOrderingItem] = useState(null);
+  const [bulkOrderData, setBulkOrderData] = useState(null); // { categoryName, items }
 
   const [deletingItem, setDeletingItem] = useState(null);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -101,6 +110,7 @@ export function StockPage({ onBackToHome }) {
       }
       setIsItemModalOpen(false);
       setEditingItem(null);
+      setDefaultCategoryForNewItem('');
       fetchData({ force: true });
     } catch (err) {
       const msg = err.response?.data?.message || 'Error saving stock item';
@@ -173,7 +183,7 @@ export function StockPage({ onBackToHome }) {
     }
   };
 
-  // Filtered Items
+  // Filtered Flat Items (for "All Items" view)
   const filteredItems = useMemo(() => {
     let result = [...items];
 
@@ -196,6 +206,88 @@ export function StockPage({ onBackToHome }) {
 
     return result;
   }, [items, selectedCategory, searchQuery]);
+
+  // Grouped Categories (for "Categories" main view)
+  const categoryGroups = useMemo(() => {
+    // 1. Map known categories from backend
+    const groups = categories.map((cat) => {
+      const catItems = items.filter(
+        (i) => i.category_name?.toLowerCase().trim() === cat.name?.toLowerCase().trim()
+      );
+      return {
+        id: cat.id || cat.name,
+        name: cat.name,
+        items: catItems,
+      };
+    });
+
+    // 2. Map any items that have no category or uncategorized
+    const knownNames = new Set(categories.map((c) => c.name.toLowerCase().trim()));
+    const uncategorizedItems = items.filter(
+      (i) => !i.category_name || !knownNames.has(i.category_name.toLowerCase().trim())
+    );
+
+    if (uncategorizedItems.length > 0) {
+      groups.push({
+        id: '__uncategorized__',
+        name: 'General / Other',
+        items: uncategorizedItems,
+      });
+    }
+
+    let filtered = groups;
+
+    // Search filter
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase().trim();
+      filtered = filtered
+        .map((group) => {
+          const matchCatName = group.name.toLowerCase().includes(q);
+          const matchedItems = group.items.filter(
+            (it) =>
+              it.name?.toLowerCase().includes(q) ||
+              it.location?.toLowerCase().includes(q) ||
+              it.notes?.toLowerCase().includes(q)
+          );
+          if (matchCatName) return group;
+          if (matchedItems.length > 0) return { ...group, items: matchedItems };
+          return null;
+        })
+        .filter(Boolean);
+    }
+
+    // Category filter tab
+    if (selectedCategory === 'low_stock') {
+      filtered = filtered
+        .map((group) => {
+          const lowItems = group.items.filter(
+            (it) => Number(it.quantity) <= Number(it.min_alert_quantity)
+          );
+          return lowItems.length > 0 ? { ...group, items: lowItems } : null;
+        })
+        .filter(Boolean);
+    } else if (selectedCategory !== 'all') {
+      filtered = filtered.filter(
+        (g) => g.name.toLowerCase().trim() === selectedCategory.toLowerCase().trim()
+      );
+    }
+
+    return filtered;
+  }, [categories, items, searchQuery, selectedCategory]);
+
+  // Live items for the currently open Category Items Modal
+  const activeModalItems = useMemo(() => {
+    if (!activeCategoryModal) return [];
+    if (activeCategoryModal.name === 'General / Other') {
+      const knownNames = new Set(categories.map((c) => c.name.toLowerCase().trim()));
+      return items.filter(
+        (i) => !i.category_name || !knownNames.has(i.category_name.toLowerCase().trim())
+      );
+    }
+    return items.filter(
+      (i) => i.category_name?.toLowerCase().trim() === activeCategoryModal.name?.toLowerCase().trim()
+    );
+  }, [activeCategoryModal, items, categories]);
 
   // Metrics
   const lowStockCount = items.filter((i) => Number(i.quantity) <= Number(i.min_alert_quantity)).length;
@@ -238,71 +330,81 @@ export function StockPage({ onBackToHome }) {
           </div>
         </div>
 
-        {/* Action Header Row with Manage Categories & Audit Log */}
-        <div
-          style={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            marginBottom: '0.85rem',
-            flexWrap: 'wrap',
-            gap: '0.5rem',
-          }}
-        >
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <h3 style={{ margin: 0, fontSize: '1.15rem', fontWeight: 800, color: '#0f172a' }}>
+        {/* Action Header Row with View Mode Switch, Manage Categories & Audit Log */}
+        <div className="stock-actions-bar">
+          <div className="stock-actions-left">
+            <h3 className="stock-actions-title">
               Stock & Materials
             </h3>
-            <span
-              style={{
-                fontSize: '0.75rem',
-                fontWeight: 700,
-                color: '#2563eb',
-                background: '#eff6ff',
-                padding: '2px 8px',
-                borderRadius: '12px',
-                border: '1px solid #bfdbfe',
-              }}
-            >
-              {totalItemsCount} Total
-            </span>
+
+            {/* View Mode Switch: Category Cards (Main) vs All Items (List) */}
+            <div className="stock-view-mode-toggle">
+              <button
+                type="button"
+                className={`view-mode-btn ${viewMode === 'categories' ? 'active' : ''}`}
+                onClick={() => setViewMode('categories')}
+                title="Categorized View (Category Cards)"
+              >
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
+                </svg>
+                <span>Categories ({categories.length})</span>
+              </button>
+
+              <button
+                type="button"
+                className={`view-mode-btn ${viewMode === 'items' ? 'active' : ''}`}
+                onClick={() => setViewMode('items')}
+                title="All Items Flat List"
+              >
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                  <line x1="8" y1="6" x2="21" y2="6" />
+                  <line x1="8" y1="12" x2="21" y2="12" />
+                  <line x1="8" y1="18" x2="21" y2="18" />
+                  <line x1="3" y1="6" x2="3.01" y2="6" />
+                  <line x1="3" y1="12" x2="3.01" y2="12" />
+                  <line x1="3" y1="18" x2="3.01" y2="18" />
+                </svg>
+                <span>All Items ({totalItemsCount})</span>
+              </button>
+            </div>
           </div>
 
-          <div style={{ display: 'flex', gap: '0.5rem' }}>
+          <div className="stock-actions-right">
             {/* View Full Movement History */}
             <button
               type="button"
-              className="btn btn-secondary"
+              className="btn btn-secondary stock-action-btn-compact"
               onClick={() => {
                 setHistoryItem(null);
                 setIsHistoryModalOpen(true);
               }}
-              style={{ fontSize: '0.82rem', padding: '0.45rem 0.75rem', display: 'flex', alignItems: 'center', gap: '5px' }}
+              title="Audit Log / Movement History"
             >
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
                 <circle cx="12" cy="12" r="10" />
                 <polyline points="12 6 12 12 14 14" />
               </svg>
-              Audit Log
+              <span>Audit Log</span>
             </button>
 
             {/* Manage Categories Modal Trigger */}
             <button
               type="button"
-              className="btn btn-secondary"
+              className="btn btn-secondary stock-action-btn-compact"
               onClick={() => setIsCategoryModalOpen(true)}
-              style={{ fontSize: '0.82rem', padding: '0.45rem 0.75rem', display: 'flex', alignItems: 'center', gap: '5px' }}
+              title="Manage Categories"
             >
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z" />
                 <line x1="7" y1="7" x2="7.01" y2="7" />
               </svg>
-              Categories ({categories.length})
+              <span>Categories ({categories.length})</span>
             </button>
           </div>
         </div>
 
-        {/* Smart Category & Status Filter Bar (Zero Horizontal Scroll) */}
+        {/* Smart Category & Status Filter Bar */}
         <div className="stock-filter-bar">
           {/* Status Quick Filters */}
           <div className="stock-filter-left">
@@ -311,7 +413,7 @@ export function StockPage({ onBackToHome }) {
               className={`stock-filter-tab ${selectedCategory === 'all' ? 'active' : ''}`}
               onClick={() => setSelectedCategory('all')}
             >
-              All Items ({totalItemsCount})
+              {viewMode === 'categories' ? `All Categories (${categories.length})` : `All Items (${totalItemsCount})`}
             </button>
 
             <button
@@ -347,7 +449,7 @@ export function StockPage({ onBackToHome }) {
                 aria-label="Filter by category"
               >
                 <option value="">
-                  {categories.length === 0 ? 'No Categories' : `Categories (${categories.length}) ▾`}
+                  {categories.length === 0 ? 'No Categories' : `Filter by Category (${categories.length}) ▾`}
                 </option>
                 {categories.map((cat) => {
                   const catItemCount = items.filter((i) => i.category_name === cat.name).length;
@@ -383,7 +485,7 @@ export function StockPage({ onBackToHome }) {
         {selectedCategory !== 'all' && selectedCategory !== 'low_stock' && (
           <div className="stock-active-filter-banner">
             <span className="stock-active-filter-label">
-              Category: <strong>{selectedCategory}</strong> ({filteredItems.length} items)
+              Category Filter: <strong>{selectedCategory}</strong>
             </span>
             <button
               type="button"
@@ -396,75 +498,135 @@ export function StockPage({ onBackToHome }) {
           </div>
         )}
 
-        {/* Stock Items Grid */}
+        {/* ========================================================
+            STOCK CONTENT: CATEGORIES GRID (DEFAULT) OR ITEMS GRID
+            ======================================================== */}
         <div className="workers-list-wrapper">
           {loading && items.length === 0 ? (
             <div className="loading-state-container">
               <div className="splash-pulse-bar"></div>
               <p className="loading-text">Loading stock materials...</p>
             </div>
-          ) : filteredItems.length === 0 ? (
-            /* Unified Empty State strictly adhering to guideline */
-            <div className="empty-workers-state">
-              <div className="empty-luxury-illustration">
-                <svg width="64" height="64" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  <circle cx="32" cy="32" r="30" fill="#f0f7ff" stroke="#e0e7ff" strokeWidth="1.5" />
-                  <rect x="18" y="20" width="28" height="26" rx="3" fill="#dbeafe" stroke="#2563eb" strokeWidth="2" />
-                  <path d="M18 28l14 8 14-8" stroke="#2563eb" strokeWidth="2" strokeLinecap="round" />
-                  <line x1="32" y1="36" x2="32" y2="46" stroke="#2563eb" strokeWidth="2" />
-                  <circle cx="45" cy="45" r="7" fill="#2563eb" />
-                  <path d="M45 42v6M42 45h6" stroke="#ffffff" strokeWidth="2" strokeLinecap="round" />
-                </svg>
+          ) : viewMode === 'categories' ? (
+            /* ========================================================
+                1. CATEGORY CARDS GRID (PRIMARY / DEFAULT VIEW)
+                Touching card opens all its items in a modal!
+                ======================================================== */
+            categoryGroups.length === 0 ? (
+              <div className="empty-workers-state">
+                <div className="empty-luxury-illustration">
+                  <svg width="64" height="64" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <circle cx="32" cy="32" r="30" fill="#f0f7ff" stroke="#e0e7ff" strokeWidth="1.5" />
+                    <rect x="18" y="20" width="28" height="26" rx="3" fill="#dbeafe" stroke="#2563eb" strokeWidth="2" />
+                    <path d="M18 28l14 8 14-8" stroke="#2563eb" strokeWidth="2" strokeLinecap="round" />
+                    <line x1="32" y1="36" x2="32" y2="46" stroke="#2563eb" strokeWidth="2" />
+                  </svg>
+                </div>
+                <h3>No Categories Found</h3>
+                <p>
+                  {searchQuery
+                    ? `No categories or items match "${searchQuery}".`
+                    : selectedCategory === 'low_stock'
+                    ? 'Great news! No categories currently have low stock.'
+                    : 'Start by creating categories or adding stock materials.'}
+                </p>
+                {isAdmin && (
+                  <button
+                    type="button"
+                    className="btn btn-primary btn-empty-cta"
+                    onClick={() => setIsCategoryModalOpen(true)}
+                  >
+                    + Add First Category
+                  </button>
+                )}
               </div>
-              <h3>No Stock Materials Found</h3>
-              <p>
-                {searchQuery
-                  ? `No items match "${searchQuery}". Try adjusting your search or category.`
-                  : selectedCategory !== 'all'
-                  ? `No items found in category "${selectedCategory}".`
-                  : 'Start maintaining truck body fabrication stock by adding your first material.'}
-              </p>
-              {isAdmin && (
-                <button
-                  type="button"
-                  className="btn btn-primary btn-empty-cta"
-                  onClick={() => {
-                    setEditingItem(null);
-                    setIsItemModalOpen(true);
-                  }}
-                >
-                  + Add First Stock Item
-                </button>
-              )}
-            </div>
+            ) : (
+              <div className="stock-category-cards-grid">
+                {categoryGroups.map((group) => (
+                  <StockCategoryCard
+                    key={group.id}
+                    category={{ id: group.id, name: group.name }}
+                    items={group.items}
+                    onClick={(cat) => {
+                      setActiveCategoryModal({ name: cat.name });
+                    }}
+                    onOrderCategory={(catName, catItems) => {
+                      setBulkOrderData({ categoryName: catName, items: catItems });
+                      setOrderingItem(null);
+                      setIsOrderModalOpen(true);
+                    }}
+                  />
+                ))}
+              </div>
+            )
           ) : (
-            <div className="stock-cards-grid">
-              {filteredItems.map((item) => (
-                <StockCard
-                  key={item.id}
-                  item={item}
-                  isAdmin={isAdmin}
-                  onEdit={(it) => {
-                    setEditingItem(it);
-                    setIsItemModalOpen(true);
-                  }}
-                  onDelete={(it) => setDeletingItem(it)}
-                  onAdjust={(it, type) => {
-                    setAdjustingItem(it);
-                    setAdjustType(type);
-                    setIsAdjustModalOpen(true);
-                  }}
-                  onViewHistory={(it) => {
-                    setHistoryItem(it);
-                    setIsHistoryModalOpen(true);
-                  }}
-                  onOrder={(it) => {
-                    setOrderingItem(it);
-                    setIsOrderModalOpen(true);
-                  }}
-                />
-              ))}
-            </div>
+            /* ========================================================
+                2. ALL ITEMS FLAT GRID (LIST VIEW)
+                ======================================================== */
+            filteredItems.length === 0 ? (
+              <div className="empty-workers-state">
+                <div className="empty-luxury-illustration">
+                  <svg width="64" height="64" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <circle cx="32" cy="32" r="30" fill="#f0f7ff" stroke="#e0e7ff" strokeWidth="1.5" />
+                    <rect x="18" y="20" width="28" height="26" rx="3" fill="#dbeafe" stroke="#2563eb" strokeWidth="2" />
+                    <path d="M18 28l14 8 14-8" stroke="#2563eb" strokeWidth="2" strokeLinecap="round" />
+                    <line x1="32" y1="36" x2="32" y2="46" stroke="#2563eb" strokeWidth="2" />
+                    <circle cx="45" cy="45" r="7" fill="#2563eb" />
+                    <path d="M45 42v6M42 45h6" stroke="#ffffff" strokeWidth="2" strokeLinecap="round" />
+                  </svg>
+                </div>
+                <h3>No Stock Materials Found</h3>
+                <p>
+                  {searchQuery
+                    ? `No items match "${searchQuery}". Try adjusting your search.`
+                    : selectedCategory !== 'all'
+                    ? `No items found in category "${selectedCategory}".`
+                    : 'Start maintaining truck body fabrication stock by adding your first material.'}
+                </p>
+                {isAdmin && (
+                  <button
+                    type="button"
+                    className="btn btn-primary btn-empty-cta"
+                    onClick={() => {
+                      setEditingItem(null);
+                      setDefaultCategoryForNewItem('');
+                      setIsItemModalOpen(true);
+                    }}
+                  >
+                    + Add First Stock Item
+                  </button>
+                )}
+              </div>
+            ) : (
+              <div className="stock-cards-grid">
+                {filteredItems.map((item) => (
+                  <StockCard
+                    key={item.id}
+                    item={item}
+                    isAdmin={isAdmin}
+                    onEdit={(it) => {
+                      setEditingItem(it);
+                      setIsItemModalOpen(true);
+                    }}
+                    onDelete={(it) => setDeletingItem(it)}
+                    onAdjust={(it, type) => {
+                      setAdjustingItem(it);
+                      setAdjustType(type);
+                      setIsAdjustModalOpen(true);
+                    }}
+                    onViewHistory={(it) => {
+                      setHistoryItem(it);
+                      setIsHistoryModalOpen(true);
+                    }}
+                    onOrder={(it) => {
+                      setOrderingItem(it);
+                      setBulkOrderData(null);
+                      setIsOrderModalOpen(true);
+                    }}
+                  />
+                ))}
+              </div>
+            )
           )}
         </div>
       </main>
@@ -474,19 +636,60 @@ export function StockPage({ onBackToHome }) {
         <StockFab
           onAddNew={() => {
             setEditingItem(null);
+            setDefaultCategoryForNewItem('');
             setIsItemModalOpen(true);
           }}
         />
       )}
+
+      {/* Category Items Modal (Opens on touching Category Card) */}
+      <StockCategoryItemsModal
+        isOpen={Boolean(activeCategoryModal)}
+        categoryName={activeCategoryModal?.name || ''}
+        items={activeModalItems}
+        isAdmin={isAdmin}
+        onClose={() => setActiveCategoryModal(null)}
+        onOrderCategory={(catName, catItems) => {
+          setBulkOrderData({ categoryName: catName, items: catItems });
+          setOrderingItem(null);
+          setIsOrderModalOpen(true);
+        }}
+        onEditItem={(it) => {
+          setEditingItem(it);
+          setIsItemModalOpen(true);
+        }}
+        onDeleteItem={(it) => setDeletingItem(it)}
+        onAdjustItem={(it, type) => {
+          setAdjustingItem(it);
+          setAdjustType(type);
+          setIsAdjustModalOpen(true);
+        }}
+        onViewHistory={(it) => {
+          setHistoryItem(it);
+          setIsHistoryModalOpen(true);
+        }}
+        onOrderItem={(it) => {
+          setOrderingItem(it);
+          setBulkOrderData(null);
+          setIsOrderModalOpen(true);
+        }}
+        onAddNewItem={(catName) => {
+          setEditingItem(null);
+          setDefaultCategoryForNewItem(catName);
+          setIsItemModalOpen(true);
+        }}
+      />
 
       {/* Item Modal (Create / Edit) */}
       <StockItemModal
         isOpen={isItemModalOpen}
         initialData={editingItem}
         categories={categories}
+        defaultCategory={defaultCategoryForNewItem}
         onClose={() => {
           setIsItemModalOpen(false);
           setEditingItem(null);
+          setDefaultCategoryForNewItem('');
         }}
         onSave={handleSaveItem}
         onAddCategory={handleAddCategory}
@@ -543,13 +746,16 @@ export function StockPage({ onBackToHome }) {
         onConfirm={handleDeleteCategoryConfirm}
       />
 
-      {/* Material WhatsApp Purchase Order Modal */}
+      {/* Material WhatsApp Purchase Order Modal (Supports both Single Item & Category Bulk Order) */}
       <StockOrderModal
         isOpen={isOrderModalOpen}
         item={orderingItem}
+        items={bulkOrderData?.items || null}
+        categoryName={bulkOrderData?.categoryName || ''}
         onClose={() => {
           setIsOrderModalOpen(false);
           setOrderingItem(null);
+          setBulkOrderData(null);
         }}
       />
 

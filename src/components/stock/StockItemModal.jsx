@@ -26,6 +26,7 @@ export function StockItemModal({
   categories,
   onAddCategory,
   isSubmitting,
+  defaultCategory = '',
 }) {
   const [formData, setFormData] = useState({
     name: '',
@@ -58,7 +59,7 @@ export function StockItemModal({
     } else {
       setFormData({
         name: '',
-        category_name: categories.length > 0 ? categories[0].name : '',
+        category_name: defaultCategory || (categories.length > 0 ? categories[0].name : ''),
         unit: 'Pcs',
         quantity: '',
         min_alert_quantity: '5',
