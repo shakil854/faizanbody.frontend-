@@ -1,15 +1,46 @@
 import React, { useRef, useState, useEffect, useCallback } from 'react';
 
 /**
+ * Scan canvas pixels to find precise bounding box of drawn ink.
+ * Sub-millisecond execution via 2px stepping.
+ */
+function getCanvasBoundingBox(ctx, width, height) {
+  try {
+    const imgData = ctx.getImageData(0, 0, width, height);
+    const data = imgData.data;
+    let minX = width, minY = height, maxX = 0, maxY = 0;
+    let found = false;
+
+    for (let y = 0; y < height; y += 2) {
+      const rowOffset = y * width;
+      for (let x = 0; x < width; x += 2) {
+        const alpha = data[(rowOffset + x) * 4 + 3];
+        if (alpha > 20) {
+          if (x < minX) minX = x;
+          if (x > maxX) maxX = x;
+          if (y < minY) minY = y;
+          if (y > maxY) maxY = y;
+          found = true;
+        }
+      }
+    }
+
+    if (!found) return null;
+    return { minX, minY, maxX, maxY };
+  } catch {
+    return null;
+  }
+}
+
+/**
  * DigitalSignaturePad Component
  * 100% Mobile & Tablet App Responsive Touch Signature Pad.
- * Engineered specifically for Android / iOS WebView and Tablet usage:
- * - Natural letter-by-letter signing with ZERO zoom, jump, or stretch
- * - Direct non-passive touch listeners ({ passive: false }) preventing screen scroll/jitter
- * - High-DPR Retina/AMOLED anti-aliasing with quadratic curve smoothing
- * - Bounding-box crop only on export so database stays ultra-lightweight (~3KB - 5KB)
- * - Finger & Stylus (S-Pen / Apple Pencil) precision tracking
- * - 44px+ touch-friendly buttons for easy mobile tapping
+ * Engineered with Pixel-Perfect Snapshot History:
+ * - Fine-grained incremental snapshots during live signing (every letter/segment)
+ * - True Undo: Removes ONLY the last drawn part, leaving the rest 100% undisturbed
+ * - True Redo: Brings back the undone part instantly
+ * - Single PointerEvent listener preventing duplicate touch/pointer firing
+ * - Lightweight bounding-box cropped PNG export
  */
 export function DigitalSignaturePad({
   label,
@@ -26,20 +57,70 @@ export function DigitalSignaturePad({
 
   const [mode, setMode] = useState(isImageValue || !value ? 'draw' : 'type');
   const [hasDrawn, setHasDrawn] = useState(isImageValue);
+  const [canUndo, setCanUndo] = useState(false);
+  const [canRedo, setCanRedo] = useState(false);
 
   const canvasRef = useRef(null);
   const containerRef = useRef(null);
   const isDrawingRef = useRef(false);
   const lastPosRef = useRef({ x: 0, y: 0 });
-  const boundsRef = useRef(null);
+  const lastPointTimeRef = useRef(0);
+  const pointsSinceSnapshotRef = useRef(0);
 
-  // Guards to prevent canvas re-clearing / zooming during live signing
-  const isCanvasInitializedRef = useRef(false);
-  const hasUserDrawnRef = useRef(false);
+  // Snapshot History for 100% reliable Undo / Redo
+  const historyRef = useRef([]);
+  const redoStackRef = useRef([]);
+  const initialDataUrlRef = useRef(isImageValue ? value : '');
   const savedDataUrlRef = useRef(isImageValue ? value : '');
+  const isCanvasInitializedRef = useRef(false);
+
+  // Export lightweight cropped signature PNG
+  const exportSignature = useCallback(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return '';
+
+    try {
+      const ctx = canvas.getContext('2d');
+      const box = getCanvasBoundingBox(ctx, canvas.width, canvas.height);
+
+      if (box && box.maxX > box.minX && box.maxY > box.minY) {
+        const padding = 12;
+        const cropX = Math.max(0, box.minX - padding);
+        const cropY = Math.max(0, box.minY - padding);
+        const cropW = Math.min(canvas.width - cropX, (box.maxX - box.minX) + padding * 2);
+        const cropH = Math.min(canvas.height - cropY, (box.maxY - box.minY) + padding * 2);
+
+        const maxH = 100;
+        const scale = cropH > maxH ? maxH / cropH : 1;
+        const targetW = Math.max(1, Math.round(cropW * scale));
+        const targetH = Math.max(1, Math.round(cropH * scale));
+
+        const cropCanvas = document.createElement('canvas');
+        cropCanvas.width = targetW;
+        cropCanvas.height = targetH;
+        const cropCtx = cropCanvas.getContext('2d');
+        cropCtx.drawImage(canvas, cropX, cropY, cropW, cropH, 0, 0, targetW, targetH);
+        return cropCanvas.toDataURL('image/png');
+      }
+
+      return canvas.toDataURL('image/png');
+    } catch (err) {
+      console.error('Failed to export signature image:', err);
+      return '';
+    }
+  }, []);
+
+  // Accurate coordinate calculation from PointerEvent
+  const getCoordinates = (e, canvas) => {
+    const rect = canvas.getBoundingClientRect();
+    return {
+      x: e.clientX - rect.left,
+      y: e.clientY - rect.top,
+    };
+  };
 
   // Setup canvas size according to container dimensions & DPR
-  const setupCanvas = useCallback((forceReloadImage = false) => {
+  const setupCanvas = useCallback((forceReload = false) => {
     const canvas = canvasRef.current;
     const container = containerRef.current;
     if (!canvas || !container) return;
@@ -52,15 +133,13 @@ export function DigitalSignaturePad({
     const isTablet = window.innerWidth >= 600 && window.innerWidth <= 1024;
     const displayHeight = isTablet ? 155 : 140;
 
-    // Check if canvas dimensions actually need changing
-    const needDimensionChange =
-      canvas.width !== Math.floor(displayWidth * dpr) ||
-      canvas.height !== Math.floor(displayHeight * dpr);
+    const targetWidth = Math.floor(displayWidth * dpr);
+    const targetHeight = Math.floor(displayHeight * dpr);
 
-    if (needDimensionChange || !isCanvasInitializedRef.current) {
-      // Save existing strokes if resizing
+    if (canvas.width !== targetWidth || canvas.height !== targetHeight || !isCanvasInitializedRef.current || forceReload) {
+      // Save existing bitmap if resizing
       let existingImgData = null;
-      if (isCanvasInitializedRef.current && hasUserDrawnRef.current) {
+      if (isCanvasInitializedRef.current && historyRef.current.length > 1) {
         try {
           existingImgData = canvas.toDataURL('image/png');
         } catch {
@@ -68,8 +147,8 @@ export function DigitalSignaturePad({
         }
       }
 
-      canvas.width = Math.floor(displayWidth * dpr);
-      canvas.height = Math.floor(displayHeight * dpr);
+      canvas.width = targetWidth;
+      canvas.height = targetHeight;
       canvas.style.width = `${displayWidth}px`;
       canvas.style.height = `${displayHeight}px`;
 
@@ -77,12 +156,12 @@ export function DigitalSignaturePad({
       ctx.scale(dpr, dpr);
       ctx.lineCap = 'round';
       ctx.lineJoin = 'round';
-      ctx.strokeStyle = '#0f172a'; // Deep ink color
+      ctx.strokeStyle = '#0f172a';
+      ctx.fillStyle = '#0f172a';
       ctx.lineWidth = 2.6;
 
       isCanvasInitializedRef.current = true;
 
-      // If user was already drawing and screen resized, preserve their live drawing
       if (existingImgData) {
         const img = new Image();
         img.onload = () => {
@@ -92,14 +171,13 @@ export function DigitalSignaturePad({
         return;
       }
 
-      // Load initial saved signature image (only once on load or explicit mode switch)
+      // Load initial saved signature image if exists
       const initialImg = savedDataUrlRef.current || (isImageValue ? value : '');
-      if (initialImg && (forceReloadImage || !hasUserDrawnRef.current)) {
+      if (initialImg) {
         const img = new Image();
         img.crossOrigin = 'anonymous';
         img.onload = () => {
           ctx.clearRect(0, 0, displayWidth, displayHeight);
-          // Center and preserve aspect ratio cleanly
           const hRatio = displayWidth / img.width;
           const vRatio = displayHeight / img.height;
           const ratio = Math.min(hRatio, vRatio, 1);
@@ -107,11 +185,22 @@ export function DigitalSignaturePad({
           const drawH = img.height * ratio;
           const posX = (displayWidth - drawW) / 2;
           const posY = (displayHeight - drawH) / 2;
-
           ctx.drawImage(img, posX, posY, drawW, drawH);
           setHasDrawn(true);
+
+          // Baseline clean snapshot
+          historyRef.current = [ctx.getImageData(0, 0, canvas.width, canvas.height)];
+          redoStackRef.current = [];
+          setCanUndo(false);
+          setCanRedo(false);
         };
         img.src = initialImg;
+      } else {
+        // Empty clean snapshot
+        historyRef.current = [ctx.getImageData(0, 0, canvas.width, canvas.height)];
+        redoStackRef.current = [];
+        setCanUndo(false);
+        setCanRedo(false);
       }
     }
   }, [isImageValue, value]);
@@ -132,7 +221,7 @@ export function DigitalSignaturePad({
         if (mode === 'draw') {
           setupCanvas(false);
         }
-      }, 100);
+      }, 120);
     };
 
     window.addEventListener('resize', handleResize);
@@ -144,29 +233,29 @@ export function DigitalSignaturePad({
     };
   }, [mode, setupCanvas]);
 
-  // Accurate coordinate calculation supporting both Touch & Mouse
-  const getCoordinates = (e, canvas) => {
-    const rect = canvas.getBoundingClientRect();
-    let clientX, clientY;
+  // Sync with external form reset / clear
+  useEffect(() => {
+    if (value === savedDataUrlRef.current) return;
 
-    if (e.touches && e.touches.length > 0) {
-      clientX = e.touches[0].clientX;
-      clientY = e.touches[0].clientY;
-    } else if (e.changedTouches && e.changedTouches.length > 0) {
-      clientX = e.changedTouches[0].clientX;
-      clientY = e.changedTouches[0].clientY;
-    } else {
-      clientX = e.clientX;
-      clientY = e.clientY;
+    if (!value) {
+      savedDataUrlRef.current = '';
+      initialDataUrlRef.current = '';
+      redoStackRef.current = [];
+      setCanUndo(false);
+      setCanRedo(false);
+      setHasDrawn(false);
+
+      const canvas = canvasRef.current;
+      if (canvas) {
+        const ctx = canvas.getContext('2d');
+        const dpr = Math.max(window.devicePixelRatio || 1, 2);
+        ctx.clearRect(0, 0, canvas.width / dpr, canvas.height / dpr);
+        historyRef.current = [ctx.getImageData(0, 0, canvas.width, canvas.height)];
+      }
     }
+  }, [value]);
 
-    return {
-      x: clientX - rect.left,
-      y: clientY - rect.top,
-    };
-  };
-
-  // Direct native DOM event listeners with { passive: false } for mobile WebView
+  // Pointer Drawing Listeners (Universal for Touch, Pen, Mouse)
   useEffect(() => {
     if (mode !== 'draw') return;
     const canvas = canvasRef.current;
@@ -174,47 +263,33 @@ export function DigitalSignaturePad({
 
     const ctx = canvas.getContext('2d');
 
-    const startDrawing = (e) => {
-      // Prevent mobile WebView gestures, scroll, and pull-to-refresh
+    const onPointerDown = (e) => {
       if (e.cancelable) e.preventDefault();
       e.stopPropagation();
 
       isDrawingRef.current = true;
-      hasUserDrawnRef.current = true;
-
       const coords = getCoordinates(e, canvas);
       lastPosRef.current = coords;
-
-      if (!boundsRef.current) {
-        boundsRef.current = { minX: coords.x, minY: coords.y, maxX: coords.x, maxY: coords.y };
-      } else {
-        boundsRef.current.minX = Math.min(boundsRef.current.minX, coords.x);
-        boundsRef.current.minY = Math.min(boundsRef.current.minY, coords.y);
-        boundsRef.current.maxX = Math.max(boundsRef.current.maxX, coords.x);
-        boundsRef.current.maxY = Math.max(boundsRef.current.maxY, coords.y);
-      }
+      lastPointTimeRef.current = Date.now();
+      pointsSinceSnapshotRef.current = 0;
 
       ctx.beginPath();
       ctx.moveTo(coords.x, coords.y);
     };
 
-    const drawMove = (e) => {
+    const onPointerMove = (e) => {
       if (!isDrawingRef.current) return;
       if (e.cancelable) e.preventDefault();
       e.stopPropagation();
 
       const coords = getCoordinates(e, canvas);
       const prev = lastPosRef.current;
+      if (prev.x === coords.x && prev.y === coords.y) return;
 
-      // Track bounding box for cropping later without disrupting live drawing
-      if (boundsRef.current) {
-        boundsRef.current.minX = Math.min(boundsRef.current.minX, coords.x);
-        boundsRef.current.minY = Math.min(boundsRef.current.minY, coords.y);
-        boundsRef.current.maxX = Math.max(boundsRef.current.maxX, coords.x);
-        boundsRef.current.maxY = Math.max(boundsRef.current.maxY, coords.y);
-      }
+      const now = Date.now();
+      const timeDelta = now - lastPointTimeRef.current;
+      lastPointTimeRef.current = now;
 
-      // Smooth midpoint quadratic curve for realistic signature stroke
       const midX = (prev.x + coords.x) / 2;
       const midY = (prev.y + coords.y) / 2;
 
@@ -222,76 +297,127 @@ export function DigitalSignaturePad({
       ctx.stroke();
 
       lastPosRef.current = coords;
+      pointsSinceSnapshotRef.current += 1;
       setHasDrawn(true);
+
+      // Save incremental micro-snapshots during continuous drawing
+      // Every ~18 points (approx one letter or flourish) or on subtle pause (~160ms)
+      if (
+        pointsSinceSnapshotRef.current >= 18 ||
+        (timeDelta > 160 && pointsSinceSnapshotRef.current >= 6)
+      ) {
+        const snapshot = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        historyRef.current.push(snapshot);
+        if (historyRef.current.length > 50) historyRef.current.shift();
+        redoStackRef.current = [];
+        setCanUndo(true);
+        setCanRedo(false);
+        pointsSinceSnapshotRef.current = 0;
+      }
     };
 
-    const stopDrawing = (e) => {
+    const onPointerUp = (e) => {
       if (!isDrawingRef.current) return;
       if (e && e.cancelable) e.preventDefault();
       isDrawingRef.current = false;
 
-      // DO NOT clear or reload the canvas here!
-      // All user strokes remain completely undisturbed on screen as they write letter-by-letter.
-      try {
-        const dpr = Math.max(window.devicePixelRatio || 1, 2);
-        let dataUrl;
-
-        // Auto-crop to bounds for the data payload so the database stays ultra-lightweight
-        if (boundsRef.current && boundsRef.current.maxX > boundsRef.current.minX) {
-          const padding = 12;
-          const cropX = Math.max(0, (boundsRef.current.minX - padding) * dpr);
-          const cropY = Math.max(0, (boundsRef.current.minY - padding) * dpr);
-          const cropW = Math.min(canvas.width - cropX, (boundsRef.current.maxX - boundsRef.current.minX + padding * 2) * dpr);
-          const cropH = Math.min(canvas.height - cropY, (boundsRef.current.maxY - boundsRef.current.minY + padding * 2) * dpr);
-
-          const maxH = 100;
-          const scale = cropH > maxH ? maxH / cropH : 1;
-          const targetW = Math.max(1, Math.round(cropW * scale));
-          const targetH = Math.max(1, Math.round(cropH * scale));
-
-          const cropCanvas = document.createElement('canvas');
-          cropCanvas.width = targetW;
-          cropCanvas.height = targetH;
-          const cropCtx = cropCanvas.getContext('2d');
-          cropCtx.drawImage(canvas, cropX, cropY, cropW, cropH, 0, 0, targetW, targetH);
-          dataUrl = cropCanvas.toDataURL('image/png');
-        } else {
-          dataUrl = canvas.toDataURL('image/png');
-        }
-
-        savedDataUrlRef.current = dataUrl;
-        onChange(dataUrl);
-      } catch (err) {
-        console.error('Failed to export signature image:', err);
+      // If user tapped a single dot
+      if (pointsSinceSnapshotRef.current === 0) {
+        ctx.beginPath();
+        ctx.arc(lastPosRef.current.x, lastPosRef.current.y, 1.4, 0, Math.PI * 2);
+        ctx.fill();
       }
+
+      // Save snapshot of this finished stroke
+      const snapshot = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      historyRef.current.push(snapshot);
+      if (historyRef.current.length > 50) historyRef.current.shift();
+      redoStackRef.current = [];
+      setCanUndo(historyRef.current.length > 1);
+      setCanRedo(false);
+      setHasDrawn(true);
+      pointsSinceSnapshotRef.current = 0;
+
+      const dataUrl = exportSignature();
+      savedDataUrlRef.current = dataUrl;
+      onChange(dataUrl);
     };
 
-    // Mobile Touch Listeners (Non-passive for zero screen scroll jitter)
-    canvas.addEventListener('touchstart', startDrawing, { passive: false });
-    canvas.addEventListener('touchmove', drawMove, { passive: false });
-    canvas.addEventListener('touchend', stopDrawing, { passive: false });
-    canvas.addEventListener('touchcancel', stopDrawing, { passive: false });
-
-    // Desktop & Stylus Pointer / Mouse Listeners
-    canvas.addEventListener('pointerdown', startDrawing);
-    canvas.addEventListener('pointermove', drawMove);
-    canvas.addEventListener('pointerup', stopDrawing);
-    canvas.addEventListener('pointercancel', stopDrawing);
-    canvas.addEventListener('pointerleave', stopDrawing);
+    canvas.addEventListener('pointerdown', onPointerDown);
+    canvas.addEventListener('pointermove', onPointerMove);
+    canvas.addEventListener('pointerup', onPointerUp);
+    canvas.addEventListener('pointercancel', onPointerUp);
+    canvas.addEventListener('pointerleave', onPointerUp);
 
     return () => {
-      canvas.removeEventListener('touchstart', startDrawing);
-      canvas.removeEventListener('touchmove', drawMove);
-      canvas.removeEventListener('touchend', stopDrawing);
-      canvas.removeEventListener('touchcancel', stopDrawing);
-
-      canvas.removeEventListener('pointerdown', startDrawing);
-      canvas.removeEventListener('pointermove', drawMove);
-      canvas.removeEventListener('pointerup', stopDrawing);
-      canvas.removeEventListener('pointercancel', stopDrawing);
-      canvas.removeEventListener('pointerleave', stopDrawing);
+      canvas.removeEventListener('pointerdown', onPointerDown);
+      canvas.removeEventListener('pointermove', onPointerMove);
+      canvas.removeEventListener('pointerup', onPointerUp);
+      canvas.removeEventListener('pointercancel', onPointerUp);
+      canvas.removeEventListener('pointerleave', onPointerUp);
     };
-  }, [mode, onChange]);
+  }, [mode, onChange, exportSignature]);
+
+  // Stroke-by-stroke UNDO Handler
+  // Removes ONLY the last drawn part/letter, keeping the rest completely undisturbed!
+  const handleUndo = (e) => {
+    e?.preventDefault?.();
+    e?.stopPropagation?.();
+
+    if (historyRef.current.length <= 1) return;
+
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+
+    // Pop the current state and push to redo stack
+    const currentSnap = historyRef.current.pop();
+    redoStackRef.current.push(currentSnap);
+    setCanRedo(true);
+
+    // Restore previous state
+    const prevSnap = historyRef.current[historyRef.current.length - 1];
+    ctx.putImageData(prevSnap, 0, 0);
+
+    const hasRemainingDrawn = historyRef.current.length > 1;
+    setCanUndo(hasRemainingDrawn);
+
+    if (!hasRemainingDrawn) {
+      const isBlank = !initialDataUrlRef.current;
+      setHasDrawn(!isBlank);
+      savedDataUrlRef.current = initialDataUrlRef.current || '';
+      onChange(savedDataUrlRef.current);
+    } else {
+      const dataUrl = exportSignature();
+      savedDataUrlRef.current = dataUrl || '';
+      setHasDrawn(true);
+      onChange(savedDataUrlRef.current);
+    }
+  };
+
+  // REDO Handler
+  const handleRedo = (e) => {
+    e?.preventDefault?.();
+    e?.stopPropagation?.();
+
+    if (redoStackRef.current.length === 0) return;
+
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+
+    const nextSnap = redoStackRef.current.pop();
+    ctx.putImageData(nextSnap, 0, 0);
+    historyRef.current.push(nextSnap);
+
+    setCanRedo(redoStackRef.current.length > 0);
+    setCanUndo(historyRef.current.length > 1);
+
+    const dataUrl = exportSignature();
+    savedDataUrlRef.current = dataUrl || '';
+    setHasDrawn(true);
+    onChange(savedDataUrlRef.current);
+  };
 
   // Clear Signature Handler
   const handleClear = (e) => {
@@ -303,11 +429,14 @@ export function DigitalSignaturePad({
       const ctx = canvas.getContext('2d');
       const dpr = Math.max(window.devicePixelRatio || 1, 2);
       ctx.clearRect(0, 0, canvas.width / dpr, canvas.height / dpr);
+      historyRef.current = [ctx.getImageData(0, 0, canvas.width, canvas.height)];
     }
 
+    redoStackRef.current = [];
+    initialDataUrlRef.current = '';
     savedDataUrlRef.current = '';
-    boundsRef.current = null;
-    hasUserDrawnRef.current = false;
+    setCanUndo(false);
+    setCanRedo(false);
     setHasDrawn(false);
     onChange('');
   };
@@ -315,11 +444,7 @@ export function DigitalSignaturePad({
   const handleSwitchToDraw = () => {
     setMode('draw');
     if (!isImageValue) {
-      savedDataUrlRef.current = '';
-      boundsRef.current = null;
-      hasUserDrawnRef.current = false;
-      setHasDrawn(false);
-      onChange('');
+      handleClear();
     }
   };
 
@@ -399,14 +524,44 @@ export function DigitalSignaturePad({
             </div>
           )}
 
-          {/* Mobile-Friendly Clear Button */}
+          {/* Action Buttons: Undo, Redo, Clear */}
           <div className="sig-pad-actions-bar">
+            {canUndo && (
+              <button
+                type="button"
+                className="sig-action-btn sig-undo-btn"
+                onClick={handleUndo}
+                title="Undo last stroke/part (आखरी हिस्सा हटाएं)"
+              >
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.3" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M3 7v6h6" />
+                  <path d="M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6 2.3L3 13" />
+                </svg>
+                Undo
+              </button>
+            )}
+
+            {canRedo && (
+              <button
+                type="button"
+                className="sig-action-btn sig-redo-btn"
+                onClick={handleRedo}
+                title="Redo stroke/part (वापस लाएं)"
+              >
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.3" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M21 7v6h-6" />
+                  <path d="M3 17a9 9 0 0 1 9-9 9 9 0 0 1 6 2.3L21 13" />
+                </svg>
+                Redo
+              </button>
+            )}
+
             {hasDrawn && (
               <button
                 type="button"
                 className="sig-action-btn sig-clear-btn"
                 onClick={handleClear}
-                title="Clear and sign again"
+                title="Clear and sign again (पूरा साफ़ करें)"
               >
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.3" strokeLinecap="round" strokeLinejoin="round">
                   <polyline points="3 6 5 6 21 6" />
