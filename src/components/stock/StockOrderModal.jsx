@@ -103,19 +103,19 @@ export function StockOrderModal({
   // Selected items list in multi-item mode
   const selectedItemsList = isMultiItem
     ? items
-        .filter((it) => selectedMap[it.id])
-        .map((it) => ({
-          ...it,
-          orderQty: parseFloat(quantityMap[it.id]) || 1,
-        }))
+      .filter((it) => selectedMap[it.id])
+      .map((it) => ({
+        ...it,
+        orderQty: parseFloat(quantityMap[it.id]) || 1,
+      }))
     : item
-    ? [
+      ? [
         {
           ...item,
           orderQty: parseFloat(orderQuantity) || 1,
         },
       ]
-    : [];
+      : [];
 
   const cleanCategory = (categoryName || item?.category_name || 'Materials').replace(/[^a-zA-Z0-9_-]/g, '_');
   const pdfFileName = isMultiItem
@@ -183,13 +183,13 @@ export function StockOrderModal({
           .join('\n');
 
         whatsappText = encodeURIComponent(
-`*FAIZAN BODY BUILDERS*
+          `*FAIZAN BODY BUILDERS*
 *MATERIAL PURCHASE ORDER - ${categoryName.toUpperCase()}*
 ━━━━━━━━━━━━━━━━━━━━━━━━
 📄 *PO Number:* ${poNumber}
 📅 *Date:* ${orderDate}
 📂 *Category:* ${categoryName}
-${supplierName.trim() ? `🏢 *Supplier:* ${supplierName.trim()}\n` : ''}
+${supplierName.trim() ? `🏢 *Supplier:* ${supplierName.trim()}${supplierPhone.trim() ? ` (${supplierPhone.trim()})` : ''}\n` : (supplierPhone.trim() ? `📞 *Supplier Phone:* ${supplierPhone.trim()}\n` : '')}
 📦 *Required Materials (${selectedItemsList.length}):*
 ${itemsText}
 ${orderNotes.trim() ? `\n📝 *Note:* ${orderNotes.trim()}` : ''}
@@ -202,12 +202,12 @@ Faizan Body Builders Workshop
         );
       } else {
         whatsappText = encodeURIComponent(
-`*FAIZAN BODY BUILDERS*
+          `*FAIZAN BODY BUILDERS*
 *MATERIAL PURCHASE ORDER*
 ━━━━━━━━━━━━━━━━━━━━━━━━
 📄 *PO Number:* ${poNumber}
 📅 *Date:* ${orderDate}
-${supplierName.trim() ? `🏢 *Supplier:* ${supplierName.trim()}\n` : ''}
+${supplierName.trim() ? `🏢 *Supplier:* ${supplierName.trim()}${supplierPhone.trim() ? ` (${supplierPhone.trim()})` : ''}\n` : (supplierPhone.trim() ? `📞 *Supplier Phone:* ${supplierPhone.trim()}\n` : '')}
 📦 *Material:* ${item.name}
 📂 *Category:* ${item.category_name || 'Fabrication'}
 🔢 *Order Quantity Required:* *${orderQuantity} ${item.unit}*
@@ -222,20 +222,17 @@ Faizan Body Builders Workshop
         );
       }
 
-      // On Web or if file was downloaded (not shared via native sheet)
+      // Open WhatsApp App directly (Never WhatsApp Web) so user can select contact
       if (!Capacitor.isNativePlatform() || shareResult?.method === 'downloaded') {
-        const cleanPhone = supplierPhone.replace(/\D/g, '');
-        const targetPhone = cleanPhone
-          ? cleanPhone.length === 10
-            ? `91${cleanPhone}`
-            : cleanPhone
-          : '';
-        const waUrl = targetPhone
-          ? `https://wa.me/${targetPhone}?text=${whatsappText}`
-          : `https://api.whatsapp.com/send?text=${whatsappText}`;
-
-        window.open(waUrl, '_blank');
-        setStatusMessage('✅ PDF downloaded & WhatsApp opened!');
+        const waAppUrl = `whatsapp://send?text=${whatsappText}`;
+        try {
+          window.location.href = waAppUrl;
+        } catch {
+          const link = document.createElement('a');
+          link.href = waAppUrl;
+          link.click();
+        }
+        setStatusMessage('✅ PDF डाउनलोड हो गई & WhatsApp App खुल रहा है!');
       } else {
         setStatusMessage('✅ Purchase Order shared successfully!');
       }
@@ -380,7 +377,7 @@ Faizan Body Builders Workshop
                         <input
                           type="checkbox"
                           checked={isChecked}
-                          onChange={() => {}} // handled by parent div click
+                          onChange={() => { }} // handled by parent div click
                           className="stock-order-checkbox"
                         />
 

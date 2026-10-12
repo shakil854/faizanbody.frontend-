@@ -37,7 +37,7 @@ export async function ensureHtml2PdfLoaded() {
       if (window.html2pdf) return resolve(window.html2pdf);
       existing.addEventListener('load', () => resolve(window.html2pdf));
       existing.addEventListener('error', () => reject(new Error('Failed to load html2pdf library')));
-      
+
       let attempts = 0;
       const interval = setInterval(() => {
         if (window.html2pdf) {
@@ -75,6 +75,17 @@ export async function generatePdfBlob(element, customFileName = 'Order_Slip.pdf'
   const html2canvas = window.html2canvas;
 
   const renderPageCanvas = async (domElem) => {
+    if (!domElem) throw new Error('Target element is null');
+
+    // Wait for fonts to finish loading so text is crisp and visible
+    if (document.fonts && document.fonts.ready) {
+      try {
+        await document.fonts.ready;
+      } catch (e) {
+        // ignore font errors
+      }
+    }
+
     const sbox = document.createElement('div');
     sbox.id = 'pdf-render-sandbox';
     sbox.style.position = 'fixed';
@@ -99,28 +110,38 @@ export async function generatePdfBlob(element, customFileName = 'Order_Slip.pdf'
     clone.style.margin = '0px';
     clone.style.width = '720px';
     clone.style.maxWidth = '720px';
-    clone.style.minHeight = 'auto';
+    clone.style.minWidth = '720px';
     clone.style.boxSizing = 'border-box';
     clone.style.backgroundColor = '#ffffff';
+    clone.style.color = '#0f172a';
     clone.style.display = 'block';
     clone.style.visibility = 'visible';
     clone.style.opacity = '1';
 
-    // Strip any negative coordinates from children
+    // Strip any negative coordinates or fixed positions from children
     clone.querySelectorAll('*').forEach((el) => {
-      if (el.style.left === '-9999px' || el.style.position === 'fixed') {
+      if (
+        el.style.left === '-9999px' ||
+        el.style.position === 'fixed' ||
+        (el.style.position === 'absolute' && el.style.left && el.style.left.startsWith('-'))
+      ) {
         el.style.position = 'relative';
         el.style.left = '0px';
         el.style.top = '0px';
       }
     });
 
+    // Copy images and enable CORS
     const origImgs = domElem.querySelectorAll('img');
     const cloneImgs = clone.querySelectorAll('img');
     cloneImgs.forEach((img, i) => {
-      if (origImgs[i]) img.src = origImgs[i].src;
+      if (origImgs[i]) {
+        img.crossOrigin = 'anonymous';
+        img.src = origImgs[i].src;
+      }
     });
 
+    // Copy canvas drawings (e.g. digital signatures)
     const origCanvases = domElem.querySelectorAll('canvas');
     const cloneCanvases = clone.querySelectorAll('canvas');
     origCanvases.forEach((origCvs, i) => {
@@ -136,13 +157,24 @@ export async function generatePdfBlob(element, customFileName = 'Order_Slip.pdf'
     sbox.appendChild(clone);
     document.body.appendChild(sbox);
 
-    await new Promise((r) => setTimeout(r, 80));
+    // Wait for DOM layout calculation and paint
+    await new Promise((r) => setTimeout(r, 120));
+
+    const targetHeight = Math.max(clone.scrollHeight, clone.offsetHeight, 400);
+
+    // Fixed x:0, y:0, width:720 prevents html2canvas from scrolling off-screen to blank white!
     const cvs = await html2canvas(clone, {
       scale: 2,
       useCORS: true,
+      allowTaint: true,
       backgroundColor: '#ffffff',
       scrollY: 0,
       scrollX: 0,
+      x: 0,
+      y: 0,
+      width: 720,
+      height: targetHeight,
+      windowWidth: 720,
       logging: false,
     });
 
@@ -150,9 +182,9 @@ export async function generatePdfBlob(element, customFileName = 'Order_Slip.pdf'
     return cvs;
   };
 
-  // Check if printing 2-page full order (has #pdf-page-1 and #pdf-page-2)
-  const p1 = document.getElementById('pdf-page-1');
-  const p2 = document.getElementById('pdf-page-2');
+  // Check if target has 2-page full order (Page 1 + Page 2) scoped to the element
+  const p1 = element.querySelector('#pdf-page-1');
+  const p2 = element.querySelector('#pdf-page-2');
 
   if (p1 && p2 && JsPdf && html2canvas) {
     const canvas1 = await renderPageCanvas(p1);
@@ -161,8 +193,8 @@ export async function generatePdfBlob(element, customFileName = 'Order_Slip.pdf'
     const pdf = new JsPdf('p', 'mm', 'a4');
     const pdfWidth = pdf.internal.pageSize.getWidth(); // 210mm
     const pdfHeight = pdf.internal.pageSize.getHeight(); // 297mm
-    const margin = 8;
-    const printWidth = pdfWidth - (margin * 2); // 194mm
+    const margin = 6;
+    const printWidth = pdfWidth - (margin * 2); // 198mm
 
     // PAGE 1
     const imgData1 = canvas1.toDataURL('image/jpeg', 0.98);
@@ -178,19 +210,30 @@ export async function generatePdfBlob(element, customFileName = 'Order_Slip.pdf'
     return pdf.output('blob');
   }
 
-  // Single Page Slip (1 Page)
-  const singleTarget = document.getElementById('pdf-single-page') || element;
+  // Single Page Slip (1 Page) - scoped to element (Job slip or Stock Order Slip)
+  const singleTarget = element.querySelector('#pdf-single-page') || element;
   if (JsPdf && html2canvas && singleTarget) {
     const cvs = await renderPageCanvas(singleTarget);
 
     const pdf = new JsPdf('p', 'mm', 'a4');
     const pdfWidth = pdf.internal.pageSize.getWidth();
     const pdfHeight = pdf.internal.pageSize.getHeight();
-    const margin = 8;
+    const margin = 6;
     const printWidth = pdfWidth - (margin * 2);
     const printHeight = (cvs.height * printWidth) / cvs.width;
     const imgData = cvs.toDataURL('image/jpeg', 0.98);
-    pdf.addImage(imgData, 'JPEG', margin, margin, printWidth, Math.min(printHeight, pdfHeight - (margin * 2)));
+
+    const availableHeight = pdfHeight - (margin * 2);
+    if (printHeight <= availableHeight) {
+      pdf.addImage(imgData, 'JPEG', margin, margin, printWidth, printHeight);
+    } else {
+      // Proportionally scale to fit on single A4 sheet without clipping details
+      const scale = availableHeight / printHeight;
+      const finalWidth = printWidth * scale;
+      const finalHeight = printHeight * scale;
+      const xOffset = margin + (printWidth - finalWidth) / 2;
+      pdf.addImage(imgData, 'JPEG', xOffset, margin, finalWidth, finalHeight);
+    }
 
     return pdf.output('blob');
   }
@@ -198,10 +241,10 @@ export async function generatePdfBlob(element, customFileName = 'Order_Slip.pdf'
   // Fallback
   const html2pdf = window.html2pdf;
   const worker = html2pdf().set({
-    margin: [8, 8, 8, 8],
+    margin: [6, 6, 6, 6],
     filename: customFileName,
     image: { type: 'jpeg', quality: 0.98 },
-    html2canvas: { scale: 2, useCORS: true, width: 720 },
+    html2canvas: { scale: 2, useCORS: true, width: 720, windowWidth: 720, x: 0, y: 0, scrollX: 0, scrollY: 0 },
     jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
   }).from(element);
   return await worker.output('blob');
