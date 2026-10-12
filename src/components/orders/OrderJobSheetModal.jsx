@@ -703,6 +703,7 @@ export function OrderJobSheetModal({ isOpen, onClose, order }) {
                       { key: 'redium', label: 'रेडियम (REDIUM)' },
                       { key: 'painting', label: 'पेंटिंग (PAINTING)' },
                       { key: 'vayring', label: 'वायरिंग (VAYRING)' },
+                      { key: 'glass', label: 'ग्लास (GLASS)' },
                     ].map((item) => {
                       const itemData = order.finishing_work?.[item.key] || { value: '', boxes: ['', '', ''], done: false };
                       return (
@@ -796,6 +797,7 @@ export function OrderJobSheetModal({ isOpen, onClose, order }) {
                         { key: 'redium', label: 'रेडियम (REDIUM)' },
                         { key: 'painting', label: 'पेंटिंग (PAINTING)' },
                         { key: 'vayring', label: 'वायरिंग (VAYRING)' },
+                        { key: 'glass', label: 'ग्लास (GLASS)' },
                       ].map((item) => {
                         const itemData = order.finishing_work?.[item.key] || { value: '', boxes: ['', '', ''], done: false };
                         return (

@@ -62,6 +62,7 @@ export const DEFAULT_ORDER_DATA = {
     redium: { value: '', boxes: ['', '', ''], done: false },
     painting: { value: '', boxes: ['', '', ''], done: false },
     vayring: { value: '', boxes: ['', '', ''], done: false },
+    glass: { value: '', boxes: ['', '', ''], done: false },
   },
   machro: {
     boxes: ['', '', ''],
@@ -152,6 +153,7 @@ export const ORDER_SECTIONS = [
       { key: 'redium', label: 'रेडियम', subLabel: 'REDIUM' },
       { key: 'painting', label: 'पेंटिंग', subLabel: 'PAINTING' },
       { key: 'vayring', label: 'वायरिंग', subLabel: 'VAYRING' },
+      { key: 'glass', label: 'ग्लास', subLabel: 'GLASS' },
     ],
   },
 ];
@@ -178,7 +180,7 @@ export function calculateOrderProgress(order) {
 
   // Finishing section
   if (order.finishing_work) {
-    ['color', 'redium', 'painting', 'vayring'].forEach((fKey) => {
+    ['color', 'redium', 'painting', 'vayring', 'glass'].forEach((fKey) => {
       const fItem = order.finishing_work[fKey];
       total++;
       if (fItem && fItem.done) done++;
