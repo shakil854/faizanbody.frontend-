@@ -59,6 +59,33 @@ export function AuthProvider({ children }) {
   const isUser = role === 'user';
   const isAuthenticated = !!token && !!user;
 
+  /**
+   * Check if current user possesses a specific granular permission.
+   * Administrators automatically have 100% permissions across all modules.
+   */
+  const hasPermission = useCallback((permissionKey) => {
+    if (!isAuthenticated) return false;
+    if (isAdmin) return true;
+
+    const permissions = Array.isArray(user?.permissions) ? user.permissions : [];
+    return permissions.includes(permissionKey);
+  }, [isAuthenticated, isAdmin, user?.permissions]);
+
+  /**
+   * Check if user has access to view a high-level module screen.
+   */
+  const canAccessModule = useCallback((moduleId) => {
+    if (!isAuthenticated) return false;
+    if (isAdmin) return true;
+
+    if (moduleId === 'users') return false; // Strictly admin only
+    if (moduleId === 'orders') return hasPermission('orders:view');
+    if (moduleId === 'stock') return hasPermission('stock:view');
+    if (moduleId === 'workers') return hasPermission('workers:view');
+
+    return false;
+  }, [isAuthenticated, isAdmin, hasPermission]);
+
   const value = {
     user,
     role,
@@ -70,6 +97,8 @@ export function AuthProvider({ children }) {
     login,
     logout,
     updateUser,
+    hasPermission,
+    canAccessModule,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

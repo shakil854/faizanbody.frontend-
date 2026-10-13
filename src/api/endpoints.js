@@ -20,6 +20,9 @@ export const ENDPOINTS = {
   STOCK_ITEM_TRANSACTIONS: (id) => `/stock/items/${id}/transactions`,
   STOCK_TRANSACTIONS: '/stock/transactions',
   STOCK_SUMMARY: '/stock/summary',
+  USERS: '/users',
+  USER_DETAIL: (id) => `/users/${id}`,
+  USER_TOGGLE_STATUS: (id) => `/users/${id}/toggle-status`,
   AUTH: {
     LOGIN: '/auth/login',
     ME: '/auth/me',

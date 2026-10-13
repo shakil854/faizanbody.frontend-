@@ -10,7 +10,7 @@ import { Snackbar } from '../workers/Snackbar';
 import { useAuth } from '../../context/AuthContext';
 
 export function OrdersPage({ onBackToHome }) {
-  const { isAdmin } = useAuth();
+  const { isAdmin, hasPermission } = useAuth();
 
   // Instant SWR cache initialization
   const [orders, setOrders] = useState(() => orderService.getCachedOrders());
@@ -211,7 +211,7 @@ export function OrdersPage({ onBackToHome }) {
                   ? `No records match "${searchQuery}". Try clearing search or check spelling.`
                   : 'Start creating work orders to track truck body building, cabin, and body progress.'}
               </p>
-              {isAdmin && (
+              {hasPermission('orders:create') && (
                 <button
                   type="button"
                   className="btn btn-primary btn-empty-cta"
@@ -253,13 +253,15 @@ export function OrdersPage({ onBackToHome }) {
       </main>
 
       {/* Floating Action Button (FAB) for adding new work order */}
-      <OrderFab
-        onAddNew={() => {
-          setEditingOrder(null);
-          setFormMode('edit');
-          setIsFormOpen(true);
-        }}
-      />
+      {hasPermission('orders:create') && (
+        <OrderFab
+          onAddNew={() => {
+            setEditingOrder(null);
+            setFormMode('edit');
+            setIsFormOpen(true);
+          }}
+        />
+      )}
 
       {/* Modals */}
       <OrderFormModal

@@ -7,6 +7,7 @@ import { HomePage } from './components/home/HomePage';
 import { WorkersPage } from './components/workers/WorkersPage';
 import { OrdersPage } from './components/orders/OrdersPage';
 import { StockPage } from './components/stock/StockPage';
+import { UsersPage } from './components/users/UsersPage';
 import { WorkerFormModal } from './components/workers/WorkerFormModal';
 import { Snackbar } from './components/workers/Snackbar';
 import { BottomNav } from './components/common/BottomNav';
@@ -23,6 +24,7 @@ export function App() {
     if (hash === '#workers') return 'workers';
     if (hash === '#orders') return 'orders';
     if (hash === '#stock') return 'stock';
+    if (hash === '#users') return 'users';
     return 'home';
   });
 
@@ -76,6 +78,7 @@ export function App() {
       if (hash === '#workers') setCurrentPage('workers');
       else if (hash === '#orders') setCurrentPage('orders');
       else if (hash === '#stock') setCurrentPage('stock');
+      else if (hash === '#users') setCurrentPage('users');
       else setCurrentPage('home');
     };
 
@@ -182,6 +185,7 @@ export function App() {
       <AppHeader
         onOpenChangePassword={() => setIsChangePasswordOpen(true)}
         onNotify={(msg, type) => setSnackbar({ message: msg, type })}
+        onNavigate={navigateTo}
       />
 
       {/* 2. Main Page Content Shell */}
@@ -212,6 +216,12 @@ export function App() {
             onBackToHome={() => navigateTo('home')}
             onNavigate={navigateTo}
             onAlertCountChange={(cnt) => setAlertCount(cnt)}
+          />
+        )}
+
+        {currentPage === 'users' && isAdmin && (
+          <UsersPage
+            onBackToHome={() => navigateTo('home')}
           />
         )}
 

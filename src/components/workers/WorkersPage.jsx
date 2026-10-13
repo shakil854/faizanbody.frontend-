@@ -13,7 +13,12 @@ import { useAuth } from '../../context/AuthContext';
 const BATCH_SIZE = 25; // High-performance progressive rendering batch size
 
 export function WorkersPage({ onBackToHome, onAlertCountChange }) {
-  const { isAdmin } = useAuth();
+  const { isAdmin, hasPermission } = useAuth();
+  const canCreate = hasPermission('workers:create');
+  const canEdit = hasPermission('workers:edit');
+  const canDelete = hasPermission('workers:delete');
+  const canKhata = hasPermission('workers:khata');
+
   // Initialize with cached workers instantly in 0ms
   const [workers, setWorkers] = useState(() => workerService.getCachedWorkers());
   const [loading, setLoading] = useState(() => workerService.getCachedWorkers().length === 0);
@@ -264,7 +269,7 @@ export function WorkersPage({ onBackToHome, onAlertCountChange }) {
                   ? `No worker matches "${searchQuery}". Try clearing search or check spelling.`
                   : 'Start adding workers to keep track of coming and going dates.'}
               </p>
-              {isAdmin && (
+              {canCreate && (
                 <button
                   type="button"
                   className="btn btn-primary btn-empty-cta"
@@ -288,7 +293,9 @@ export function WorkersPage({ onBackToHome, onAlertCountChange }) {
                     worker={worker}
                     onEdit={handleEdit}
                     onDelete={handleDelete}
-                    canManage={isAdmin}
+                    canEdit={canEdit}
+                    canDelete={canDelete}
+                    canKhata={canKhata}
                   />
                 ))}
               </div>
@@ -307,8 +314,8 @@ export function WorkersPage({ onBackToHome, onAlertCountChange }) {
         </div>
       </main>
 
-      {/* 3. Android Floating Action Button (FAB - Admin Only) */}
-      {isAdmin && (
+      {/* 3. Android Floating Action Button (FAB) */}
+      {canCreate && (
         <WorkerFab
           onAddNew={() => {
             setEditingWorker(null);

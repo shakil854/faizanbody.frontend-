@@ -14,7 +14,13 @@ import { Snackbar } from '../workers/Snackbar';
 import { useAuth } from '../../context/AuthContext';
 
 export function StockPage({ onBackToHome }) {
-  const { isAdmin } = useAuth();
+  const { isAdmin, hasPermission } = useAuth();
+  const canCreate = hasPermission('stock:create');
+  const canEdit = hasPermission('stock:edit');
+  const canDelete = hasPermission('stock:delete');
+  const canAdjust = hasPermission('stock:adjust');
+  const canCategory = hasPermission('stock:category');
+  const canTransactions = hasPermission('stock:transactions');
 
   // State
   const [items, setItems] = useState(() => stockService.getCachedItems());
@@ -372,35 +378,39 @@ export function StockPage({ onBackToHome }) {
 
           <div className="stock-actions-right">
             {/* View Full Movement History */}
-            <button
-              type="button"
-              className="btn btn-secondary stock-action-btn-compact"
-              onClick={() => {
-                setHistoryItem(null);
-                setIsHistoryModalOpen(true);
-              }}
-              title="Audit Log / Movement History"
-            >
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                <circle cx="12" cy="12" r="10" />
-                <polyline points="12 6 12 12 14 14" />
-              </svg>
-              <span>Audit Log</span>
-            </button>
+            {canTransactions && (
+              <button
+                type="button"
+                className="btn btn-secondary stock-action-btn-compact"
+                onClick={() => {
+                  setHistoryItem(null);
+                  setIsHistoryModalOpen(true);
+                }}
+                title="Audit Log / Movement History"
+              >
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="12" cy="12" r="10" />
+                  <polyline points="12 6 12 12 14 14" />
+                </svg>
+                <span>Audit Log</span>
+              </button>
+            )}
 
             {/* Manage Categories Modal Trigger */}
-            <button
-              type="button"
-              className="btn btn-secondary stock-action-btn-compact"
-              onClick={() => setIsCategoryModalOpen(true)}
-              title="Manage Categories"
-            >
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z" />
-                <line x1="7" y1="7" x2="7.01" y2="7" />
-              </svg>
-              <span>Categories ({categories.length})</span>
-            </button>
+            {canCategory && (
+              <button
+                type="button"
+                className="btn btn-secondary stock-action-btn-compact"
+                onClick={() => setIsCategoryModalOpen(true)}
+                title="Manage Categories"
+              >
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z" />
+                  <line x1="7" y1="7" x2="7.01" y2="7" />
+                </svg>
+                <span>Categories ({categories.length})</span>
+              </button>
+            )}
           </div>
         </div>
 
@@ -632,7 +642,7 @@ export function StockPage({ onBackToHome }) {
       </main>
 
       {/* Floating Action Button for adding Stock Item */}
-      {isAdmin && (
+      {canCreate && (
         <StockFab
           onAddNew={() => {
             setEditingItem(null);
