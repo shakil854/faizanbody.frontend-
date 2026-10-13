@@ -4,6 +4,7 @@ import { useAuth } from '../../context/AuthContext';
 import { APP_MODULES, calculatePermissionCounts } from '../../config/permissionsConfig';
 import { UserFormModal } from './UserFormModal';
 import { UserDeleteModal } from './UserDeleteModal';
+import { UserFab } from './UserFab';
 import { Snackbar } from '../workers/Snackbar';
 
 export function UsersPage({ onBackToHome }) {
@@ -137,24 +138,7 @@ export function UsersPage({ onBackToHome }) {
       <main className="android-body">
         {/* Page Top Action Bar */}
         <div className="user-mgmt-topbar">
-          <div className="user-mgmt-top-left">
-            <h2 className="user-page-title">User Management</h2>
-          </div>
-
-          <button
-            type="button"
-            className="btn btn-primary btn-add-user-top"
-            onClick={() => {
-              setEditingUser(null);
-              setIsFormOpen(true);
-            }}
-          >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-              <line x1="12" y1="5" x2="12" y2="19" />
-              <line x1="5" y1="12" x2="19" y2="12" />
-            </svg>
-            <span>Add User</span>
-          </button>
+          <h2 className="user-page-title">User Management</h2>
         </div>
 
         {/* Executive Stats Summary Cards (Compact KPI Strip) */}
@@ -462,6 +446,14 @@ export function UsersPage({ onBackToHome }) {
           )}
         </div>
       </main>
+
+      {/* Floating Action Button (FAB) matching Workers, Orders, and Stock pages */}
+      <UserFab
+        onAddNew={() => {
+          setEditingUser(null);
+          setIsFormOpen(true);
+        }}
+      />
 
       {/* User Create / Edit Modal */}
       <UserFormModal
