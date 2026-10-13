@@ -17,6 +17,7 @@ export const OrderCard = React.memo(function OrderCard({
   const canEdit = hasPermission('orders:edit');
   const canDelete = hasPermission('orders:delete');
   const canPhotos = hasPermission('orders:photos');
+  const canPrint = hasPermission('orders:print');
 
   const { total, done } = calculateOrderProgress(order);
   const isCompleted = order.status === 'Completed' || (total > 0 && done === total);
@@ -207,56 +208,60 @@ export const OrderCard = React.memo(function OrderCard({
           </div>
         </div>
 
-        {/* Action Buttons: Edit & Delete (Exact WorkerCard style) */}
-        <div className="card-actions" onClick={(e) => e.stopPropagation()}>
-          <button
-            type="button"
-            className="action-btn jobsheet-card-btn"
-            onClick={() => onViewJobSheet && onViewJobSheet(order)}
-            title="View Job Sheet, Print PDF Slips & WhatsApp"
-            aria-label={`View Job Sheet for ${order.truck_chassis_no || 'order'}`}
-          >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-              <polyline points="14 2 14 8 20 8" />
-              <line x1="16" y1="13" x2="8" y2="13" />
-              <line x1="16" y1="17" x2="8" y2="17" />
-            </svg>
-          </button>
-          {canEdit && (
-            <button
-              type="button"
-              className="action-btn edit-btn"
-              onClick={(e) => {
-                e.stopPropagation();
-                onOpen(order, 'edit');
-              }}
-              title="Edit Order Details"
-              aria-label={`Edit ${order.truck_chassis_no || 'order'}`}
-            >
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
-                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
-              </svg>
-            </button>
-          )}
-          {canDelete && (
-            <button
-              type="button"
-              className="action-btn delete-btn"
-              onClick={() => onDelete(order)}
-              title="Delete Order"
-              aria-label={`Delete ${order.truck_chassis_no || 'order'}`}
-            >
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                <polyline points="3 6 5 6 21 6" />
-                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
-                <line x1="10" y1="11" x2="10" y2="17" />
-                <line x1="14" y1="11" x2="14" y2="17" />
-              </svg>
-            </button>
-          )}
-        </div>
+        {/* Action Buttons: Jobsheet, Edit & Delete */}
+        {(canPrint || canEdit || canDelete) && (
+          <div className="card-actions" onClick={(e) => e.stopPropagation()}>
+            {canPrint && (
+              <button
+                type="button"
+                className="action-btn jobsheet-card-btn"
+                onClick={() => onViewJobSheet && onViewJobSheet(order)}
+                title="View Job Sheet, Print PDF Slips & WhatsApp"
+                aria-label={`View Job Sheet for ${order.truck_chassis_no || 'order'}`}
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                  <polyline points="14 2 14 8 20 8" />
+                  <line x1="16" y1="13" x2="8" y2="13" />
+                  <line x1="16" y1="17" x2="8" y2="17" />
+                </svg>
+              </button>
+            )}
+            {canEdit && (
+              <button
+                type="button"
+                className="action-btn edit-btn"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onOpen(order, 'edit');
+                }}
+                title="Edit Order Details"
+                aria-label={`Edit ${order.truck_chassis_no || 'order'}`}
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+                  <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+                </svg>
+              </button>
+            )}
+            {canDelete && (
+              <button
+                type="button"
+                className="action-btn delete-btn"
+                onClick={() => onDelete(order)}
+                title="Delete Order"
+                aria-label={`Delete ${order.truck_chassis_no || 'order'}`}
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                  <polyline points="3 6 5 6 21 6" />
+                  <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                  <line x1="10" y1="11" x2="10" y2="17" />
+                  <line x1="14" y1="11" x2="14" y2="17" />
+                </svg>
+              </button>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Worker Dates Grid: Owner & Date */}
@@ -292,23 +297,25 @@ export const OrderCard = React.memo(function OrderCard({
         </div>
       </div>
 
-      {/* Quick Action Bar: View & Share PDF Job Sheet + Edit */}
-      <div className="order-card-quick-actions" onClick={(e) => e.stopPropagation()}>
-        <button
-          type="button"
-          className="btn-order-pdf-quick-share"
-          onClick={() => onViewJobSheet && onViewJobSheet(order)}
-          title="Open PDF Slips & WhatsApp Sharing (Full & 1-6 Functions)"
-        >
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.3" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-            <polyline points="14 2 14 8 20 8" />
-            <line x1="16" y1="13" x2="8" y2="13" />
-            <line x1="16" y1="17" x2="8" y2="17" />
-          </svg>
-          <span>PDF स्लिप & WhatsApp शेयर</span>
-        </button>
-      </div>
+      {/* Quick Action Bar: View & Share PDF Job Sheet */}
+      {canPrint && (
+        <div className="order-card-quick-actions" onClick={(e) => e.stopPropagation()}>
+          <button
+            type="button"
+            className="btn-order-pdf-quick-share"
+            onClick={() => onViewJobSheet && onViewJobSheet(order)}
+            title="Open PDF Slips & WhatsApp Sharing (Full & 1-6 Functions)"
+          >
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.3" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+              <polyline points="14 2 14 8 20 8" />
+              <line x1="16" y1="13" x2="8" y2="13" />
+              <line x1="16" y1="17" x2="8" y2="17" />
+            </svg>
+            <span>PDF स्लिप & WhatsApp शेयर</span>
+          </button>
+        </div>
+      )}
 
       {/* Work Photos Section (Cloudflare R2 Integration) */}
       <div className="order-card-photos-container" onClick={(e) => e.stopPropagation()}>
@@ -412,18 +419,20 @@ export const OrderCard = React.memo(function OrderCard({
                 <span>View ({photos.length})</span>
               </button>
 
-              <button
-                type="button"
-                className="btn-card-share-photo"
-                onClick={handleShareLatestPhoto}
-                disabled={isSharingPhoto}
-                title="फोटो WhatsApp पर भेजें"
-              >
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.3">
-                  <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" />
-                </svg>
-                <span>{isSharingPhoto ? '...' : 'Share'}</span>
-              </button>
+              {canPhotos && (
+                <button
+                  type="button"
+                  className="btn-card-share-photo"
+                  onClick={handleShareLatestPhoto}
+                  disabled={isSharingPhoto}
+                  title="फोटो WhatsApp पर भेजें"
+                >
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.3">
+                    <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" />
+                  </svg>
+                  <span>{isSharingPhoto ? '...' : 'Share'}</span>
+                </button>
+              )}
 
               {canPhotos && (
                 <>
@@ -473,7 +482,7 @@ export const OrderCard = React.memo(function OrderCard({
               )}
             </div>
           </div>
-        ) : (
+        ) : canPhotos ? (
           /* Empty Photos: Camera & Upload Triggers */
           <div className="order-card-empty-photo-box" onClick={(e) => e.stopPropagation()}>
             {isUploading ? (
@@ -490,41 +499,37 @@ export const OrderCard = React.memo(function OrderCard({
                   </svg>
                   <span>Work Progress Photos (फोटो)</span>
                 </div>
-                {canPhotos ? (
-                  <div className="card-empty-photo-actions">
-                    <button
-                      type="button"
-                      className="btn-empty-camera"
-                      onClick={handleCameraTrigger}
-                      title="Open Camera to Click Photo"
-                    >
-                      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4">
-                        <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
-                        <circle cx="12" cy="13" r="4" />
-                      </svg>
-                      <span>Camera</span>
-                    </button>
+                <div className="card-empty-photo-actions">
+                  <button
+                    type="button"
+                    className="btn-empty-camera"
+                    onClick={handleCameraTrigger}
+                    title="Open Camera to Click Photo"
+                  >
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4">
+                      <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
+                      <circle cx="12" cy="13" r="4" />
+                    </svg>
+                    <span>Camera</span>
+                  </button>
 
-                    <button
-                      type="button"
-                      className="btn-empty-upload"
-                      onClick={handleGalleryTrigger}
-                      title="Upload from Gallery"
-                    >
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6">
-                        <line x1="12" y1="5" x2="12" y2="19" />
-                        <line x1="5" y1="12" x2="19" y2="12" />
-                      </svg>
-                      <span>Upload</span>
-                    </button>
-                  </div>
-                ) : (
-                  <span className="photo-readonly-notice">No progress photos uploaded yet</span>
-                )}
+                  <button
+                    type="button"
+                    className="btn-empty-upload"
+                    onClick={handleGalleryTrigger}
+                    title="Upload from Gallery"
+                  >
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6">
+                      <line x1="12" y1="5" x2="12" y2="19" />
+                      <line x1="5" y1="12" x2="19" y2="12" />
+                    </svg>
+                    <span>Upload</span>
+                  </button>
+                </div>
               </div>
             )}
           </div>
-        )}
+        ) : null}
       </div>
     </div>
   );

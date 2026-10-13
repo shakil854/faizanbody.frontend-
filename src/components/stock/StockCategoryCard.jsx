@@ -8,6 +8,7 @@ import React from 'react';
 export const StockCategoryCard = React.memo(function StockCategoryCard({
   category,
   items = [],
+  canOrder = true,
   onClick,
   onOrderCategory,
 }) {
@@ -113,7 +114,7 @@ export const StockCategoryCard = React.memo(function StockCategoryCard({
           </svg>
         </button>
 
-        {totalItems > 0 && (
+        {canOrder && totalItems > 0 && (
           <button
             type="button"
             className="cat-quick-order-btn"

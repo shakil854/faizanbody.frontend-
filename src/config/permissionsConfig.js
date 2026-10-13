@@ -27,7 +27,7 @@ export const APP_MODULES = [
       },
       {
         key: 'orders:tasks',
-        label: 'Checkoff Tasks',
+        label: 'Checkoff Tasks (✓)',
         description: 'Mark body building and cabin fabrication tasks as done / pending',
       },
       {
@@ -42,8 +42,8 @@ export const APP_MODULES = [
       },
       {
         key: 'orders:print',
-        label: 'Print & Export Job Sheet',
-        description: 'Print physical job cards and export customer delivery receipts',
+        label: 'PDF स्लिप & WhatsApp शेयर (Job Sheet)',
+        description: 'Download, print, and share Job Sheet PDF slips on WhatsApp (Full & 1-6 Functions)',
       },
       {
         key: 'orders:delete',
@@ -77,12 +77,17 @@ export const APP_MODULES = [
       {
         key: 'stock:adjust',
         label: 'Stock IN / OUT Adjustment',
-        description: 'Record incoming material shipments and workshop consumption',
+        description: 'Record incoming material shipments (+) and workshop consumption (-)',
       },
       {
         key: 'stock:transactions',
         label: 'View Audit History',
         description: 'View complete transaction log of material additions & deductions',
+      },
+      {
+        key: 'stock:order',
+        label: 'Order Materials (WhatsApp PO Slip)',
+        description: 'Generate and send Purchase Order slips for materials directly on WhatsApp',
       },
       {
         key: 'stock:category',

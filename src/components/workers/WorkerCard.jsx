@@ -12,6 +12,7 @@ export const WorkerCard = React.memo(function WorkerCard({
   canEdit = canManage,
   canDelete = canManage,
   canKhata = true,
+  canAadhar = true,
 }) {
   const [showAadharModal, setShowAadharModal] = useState(false);
   const [showKhataModal, setShowKhataModal] = useState(false);
@@ -173,79 +174,81 @@ export const WorkerCard = React.memo(function WorkerCard({
         )}
 
         {/* Worker Khata Micro-Dashboard Card */}
-        <div
-          className="worker-khata-card"
-          onClick={() => setShowKhataModal(true)}
-          role="button"
-          tabIndex={0}
-          title="Open Worker Khata Ledger"
-        >
-          {/* Header Row: Title & Action Button */}
-          <div className="khata-card-header-row">
-            <div className="khata-card-title-group">
-              <span className="khata-card-icon-squircle">
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#2563eb" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
-                  <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
-                  <line x1="9" y1="7" x2="15" y2="7" />
-                  <line x1="9" y1="11" x2="13" y2="11" />
+        {canKhata && (
+          <div
+            className="worker-khata-card"
+            onClick={() => setShowKhataModal(true)}
+            role="button"
+            tabIndex={0}
+            title="Open Worker Khata Ledger"
+          >
+            {/* Header Row: Title & Action Button */}
+            <div className="khata-card-header-row">
+              <div className="khata-card-title-group">
+                <span className="khata-card-icon-squircle">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#2563eb" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
+                    <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
+                    <line x1="9" y1="7" x2="15" y2="7" />
+                    <line x1="9" y1="11" x2="13" y2="11" />
+                  </svg>
+                </span>
+                <div className="khata-card-title-text">
+                  <span className="khata-card-heading">Khata Ledger</span>
+                  <span className="khata-card-subheading">Debit & Credit Record</span>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                className="btn-khata-open-pill"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setShowKhataModal(true);
+                }}
+              >
+                <span>View Khata</span>
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <polyline points="9 18 15 12 9 6" />
                 </svg>
-              </span>
-              <div className="khata-card-title-text">
-                <span className="khata-card-heading">Khata Ledger</span>
-                <span className="khata-card-subheading">Debit & Credit Record</span>
+              </button>
+            </div>
+
+            {/* 3 Micro-KPIs Grid: Total, Upad, Paid */}
+            <div className="khata-micro-grid">
+              <div className="khata-micro-item item-total">
+                <span className="micro-label">Total Work</span>
+                <span className="micro-val">₹{khataSalary.toLocaleString('en-IN')}</span>
+              </div>
+              <div className="khata-micro-item item-upad">
+                <span className="micro-label">Upad (Adv)</span>
+                <span className="micro-val">₹{khataUpad.toLocaleString('en-IN')}</span>
+              </div>
+              <div className="khata-micro-item item-paid">
+                <span className="micro-label">Paid</span>
+                <span className="micro-val">₹{khataPaid.toLocaleString('en-IN')}</span>
               </div>
             </div>
 
-            <button
-              type="button"
-              className="btn-khata-open-pill"
-              onClick={(e) => {
-                e.stopPropagation();
-                setShowKhataModal(true);
-              }}
-            >
-              <span>View Khata</span>
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                <polyline points="9 18 15 12 9 6" />
-              </svg>
-            </button>
-          </div>
-
-          {/* 3 Micro-KPIs Grid: Total, Upad, Paid */}
-          <div className="khata-micro-grid">
-            <div className="khata-micro-item item-total">
-              <span className="micro-label">Total Work</span>
-              <span className="micro-val">₹{khataSalary.toLocaleString('en-IN')}</span>
-            </div>
-            <div className="khata-micro-item item-upad">
-              <span className="micro-label">Upad (Adv)</span>
-              <span className="micro-val">₹{khataUpad.toLocaleString('en-IN')}</span>
-            </div>
-            <div className="khata-micro-item item-paid">
-              <span className="micro-label">Paid</span>
-              <span className="micro-val">₹{khataPaid.toLocaleString('en-IN')}</span>
-            </div>
-          </div>
-
-          {/* Prominent Net Balance Strip */}
-          <div className={`khata-balance-strip ${khataBalance > 0 ? 'strip-due' : khataBalance < 0 ? 'strip-upad' : 'strip-settled'}`}>
-            <div className="balance-strip-left">
-              <span className="balance-strip-label">
-                {khataBalance > 0 ? 'Due to Pay:' : khataBalance < 0 ? 'Advance Due:' : 'Net Balance:'}
-              </span>
-              <span className="balance-strip-amount">
-                ₹{Math.abs(khataBalance).toLocaleString('en-IN')}
+            {/* Prominent Net Balance Strip */}
+            <div className={`khata-balance-strip ${khataBalance > 0 ? 'strip-due' : khataBalance < 0 ? 'strip-upad' : 'strip-settled'}`}>
+              <div className="balance-strip-left">
+                <span className="balance-strip-label">
+                  {khataBalance > 0 ? 'Due to Pay:' : khataBalance < 0 ? 'Advance Due:' : 'Net Balance:'}
+                </span>
+                <span className="balance-strip-amount">
+                  ₹{Math.abs(khataBalance).toLocaleString('en-IN')}
+                </span>
+              </div>
+              <span className="balance-strip-badge">
+                {khataBalance > 0 ? 'Payable' : khataBalance < 0 ? 'Advance Due' : 'Settled'}
               </span>
             </div>
-            <span className="balance-strip-badge">
-              {khataBalance > 0 ? 'Payable' : khataBalance < 0 ? 'Advance Due' : 'Settled'}
-            </span>
           </div>
-        </div>
+        )}
 
         {/* Worker Aadhar Card Badge */}
-        {worker.aadhar_card && (
+        {canAadhar && worker.aadhar_card && (
           <div
             className="worker-aadhar-badge-clickable"
             onClick={() => setShowAadharModal(true)}

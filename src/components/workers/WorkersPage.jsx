@@ -18,6 +18,7 @@ export function WorkersPage({ onBackToHome, onAlertCountChange }) {
   const canEdit = hasPermission('workers:edit');
   const canDelete = hasPermission('workers:delete');
   const canKhata = hasPermission('workers:khata');
+  const canAadhar = hasPermission('workers:aadhar');
 
   // Initialize with cached workers instantly in 0ms
   const [workers, setWorkers] = useState(() => workerService.getCachedWorkers());
@@ -296,6 +297,7 @@ export function WorkersPage({ onBackToHome, onAlertCountChange }) {
                     canEdit={canEdit}
                     canDelete={canDelete}
                     canKhata={canKhata}
+                    canAadhar={canAadhar}
                   />
                 ))}
               </div>

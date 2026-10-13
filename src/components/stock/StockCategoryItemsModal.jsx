@@ -10,6 +10,12 @@ export function StockCategoryItemsModal({
   categoryName,
   items = [],
   isAdmin,
+  canCreate = isAdmin,
+  canEdit = isAdmin,
+  canDelete = isAdmin,
+  canAdjust = true,
+  canTransactions = true,
+  canOrder = true,
   onClose,
   onOrderCategory,
   onEditItem,
@@ -87,7 +93,7 @@ export function StockCategoryItemsModal({
 
           <div className="modern-header-right cat-modal-header-actions">
             {/* Quick Order Materials button */}
-            {totalCount > 0 && (
+            {canOrder && totalCount > 0 && (
               <button
                 type="button"
                 className="btn-cat-header-order"
@@ -104,7 +110,7 @@ export function StockCategoryItemsModal({
             )}
 
             {/* Add Material button */}
-            {isAdmin && (
+            {canCreate && (
               <button
                 type="button"
                 className="btn btn-primary btn-cat-header-add"
@@ -180,7 +186,7 @@ export function StockCategoryItemsModal({
                   ? `No items match "${searchQuery}". Clear search to view all.`
                   : `Start by adding materials belonging to "${categoryName}".`}
               </p>
-              {isAdmin && !searchQuery && (
+              {canCreate && !searchQuery && (
                 <button
                   type="button"
                   className="btn btn-primary"
@@ -228,76 +234,82 @@ export function StockCategoryItemsModal({
 
                       <div className="cat-item-actions-cluster">
                         {/* Quick Adjust IN/OUT buttons */}
-                        <div className="cat-adjust-btns">
-                          <button
-                            type="button"
-                            className="stock-btn-in cat-mini-adj"
-                            onClick={() => onAdjustItem && onAdjustItem(item, 'IN')}
-                            title="Stock IN (+)"
-                          >
-                            <span className="btn-sign">+</span> IN
-                          </button>
-                          <button
-                            type="button"
-                            className="stock-btn-out cat-mini-adj"
-                            onClick={() => onAdjustItem && onAdjustItem(item, 'OUT')}
-                            title="Stock OUT (-)"
-                          >
-                            <span className="btn-sign">-</span> OUT
-                          </button>
-                        </div>
+                        {canAdjust && (
+                          <div className="cat-adjust-btns">
+                            <button
+                              type="button"
+                              className="stock-btn-in cat-mini-adj"
+                              onClick={() => onAdjustItem && onAdjustItem(item, 'IN')}
+                              title="Stock IN (+)"
+                            >
+                              <span className="btn-sign">+</span> IN
+                            </button>
+                            <button
+                              type="button"
+                              className="stock-btn-out cat-mini-adj"
+                              onClick={() => onAdjustItem && onAdjustItem(item, 'OUT')}
+                              title="Stock OUT (-)"
+                            >
+                              <span className="btn-sign">-</span> OUT
+                            </button>
+                          </div>
+                        )}
 
                         {/* Order & History & Edit & Delete */}
                         <div className="cat-tools-cluster">
-                          <button
-                            type="button"
-                            className="stock-mini-btn order"
-                            onClick={() => onOrderItem && onOrderItem(item)}
-                            title="Order this material on WhatsApp (PO Slip)"
-                          >
-                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
-                              <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" />
-                            </svg>
-                          </button>
+                          {canOrder && (
+                            <button
+                              type="button"
+                              className="stock-mini-btn order"
+                              onClick={() => onOrderItem && onOrderItem(item)}
+                              title="Order this material on WhatsApp (PO Slip)"
+                            >
+                              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
+                                <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" />
+                              </svg>
+                            </button>
+                          )}
 
-                          <button
-                            type="button"
-                            className="stock-mini-btn"
-                            onClick={() => onViewHistory && onViewHistory(item)}
-                            title="Movement History"
-                          >
-                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
-                              <circle cx="12" cy="12" r="10" />
-                              <polyline points="12 6 12 12 14 14" />
-                            </svg>
-                          </button>
+                          {canTransactions && (
+                            <button
+                              type="button"
+                              className="stock-mini-btn"
+                              onClick={() => onViewHistory && onViewHistory(item)}
+                              title="Movement History"
+                            >
+                              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
+                                <circle cx="12" cy="12" r="10" />
+                                <polyline points="12 6 12 12 14 14" />
+                              </svg>
+                            </button>
+                          )}
 
-                          {isAdmin && (
-                            <>
-                              <button
-                                type="button"
-                                className="stock-mini-btn edit"
-                                onClick={() => onEditItem && onEditItem(item)}
-                                title="Edit Material"
-                              >
-                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
-                                  <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
-                                  <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
-                                </svg>
-                              </button>
+                          {canEdit && (
+                            <button
+                              type="button"
+                              className="stock-mini-btn edit"
+                              onClick={() => onEditItem && onEditItem(item)}
+                              title="Edit Material"
+                            >
+                              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
+                                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+                                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+                              </svg>
+                            </button>
+                          )}
 
-                              <button
-                                type="button"
-                                className="stock-mini-btn delete"
-                                onClick={() => onDeleteItem && onDeleteItem(item)}
-                                title="Delete Material"
-                              >
-                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
-                                  <polyline points="3 6 5 6 21 6" />
-                                  <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
-                                </svg>
-                              </button>
-                            </>
+                          {canDelete && (
+                            <button
+                              type="button"
+                              className="stock-mini-btn delete"
+                              onClick={() => onDeleteItem && onDeleteItem(item)}
+                              title="Delete Material"
+                            >
+                              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
+                                <polyline points="3 6 5 6 21 6" />
+                                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                              </svg>
+                            </button>
                           )}
                         </div>
                       </div>
@@ -320,7 +332,7 @@ export function StockCategoryItemsModal({
           </div>
 
           <div className="footer-right">
-            {totalCount > 0 && (
+            {canOrder && totalCount > 0 && (
               <button
                 type="button"
                 className="btn-modern-save-submit cat-footer-order-btn"

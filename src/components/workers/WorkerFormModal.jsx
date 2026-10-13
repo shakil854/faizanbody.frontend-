@@ -1,9 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { useAuth } from '../../context/AuthContext';
 import { workerService, getAadharFullUrl } from '../../services/workerService';
 import { capturePhotoFromCamera, pickPhotosFromGallery, compressImageFile } from '../../utils/nativeCamera';
 import { AadharPreviewModal } from './AadharPreviewModal';
 
 export function WorkerFormModal({ isOpen, onClose, onSave, initialData }) {
+  const { hasPermission } = useAuth();
+  const canAadhar = hasPermission('workers:aadhar');
   const [name, setName] = useState('');
   const [mobile, setMobile] = useState('');
   const [aadharCard, setAadharCard] = useState('');
@@ -291,127 +294,129 @@ export function WorkerFormModal({ isOpen, onClose, onSave, initialData }) {
             </div>
 
             {/* Field 3: Aadhar Card (Photo Upload / Camera Click) */}
-            <div className="form-group aadhar-form-group">
-              <div className="aadhar-header-row">
-                <label className="form-label">
-                  Aadhar Card Photo (आधार कार्ड फोटो)
-                </label>
-                {aadharPreview && (
-                  <span className="badge-attached-success">
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#16a34a" strokeWidth="3" strokeLinecap="round">
-                      <polyline points="20 6 9 17 4 12" />
-                    </svg>
-                    Photo Attached
-                  </span>
-                )}
-              </div>
-
-              {aadharPreview ? (
-                /* Attached Photo Preview Card */
-                <div className="aadhar-preview-card">
-                  <div
-                    className="aadhar-preview-thumbnail-box"
-                    onClick={() => setIsPreviewModalOpen(true)}
-                    title="Click to view full photo"
-                  >
-                    <img
-                      src={aadharPreview}
-                      alt="Aadhar Preview"
-                      className="aadhar-preview-thumb-img"
-                    />
-                    <div className="aadhar-zoom-overlay">
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#ffffff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                        <circle cx="11" cy="11" r="8" />
-                        <line x1="21" y1="21" x2="16.65" y2="16.65" />
-                        <line x1="11" y1="8" x2="11" y2="14" />
-                        <line x1="8" y1="11" x2="14" y2="11" />
+            {canAadhar && (
+              <div className="form-group aadhar-form-group">
+                <div className="aadhar-header-row">
+                  <label className="form-label">
+                    Aadhar Card Photo (आधार कार्ड फोटो)
+                  </label>
+                  {aadharPreview && (
+                    <span className="badge-attached-success">
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#16a34a" strokeWidth="3" strokeLinecap="round">
+                        <polyline points="20 6 9 17 4 12" />
                       </svg>
+                      Photo Attached
+                    </span>
+                  )}
+                </div>
+
+                {aadharPreview ? (
+                  /* Attached Photo Preview Card */
+                  <div className="aadhar-preview-card">
+                    <div
+                      className="aadhar-preview-thumbnail-box"
+                      onClick={() => setIsPreviewModalOpen(true)}
+                      title="Click to view full photo"
+                    >
+                      <img
+                        src={aadharPreview}
+                        alt="Aadhar Preview"
+                        className="aadhar-preview-thumb-img"
+                      />
+                      <div className="aadhar-zoom-overlay">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#ffffff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                          <circle cx="11" cy="11" r="8" />
+                          <line x1="21" y1="21" x2="16.65" y2="16.65" />
+                          <line x1="11" y1="8" x2="11" y2="14" />
+                          <line x1="8" y1="11" x2="14" y2="11" />
+                        </svg>
+                      </div>
+                    </div>
+                    <div className="aadhar-preview-info">
+                      <span className="aadhar-preview-name">Aadhar Card Attached</span>
+                      <span className="aadhar-preview-sub">Ready for verification</span>
+                      <div className="aadhar-preview-btn-row">
+                        <button
+                          type="button"
+                          className="btn-text-action btn-retake-action"
+                          onClick={handleCameraTrigger}
+                          title="Click new photo with camera"
+                        >
+                          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
+                            <circle cx="12" cy="13" r="4" />
+                          </svg>
+                          Retake
+                        </button>
+                        <button
+                          type="button"
+                          className="btn-text-action btn-upload-again-action"
+                          onClick={handleGalleryTrigger}
+                          title="Select different photo from gallery"
+                        >
+                          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                            <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+                            <circle cx="8.5" cy="8.5" r="1.5" />
+                            <polyline points="21 15 16 10 5 21" />
+                          </svg>
+                          Upload
+                        </button>
+                        <button
+                          type="button"
+                          className="btn-text-action btn-remove-action"
+                          onClick={handleRemoveAadhar}
+                          title="Remove attached Aadhar card"
+                        >
+                          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#dc2626" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                            <line x1="18" y1="6" x2="6" y2="18" />
+                            <line x1="6" y1="6" x2="18" y2="18" />
+                          </svg>
+                          Remove
+                        </button>
+                      </div>
                     </div>
                   </div>
-                  <div className="aadhar-preview-info">
-                    <span className="aadhar-preview-name">Aadhar Card Attached</span>
-                    <span className="aadhar-preview-sub">Ready for verification</span>
-                    <div className="aadhar-preview-btn-row">
-                      <button
-                        type="button"
-                        className="btn-text-action btn-retake-action"
-                        onClick={handleCameraTrigger}
-                        title="Click new photo with camera"
-                      >
-                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                ) : (
+                  /* Two Prominent Action Buttons: Camera Click & Gallery Upload */
+                  <div className="aadhar-upload-actions-grid">
+                    <button
+                      type="button"
+                      className="aadhar-action-btn aadhar-camera-btn"
+                      onClick={handleCameraTrigger}
+                    >
+                      <div className="aadhar-action-icon-circle camera-circle">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#2563eb" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
                           <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
                           <circle cx="12" cy="13" r="4" />
                         </svg>
-                        Retake
-                      </button>
-                      <button
-                        type="button"
-                        className="btn-text-action btn-upload-again-action"
-                        onClick={handleGalleryTrigger}
-                        title="Select different photo from gallery"
-                      >
-                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                      </div>
+                      <div className="aadhar-action-text">
+                        <span className="action-title">Click Photo</span>
+                        <span className="action-subtitle">Live Camera</span>
+                      </div>
+                    </button>
+
+                    <button
+                      type="button"
+                      className="aadhar-action-btn aadhar-gallery-btn"
+                      onClick={handleGalleryTrigger}
+                    >
+                      <div className="aadhar-action-icon-circle gallery-circle">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#7c3aed" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
                           <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
                           <circle cx="8.5" cy="8.5" r="1.5" />
                           <polyline points="21 15 16 10 5 21" />
                         </svg>
-                        Upload
-                      </button>
-                      <button
-                        type="button"
-                        className="btn-text-action btn-remove-action"
-                        onClick={handleRemoveAadhar}
-                        title="Remove attached Aadhar card"
-                      >
-                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#dc2626" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                          <line x1="18" y1="6" x2="6" y2="18" />
-                          <line x1="6" y1="6" x2="18" y2="18" />
-                        </svg>
-                        Remove
-                      </button>
-                    </div>
+                      </div>
+                      <div className="aadhar-action-text">
+                        <span className="action-title">Upload Photo</span>
+                        <span className="action-subtitle">From Files / Gallery</span>
+                      </div>
+                    </button>
                   </div>
-                </div>
-              ) : (
-                /* Two Prominent Action Buttons: Camera Click & Gallery Upload */
-                <div className="aadhar-upload-actions-grid">
-                  <button
-                    type="button"
-                    className="aadhar-action-btn aadhar-camera-btn"
-                    onClick={handleCameraTrigger}
-                  >
-                    <div className="aadhar-action-icon-circle camera-circle">
-                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#2563eb" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                        <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
-                        <circle cx="12" cy="13" r="4" />
-                      </svg>
-                    </div>
-                    <div className="aadhar-action-text">
-                      <span className="action-title">Click Photo</span>
-                      <span className="action-subtitle">Live Camera</span>
-                    </div>
-                  </button>
-
-                  <button
-                    type="button"
-                    className="aadhar-action-btn aadhar-gallery-btn"
-                    onClick={handleGalleryTrigger}
-                  >
-                    <div className="aadhar-action-icon-circle gallery-circle">
-                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#7c3aed" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                        <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
-                        <circle cx="8.5" cy="8.5" r="1.5" />
-                        <polyline points="21 15 16 10 5 21" />
-                      </svg>
-                    </div>
-                    <div className="aadhar-action-text">
-                      <span className="action-title">Upload Photo</span>
-                      <span className="action-subtitle">From Files / Gallery</span>
-                    </div>
-                  </button>
-                </div>
-              )}
-            </div>
+                )}
+              </div>
+            )}
 
             {/* Field 4: Coming Date */}
             <div className="form-group">

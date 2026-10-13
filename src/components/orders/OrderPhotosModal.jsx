@@ -1,9 +1,14 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { useAuth } from '../../context/AuthContext';
 import orderService, { getPhotoFullUrl } from '../../services/orderService';
 import { capturePhotoFromCamera, pickPhotosFromGallery } from '../../utils/nativeCamera';
 import { sharePhoto } from '../../utils/photoShare';
 
 export function OrderPhotosModal({ isOpen, onClose, order, onOrderUpdated }) {
+  const { hasPermission } = useAuth();
+  const canPhotos = hasPermission('orders:photos');
+  const canPrint = hasPermission('orders:print');
+
   const [isUploading, setIsUploading] = useState(false);
   const [uploadError, setUploadError] = useState('');
   const [activePhotoIndex, setActivePhotoIndex] = useState(null); // For fullscreen preview
@@ -329,94 +334,100 @@ export function OrderPhotosModal({ isOpen, onClose, order, onOrderUpdated }) {
             style={{ display: 'none' }}
           />
 
-          <div className="order-photos-actions-row">
-            {/* Direct Camera Button */}
-            <button
-              type="button"
-              className="photos-camera-btn"
-              onClick={handleCameraTrigger}
-              disabled={isUploading || isDeletingAll}
-              title="Click photo directly from camera"
-            >
-              {isUploading ? (
-                <>
-                  <span className="photos-spinner"></span>
-                  <span>Saving...</span>
-                </>
-              ) : (
-                <>
+          {(canPhotos || (canPrint && photos.length > 0)) && (
+            <div className="order-photos-actions-row">
+              {/* Direct Camera Button */}
+              {canPhotos && (
+                <button
+                  type="button"
+                  className="photos-camera-btn"
+                  onClick={handleCameraTrigger}
+                  disabled={isUploading || isDeletingAll}
+                  title="Click photo directly from camera"
+                >
+                  {isUploading ? (
+                    <>
+                      <span className="photos-spinner"></span>
+                      <span>Saving...</span>
+                    </>
+                  ) : (
+                    <>
+                      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.3">
+                        <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
+                        <circle cx="12" cy="13" r="4" />
+                      </svg>
+                      <span>Camera</span>
+                    </>
+                  )}
+                </button>
+              )}
+
+              {/* Gallery Upload Button */}
+              {canPhotos && (
+                <button
+                  type="button"
+                  className="photos-upload-trigger-btn"
+                  onClick={handleGalleryTrigger}
+                  disabled={isUploading || isDeletingAll}
+                  title="Upload photos from gallery"
+                >
+                  {isUploading ? (
+                    <>
+                      <span className="photos-spinner"></span>
+                      <span>Uploading...</span>
+                    </>
+                  ) : (
+                    <>
+                      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6">
+                        <line x1="12" y1="5" x2="12" y2="19" />
+                        <line x1="5" y1="12" x2="19" y2="12" />
+                      </svg>
+                      <span>Upload</span>
+                    </>
+                  )}
+                </button>
+              )}
+
+              {canPrint && photos.length > 0 && (
+                <button
+                  type="button"
+                  className="photos-share-latest-btn"
+                  onClick={() => handleShareSinglePhoto(sortedPhotos[0])}
+                  disabled={sharingPhotoId !== null}
+                  title="लेटेस्ट फोटो WhatsApp पर शेयर करें"
+                >
                   <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.3">
-                    <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
-                    <circle cx="12" cy="13" r="4" />
+                    <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" />
                   </svg>
-                  <span>Camera</span>
-                </>
+                  <span>{sharingPhotoId ? 'Sharing...' : 'Share'}</span>
+                </button>
               )}
-            </button>
 
-            {/* Gallery Upload Button */}
-            <button
-              type="button"
-              className="photos-upload-trigger-btn"
-              onClick={handleGalleryTrigger}
-              disabled={isUploading || isDeletingAll}
-              title="Upload photos from gallery"
-            >
-              {isUploading ? (
-                <>
-                  <span className="photos-spinner"></span>
-                  <span>Uploading...</span>
-                </>
-              ) : (
-                <>
-                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6">
-                    <line x1="12" y1="5" x2="12" y2="19" />
-                    <line x1="5" y1="12" x2="19" y2="12" />
-                  </svg>
-                  <span>Upload</span>
-                </>
+              {canPhotos && photos.length > 0 && (
+                <button
+                  type="button"
+                  className="photos-delete-all-btn"
+                  onClick={handleDeleteAllPhotos}
+                  disabled={isDeletingAll || isUploading}
+                  title="Delete all photos for this order"
+                >
+                  {isDeletingAll ? (
+                    <span className="mini-spinner-danger"></span>
+                  ) : (
+                    <>
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
+                        <polyline points="3 6 5 6 21 6" />
+                        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                        <line x1="10" y1="11" x2="10" y2="17" />
+                        <line x1="14" y1="11" x2="14" y2="17" />
+                      </svg>
+                      <span>Delete All</span>
+                    </>
+                  )}
+                </button>
               )}
-            </button>
-
-            {photos.length > 0 && (
-              <button
-                type="button"
-                className="photos-share-latest-btn"
-                onClick={() => handleShareSinglePhoto(sortedPhotos[0])}
-                disabled={sharingPhotoId !== null}
-                title="लेटेस्ट फोटो WhatsApp पर शेयर करें"
-              >
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.3">
-                  <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" />
-                </svg>
-                <span>{sharingPhotoId ? 'Sharing...' : 'Share'}</span>
-              </button>
-            )}
-
-            {photos.length > 0 && (
-              <button
-                type="button"
-                className="photos-delete-all-btn"
-                onClick={handleDeleteAllPhotos}
-                disabled={isDeletingAll || isUploading}
-                title="Delete all photos for this order"
-              >
-                {isDeletingAll ? (
-                  <span className="mini-spinner-danger"></span>
-                ) : (
-                  <>
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
-                      <polyline points="3 6 5 6 21 6" />
-                      <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
-                      <line x1="10" y1="11" x2="10" y2="17" />
-                      <line x1="14" y1="11" x2="14" y2="17" />
-                    </svg>
-                    <span>Delete All</span>
-                  </>
-                )}
-              </button>
-            )}
-          </div>
+            </div>
+          )}
 
           {uploadError && <div className="photos-error-banner">{uploadError}</div>}
         </div>
@@ -434,13 +445,15 @@ export function OrderPhotosModal({ isOpen, onClose, order, onOrderUpdated }) {
               </div>
               <h4>No Photos Uploaded Yet</h4>
               <p>Work order progress ki photos upload karein taaki yaha preview aur record rahe.</p>
-              <button
-                type="button"
-                className="btn-upload-first"
-                onClick={() => fileInputRef.current?.click()}
-              >
-                + Select Photos
-              </button>
+              {canPhotos && (
+                <button
+                  type="button"
+                  className="btn-upload-first"
+                  onClick={() => fileInputRef.current?.click()}
+                >
+                  + Select Photos
+                </button>
+              )}
             </div>
           ) : (
             <div className="order-photos-grid">
@@ -474,39 +487,43 @@ export function OrderPhotosModal({ isOpen, onClose, order, onOrderUpdated }) {
                       {isLatest && <span className="latest-photo-tag">Latest</span>}
 
                       {/* WhatsApp Share button on photo */}
-                      <button
-                        type="button"
-                        className="photo-card-share-overlay-btn"
-                        onClick={(e) => handleShareSinglePhoto(photo, e)}
-                        disabled={sharingPhotoId === photo.id}
-                        title="यह फोटो WhatsApp पर शेयर करें"
-                        aria-label="Share photo"
-                      >
-                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.3">
-                          <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" />
-                        </svg>
-                      </button>
+                      {canPrint && (
+                        <button
+                          type="button"
+                          className="photo-card-share-overlay-btn"
+                          onClick={(e) => handleShareSinglePhoto(photo, e)}
+                          disabled={sharingPhotoId === photo.id}
+                          title="यह फोटो WhatsApp पर शेयर करें"
+                          aria-label="Share photo"
+                        >
+                          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.3">
+                            <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" />
+                          </svg>
+                        </button>
+                      )}
 
                       {/* Delete button directly over the photo on top right */}
-                      <button
-                        type="button"
-                        className="photo-card-delete-overlay-btn"
-                        onClick={(e) => handleDeletePhoto(photo.id, e)}
-                        disabled={deletingPhotoId === photo.id}
-                        title="Delete this photo"
-                        aria-label="Delete photo"
-                      >
-                        {deletingPhotoId === photo.id ? (
-                          <span className="mini-spinner"></span>
-                        ) : (
-                          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4">
-                            <polyline points="3 6 5 6 21 6" />
-                            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
-                            <line x1="10" y1="11" x2="10" y2="17" />
-                            <line x1="14" y1="11" x2="14" y2="17" />
-                          </svg>
-                        )}
-                      </button>
+                      {canPhotos && (
+                        <button
+                          type="button"
+                          className="photo-card-delete-overlay-btn"
+                          onClick={(e) => handleDeletePhoto(photo.id, e)}
+                          disabled={deletingPhotoId === photo.id}
+                          title="Delete this photo"
+                          aria-label="Delete photo"
+                        >
+                          {deletingPhotoId === photo.id ? (
+                            <span className="mini-spinner"></span>
+                          ) : (
+                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4">
+                              <polyline points="3 6 5 6 21 6" />
+                              <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                              <line x1="10" y1="11" x2="10" y2="17" />
+                              <line x1="14" y1="11" x2="14" y2="17" />
+                            </svg>
+                          )}
+                        </button>
+                      )}
 
                       {/* Date badge directly over the photo at bottom */}
                       {uploadDate && (
@@ -599,32 +616,34 @@ export function OrderPhotosModal({ isOpen, onClose, order, onOrderUpdated }) {
 
                 <div className="lightbox-right-tools" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                   {/* WhatsApp Share in Lightbox */}
-                  <button
-                    type="button"
-                    className="lightbox-tool-btn share-btn"
-                    onClick={() => handleShareSinglePhoto(sortedPhotos[activePhotoIndex])}
-                    title="यह फोटो WhatsApp पर शेयर करें"
-                    aria-label="Share photo"
-                    style={{
-                      background: '#16a34a',
-                      color: '#ffffff',
-                      borderColor: '#15803d',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '5px',
-                      padding: '0 10px',
-                      width: 'auto',
-                      height: '34px',
-                      borderRadius: '8px',
-                      cursor: 'pointer',
-                      border: 'none',
-                    }}
-                  >
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.3">
-                      <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" />
-                    </svg>
-                    <span style={{ fontSize: '12px', fontWeight: 700 }}>WhatsApp</span>
-                  </button>
+                  {canPrint && (
+                    <button
+                      type="button"
+                      className="lightbox-tool-btn share-btn"
+                      onClick={() => handleShareSinglePhoto(sortedPhotos[activePhotoIndex])}
+                      title="यह फोटो WhatsApp पर शेयर करें"
+                      aria-label="Share photo"
+                      style={{
+                        background: '#16a34a',
+                        color: '#ffffff',
+                        borderColor: '#15803d',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '5px',
+                        padding: '0 10px',
+                        width: 'auto',
+                        height: '34px',
+                        borderRadius: '8px',
+                        cursor: 'pointer',
+                        border: 'none',
+                      }}
+                    >
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.3">
+                        <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" />
+                      </svg>
+                      <span style={{ fontSize: '12px', fontWeight: 700 }}>WhatsApp</span>
+                    </button>
+                  )}
 
                   {/* Close Button */}
                   <button

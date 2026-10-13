@@ -21,6 +21,7 @@ export function StockPage({ onBackToHome }) {
   const canAdjust = hasPermission('stock:adjust');
   const canCategory = hasPermission('stock:category');
   const canTransactions = hasPermission('stock:transactions');
+  const canOrder = hasPermission('stock:order');
 
   // State
   const [items, setItems] = useState(() => stockService.getCachedItems());
@@ -469,25 +470,27 @@ export function StockPage({ onBackToHome }) {
                     </option>
                   );
                 })}
-                <option value="__add__">+ Add / Manage Categories...</option>
+                {canCategory && <option value="__add__">+ Add / Manage Categories...</option>}
               </select>
               <svg className="stock-chevron-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                 <polyline points="6 9 12 15 18 9" />
               </svg>
             </div>
 
-            <button
-              type="button"
-              className="stock-inline-add-cat-btn"
-              onClick={() => setIsCategoryModalOpen(true)}
-              title="Add new category"
-            >
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
-                <line x1="12" y1="5" x2="12" y2="19" />
-                <line x1="5" y1="12" x2="19" y2="12" />
-              </svg>
-              Category
-            </button>
+            {canCategory && (
+              <button
+                type="button"
+                className="stock-inline-add-cat-btn"
+                onClick={() => setIsCategoryModalOpen(true)}
+                title="Add new category"
+              >
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+                  <line x1="12" y1="5" x2="12" y2="19" />
+                  <line x1="5" y1="12" x2="19" y2="12" />
+                </svg>
+                Category
+              </button>
+            )}
           </div>
         </div>
 
@@ -540,7 +543,7 @@ export function StockPage({ onBackToHome }) {
                     ? 'Great news! No categories currently have low stock.'
                     : 'Start by creating categories or adding stock materials.'}
                 </p>
-                {isAdmin && (
+                {canCategory && (
                   <button
                     type="button"
                     className="btn btn-primary btn-empty-cta"
@@ -557,6 +560,7 @@ export function StockPage({ onBackToHome }) {
                     key={group.id}
                     category={{ id: group.id, name: group.name }}
                     items={group.items}
+                    canOrder={canOrder}
                     onClick={(cat) => {
                       setActiveCategoryModal({ name: cat.name });
                     }}
@@ -593,7 +597,7 @@ export function StockPage({ onBackToHome }) {
                     ? `No items found in category "${selectedCategory}".`
                     : 'Start maintaining truck body fabrication stock by adding your first material.'}
                 </p>
-                {isAdmin && (
+                {canCreate && (
                   <button
                     type="button"
                     className="btn btn-primary btn-empty-cta"
@@ -614,6 +618,11 @@ export function StockPage({ onBackToHome }) {
                     key={item.id}
                     item={item}
                     isAdmin={isAdmin}
+                    canEdit={canEdit}
+                    canDelete={canDelete}
+                    canAdjust={canAdjust}
+                    canTransactions={canTransactions}
+                    canOrder={canOrder}
                     onEdit={(it) => {
                       setEditingItem(it);
                       setIsItemModalOpen(true);
@@ -658,6 +667,12 @@ export function StockPage({ onBackToHome }) {
         categoryName={activeCategoryModal?.name || ''}
         items={activeModalItems}
         isAdmin={isAdmin}
+        canCreate={canCreate}
+        canEdit={canEdit}
+        canDelete={canDelete}
+        canAdjust={canAdjust}
+        canTransactions={canTransactions}
+        canOrder={canOrder}
         onClose={() => setActiveCategoryModal(null)}
         onOrderCategory={(catName, catItems) => {
           setBulkOrderData({ categoryName: catName, items: catItems });

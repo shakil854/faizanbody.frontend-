@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { DEFAULT_ORDER_DATA, ORDER_SECTIONS, calculateOrderProgress } from './orderConstants';
 import { DigitalSignaturePad } from './DigitalSignaturePad';
+import { useAuth } from '../../context/AuthContext';
 
 export function OrderFormModal({
   isOpen,
@@ -12,6 +13,13 @@ export function OrderFormModal({
   onToggleTask,
   onViewJobSheet,
 }) {
+  const { hasPermission } = useAuth();
+  const canEdit = hasPermission('orders:edit');
+  const canCreate = hasPermission('orders:create');
+  const canPrint = hasPermission('orders:print');
+  const canTasks = hasPermission('orders:tasks');
+  const canSignatures = hasPermission('orders:signatures');
+
   const [formData, setFormData] = useState(DEFAULT_ORDER_DATA);
   const [currentMode, setCurrentMode] = useState(mode || 'view');
   const [error, setError] = useState('');
@@ -187,7 +195,7 @@ export function OrderFormModal({
           </div>
 
           <div className="modern-header-right" style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
-            {initialData && (
+            {initialData && canEdit && (
               <button
                 type="button"
                 className="btn-modal-header-edit"
@@ -214,7 +222,7 @@ export function OrderFormModal({
               </button>
             )}
 
-            {initialData && (
+            {initialData && canPrint && (
               <button
                 type="button"
                 className="btn-modal-header-pdf"
@@ -676,7 +684,7 @@ export function OrderFormModal({
               >
                 {isViewMode ? 'Close' : 'Cancel'}
               </button>
-              {initialData && (
+              {initialData && canPrint && (
                 <button
                   type="button"
                   className="btn btn-secondary-luxury"
@@ -700,19 +708,21 @@ export function OrderFormModal({
 
             <div className="footer-right">
               {isViewMode ? (
-                <button
-                  type="button"
-                  className="btn-modern-save-submit"
-                  style={{ background: 'linear-gradient(135deg, #1e3a8a 0%, #2563eb 100%)' }}
-                  onClick={() => setCurrentMode('edit')}
-                  title="Edit All Details (सब विवरण एडिट करें)"
-                >
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.3">
-                    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
-                    <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
-                  </svg>
-                  <span>✏️ Edit Details</span>
-                </button>
+                canEdit ? (
+                  <button
+                    type="button"
+                    className="btn-modern-save-submit"
+                    style={{ background: 'linear-gradient(135deg, #1e3a8a 0%, #2563eb 100%)' }}
+                    onClick={() => setCurrentMode('edit')}
+                    title="Edit All Details (सब विवरण एडिट करें)"
+                  >
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.3">
+                      <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+                      <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+                    </svg>
+                    <span>✏️ Edit Details</span>
+                  </button>
+                ) : null
               ) : (
                 <button type="submit" className="btn-modern-save-submit" disabled={isSubmitting}>
                   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4">

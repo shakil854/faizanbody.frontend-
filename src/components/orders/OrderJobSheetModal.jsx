@@ -2,14 +2,17 @@ import React, { useState } from 'react';
 import { createPortal } from 'react-dom';
 import { ORDER_SECTIONS } from './orderConstants';
 import { sharePdfFile, downloadPdfFile } from '../../utils/pdfGenerator';
+import { useAuth } from '../../context/AuthContext';
 
 export function OrderJobSheetModal({ isOpen, onClose, order }) {
+  const { hasPermission } = useAuth();
+  const canPrint = hasPermission('orders:print');
   const [selectedSection, setSelectedSection] = useState('all'); // used for rendering #printableSheet
   const [chosenFunction, setChosenFunction] = useState('body_work'); // selected 1-6 function
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
   const [pdfToast, setPdfToast] = useState('');
 
-  if (!isOpen || !order) return null;
+  if (!isOpen || !order || !canPrint) return null;
 
   const activeChosenSecInfo = ORDER_SECTIONS.find((s) => s.key === chosenFunction);
   const activeChosenSecIndex = ORDER_SECTIONS.findIndex((s) => s.key === chosenFunction) + 1;
