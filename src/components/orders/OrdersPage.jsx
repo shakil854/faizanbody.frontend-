@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { orderService } from '../../services/orderService';
+import { calculateOrderProgress } from './orderConstants';
 import { OrderCard } from './OrderCard';
 import { OrderFormModal } from './OrderFormModal';
 import { OrderJobSheetModal } from './OrderJobSheetModal';
@@ -127,9 +128,29 @@ export function OrdersPage({ onBackToHome }) {
     }
   };
 
+  const [statusFilter, setStatusFilter] = useState('all'); // 'all' | 'in_progress' | 'completed'
+
+  const isOrderCompleted = useCallback((order) => {
+    const { total, done } = calculateOrderProgress(order);
+    return order.status === 'Completed' || (total > 0 && done === total);
+  }, []);
+
+  const totalOrdersCount = orders.length;
+  const completedOrdersCount = useMemo(
+    () => orders.filter((o) => isOrderCompleted(o)).length,
+    [orders, isOrderCompleted]
+  );
+  const inProgressOrdersCount = totalOrdersCount - completedOrdersCount;
+
   // Filtered & Searched Orders
   const filteredOrders = useMemo(() => {
     let result = [...orders];
+
+    if (statusFilter === 'in_progress') {
+      result = result.filter((o) => !isOrderCompleted(o));
+    } else if (statusFilter === 'completed') {
+      result = result.filter((o) => isOrderCompleted(o));
+    }
 
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase().trim();
@@ -145,7 +166,7 @@ export function OrdersPage({ onBackToHome }) {
     }
 
     return result;
-  }, [orders, searchQuery]);
+  }, [orders, statusFilter, searchQuery, isOrderCompleted]);
 
   return (
     <div className="workers-page-shell">
@@ -183,6 +204,42 @@ export function OrdersPage({ onBackToHome }) {
               </button>
             )}
           </div>
+        </div>
+
+        {/* Compact Status Counter & Filter Strip */}
+        <div className="orders-top-counter-strip">
+          <button
+            type="button"
+            className={`orders-counter-chip ${statusFilter === 'all' ? 'active' : ''}`}
+            onClick={() => setStatusFilter('all')}
+            title="All work orders"
+          >
+            <span className="counter-chip-dot dot-all"></span>
+            <span className="counter-chip-label">Total</span>
+            <span className="counter-chip-badge">{totalOrdersCount}</span>
+          </button>
+
+          <button
+            type="button"
+            className={`orders-counter-chip chip-process ${statusFilter === 'in_progress' ? 'active' : ''}`}
+            onClick={() => setStatusFilter(statusFilter === 'in_progress' ? 'all' : 'in_progress')}
+            title="Filter by orders currently in progress"
+          >
+            <span className="counter-chip-dot dot-process"></span>
+            <span className="counter-chip-label">In Process</span>
+            <span className="counter-chip-badge badge-process">{inProgressOrdersCount}</span>
+          </button>
+
+          <button
+            type="button"
+            className={`orders-counter-chip chip-completed ${statusFilter === 'completed' ? 'active' : ''}`}
+            onClick={() => setStatusFilter(statusFilter === 'completed' ? 'all' : 'completed')}
+            title="Filter by completed work orders"
+          >
+            <span className="counter-chip-dot dot-completed"></span>
+            <span className="counter-chip-label">Completed</span>
+            <span className="counter-chip-badge badge-completed">{completedOrdersCount}</span>
+          </button>
         </div>
 
         {/* Orders List Content */}

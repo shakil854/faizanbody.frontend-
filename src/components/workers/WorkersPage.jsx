@@ -326,15 +326,6 @@ export function WorkersPage({ onBackToHome, onAlertCountChange }) {
         />
       )}
 
-      {/* 4. Bottom App Navigation Bar with Red Alert count */}
-      <BottomNav
-        activeTab="workers"
-        onTabChange={(tab) => {
-          if (tab === 'home') onBackToHome();
-        }}
-        workerCount={workers.length}
-        alertCount={leavingSoonCount}
-      />
 
       {/* 5. Add / Edit Modal (Android Bottom Sheet) */}
       <WorkerFormModal

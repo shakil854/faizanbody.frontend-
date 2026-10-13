@@ -13,6 +13,9 @@ import { Snackbar } from './components/workers/Snackbar';
 import { BottomNav } from './components/common/BottomNav';
 import { workerService } from './services/workerService';
 import { stockService } from './services/stockService';
+import { orderService } from './services/orderService';
+import { userService } from './services/userService';
+import { calculateOrderProgress } from './components/orders/orderConstants';
 import { isLeavingSoon } from './utils/dateAlerts';
 import './App.css';
 
@@ -35,8 +38,11 @@ export function App() {
   const [alertCount, setAlertCount] = useState(0);
   const [stockCount, setStockCount] = useState(0);
   const [lowStockCount, setLowStockCount] = useState(0);
+  const [orderCount, setOrderCount] = useState(0);
+  const [inProgressOrderCount, setInProgressOrderCount] = useState(0);
+  const [userCount, setUserCount] = useState(0);
 
-  // Keep track of worker count & 5-day leaving alerts & stock counts for nav badges
+  // Keep track of worker count & 5-day leaving alerts & stock counts & orders & users for nav badges
   useEffect(() => {
     if (!isAuthenticated) return;
 
@@ -68,8 +74,50 @@ export function App() {
       setLowStockCount(low);
     });
 
-    return () => unsubStock();
-  }, [currentPage, isAuthenticated]);
+    const checkOrderCompleted = (order) => {
+      const { total, done } = calculateOrderProgress(order);
+      return order.status === 'Completed' || (total > 0 && done === total);
+    };
+
+    orderService
+      .getOrders()
+      .then((res) => {
+        if (res && res.data) {
+          setOrderCount(res.data.length);
+          const inProg = res.data.filter((o) => !checkOrderCompleted(o)).length;
+          setInProgressOrderCount(inProg);
+        }
+      })
+      .catch(() => {});
+
+    const unsubOrders = orderService.subscribe((orders) => {
+      setOrderCount(orders.length);
+      const inProg = orders.filter((o) => !checkOrderCompleted(o)).length;
+      setInProgressOrderCount(inProg);
+    });
+
+    let unsubUsers = () => {};
+    if (isAdmin) {
+      userService
+        .getUsers()
+        .then((res) => {
+          if (res && res.data) {
+            setUserCount(res.data.length);
+          }
+        })
+        .catch(() => {});
+
+      unsubUsers = userService.subscribeUsers((usersList) => {
+        setUserCount(usersList.length);
+      });
+    }
+
+    return () => {
+      unsubStock();
+      unsubOrders();
+      unsubUsers();
+    };
+  }, [currentPage, isAuthenticated, isAdmin]);
 
   // Sync hash with browser history for Android back gesture / back button
   useEffect(() => {
@@ -233,6 +281,9 @@ export function App() {
           alertCount={alertCount}
           stockCount={stockCount}
           lowStockCount={lowStockCount}
+          orderCount={orderCount}
+          inProgressOrderCount={inProgressOrderCount}
+          userCount={userCount}
         />
       </div>
 

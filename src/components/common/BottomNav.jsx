@@ -5,7 +5,17 @@ import { useAuth } from '../../context/AuthContext';
  * Ultra-Luxury Bottom Navigation Bar (Compact & Sleek)
  * High-fidelity vector icons, smooth pill indicator, and red notification badge for leaving alerts.
  */
-export function BottomNav({ activeTab, onTabChange, workerCount, alertCount = 0, stockCount = 0, lowStockCount = 0 }) {
+export function BottomNav({
+  activeTab,
+  onTabChange,
+  workerCount,
+  alertCount = 0,
+  stockCount = 0,
+  lowStockCount = 0,
+  orderCount = 0,
+  inProgressOrderCount = 0,
+  userCount = 0,
+}) {
   const { isAdmin, canAccessModule } = useAuth();
   return (
     <nav className="mobile-bottom-bar android-nav-bar luxury-bottom-bar" aria-label="App Navigation">
@@ -108,6 +118,16 @@ export function BottomNav({ activeTab, onTabChange, workerCount, alertCount = 0,
                   </>
                 )}
               </svg>
+
+              {/* Notification Badge for in-progress orders */}
+              {inProgressOrderCount > 0 ? (
+                <span className="nav-alert-badge nav-order-badge" title={`${inProgressOrderCount} in-progress order(s)`}>
+                  <span className="alert-pulse-ring"></span>
+                  {inProgressOrderCount}
+                </span>
+              ) : orderCount !== undefined && orderCount > 0 ? (
+                <span className="nav-badge-dot">{orderCount}</span>
+              ) : null}
             </div>
             <span className="nav-label">Orders</span>
           </button>
@@ -324,6 +344,11 @@ export function BottomNav({ activeTab, onTabChange, workerCount, alertCount = 0,
                   </>
                 )}
               </svg>
+
+              {/* User Count Badge */}
+              {userCount !== undefined && userCount > 0 ? (
+                <span className="nav-badge-dot">{userCount}</span>
+              ) : null}
             </div>
             <span className="nav-label">
               Users
