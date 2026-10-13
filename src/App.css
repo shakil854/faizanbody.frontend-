@@ -11948,34 +11948,49 @@
   box-shadow: 0 6px 18px rgba(37, 99, 235, 0.35);
 }
 
-/* User Executive Stats Strip */
+/* User Executive Stats Strip (Compact & Sleek) */
 .user-stats-strip {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  gap: 0.75rem;
-  padding: 0 1rem 1rem;
+  gap: 0.5rem;
+  padding: 0 1rem 0.75rem;
 }
 
 .user-stat-card {
   background: #ffffff;
   border: 1px solid #e2e8f0;
-  border-radius: 14px;
-  padding: 0.85rem 0.75rem;
+  border-radius: 12px;
+  padding: 0.5rem 0.3rem;
   text-align: center;
-  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.03);
-  transition: transform 0.2s ease;
+  box-shadow: 0 1px 4px rgba(15, 23, 42, 0.03);
+  transition: all 0.15s ease;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 50px;
+  border: 1px solid #e2e8f0;
+  outline: none;
 }
 
 .user-stat-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.06);
+  transform: translateY(-1px);
+  border-color: #cbd5e1;
+  box-shadow: 0 3px 8px rgba(15, 23, 42, 0.06);
+}
+
+.user-stat-card.active-stat-card {
+  border-color: #2563eb;
+  background: #f0f7ff;
+  box-shadow: 0 2px 8px rgba(37, 99, 235, 0.14);
 }
 
 .user-stat-number {
-  font-size: 1.35rem;
+  font-size: 1.15rem;
   font-weight: 800;
   color: #0f172a;
-  line-height: 1.2;
+  line-height: 1.1;
 }
 
 .user-stat-number.stat-active {
@@ -11991,12 +12006,12 @@
 }
 
 .user-stat-label {
-  font-size: 0.72rem;
-  font-weight: 600;
+  font-size: 0.64rem;
+  font-weight: 700;
   color: #64748b;
   text-transform: uppercase;
-  letter-spacing: 0.04em;
-  margin-top: 0.25rem;
+  letter-spacing: 0.03em;
+  margin-top: 0.15rem;
 }
 
 /* User Filter Bar */
@@ -12793,8 +12808,46 @@
 
 /* Responsive Overrides */
 @media (max-width: 640px) {
+  .user-mgmt-topbar {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.85rem 0.85rem 0.65rem;
+    gap: 0.5rem;
+  }
+
+  .user-page-title {
+    font-size: 1.05rem;
+    line-height: 1.25;
+  }
+
+  .btn-add-user-top {
+    width: auto;
+    padding: 0.45rem 0.85rem;
+    font-size: 0.8rem;
+    white-space: nowrap;
+    border-radius: 10px;
+    justify-content: center;
+  }
+
   .user-stats-strip {
-    grid-template-columns: repeat(2, 1fr);
+    grid-template-columns: repeat(4, 1fr) !important;
+    gap: 0.35rem;
+    padding: 0 0.85rem 0.65rem;
+  }
+
+  .user-stat-card {
+    padding: 0.45rem 0.2rem;
+    min-height: 48px;
+    border-radius: 10px;
+  }
+
+  .user-stat-number {
+    font-size: 1.05rem;
+  }
+
+  .user-stat-label {
+    font-size: 0.6rem;
   }
 
   .form-grid-two-cols {
@@ -12807,16 +12860,6 @@
 
   .granular-perms-grid {
     grid-template-columns: 1fr;
-  }
-
-  .user-mgmt-topbar {
-    flex-direction: column;
-    align-items: stretch;
-  }
-
-  .btn-add-user-top {
-    width: 100%;
-    justify-content: center;
   }
 }
 

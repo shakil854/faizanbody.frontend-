@@ -138,23 +138,7 @@ export function UsersPage({ onBackToHome }) {
         {/* Page Top Action Bar */}
         <div className="user-mgmt-topbar">
           <div className="user-mgmt-top-left">
-            <button
-              type="button"
-              className="btn btn-secondary btn-back-round"
-              onClick={onBackToHome}
-              title="Back to Home Dashboard"
-            >
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                <line x1="19" y1="12" x2="5" y2="12" />
-                <polyline points="12 19 5 12 12 5" />
-              </svg>
-            </button>
-            <div>
-              <h2 className="user-page-title">User Management & Permissions</h2>
-              <p className="user-page-subtitle">
-                Create sub-accounts, manage credentials & set screen-level granular permissions
-              </p>
-            </div>
+            <h2 className="user-page-title">User Management</h2>
           </div>
 
           <button
@@ -165,32 +149,64 @@ export function UsersPage({ onBackToHome }) {
               setIsFormOpen(true);
             }}
           >
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
               <line x1="12" y1="5" x2="12" y2="19" />
               <line x1="5" y1="12" x2="19" y2="12" />
             </svg>
-            <span>Add New User</span>
+            <span>Add User</span>
           </button>
         </div>
 
-        {/* Executive Stats Summary Cards */}
+        {/* Executive Stats Summary Cards (Compact KPI Strip) */}
         <div className="user-stats-strip">
-          <div className="user-stat-card">
+          <button
+            type="button"
+            className={`user-stat-card ${roleFilter === 'all' && statusFilter === 'all' ? 'active-stat-card' : ''}`}
+            onClick={() => {
+              setRoleFilter('all');
+              setStatusFilter('all');
+            }}
+            title="Show all users"
+          >
             <div className="user-stat-number">{totalUsers}</div>
-            <div className="user-stat-label">Total Users</div>
-          </div>
-          <div className="user-stat-card">
+            <div className="user-stat-label">Total</div>
+          </button>
+
+          <button
+            type="button"
+            className={`user-stat-card ${statusFilter === 'active' ? 'active-stat-card' : ''}`}
+            onClick={() => {
+              setStatusFilter((prev) => (prev === 'active' ? 'all' : 'active'));
+            }}
+            title="Filter active users"
+          >
             <div className="user-stat-number stat-active">{activeCount}</div>
-            <div className="user-stat-label">Active Users</div>
-          </div>
-          <div className="user-stat-card">
+            <div className="user-stat-label">Active</div>
+          </button>
+
+          <button
+            type="button"
+            className={`user-stat-card ${roleFilter === 'admin' ? 'active-stat-card' : ''}`}
+            onClick={() => {
+              setRoleFilter((prev) => (prev === 'admin' ? 'all' : 'admin'));
+            }}
+            title="Filter admins"
+          >
             <div className="user-stat-number stat-admin">{adminCount}</div>
             <div className="user-stat-label">Admins</div>
-          </div>
-          <div className="user-stat-card">
+          </button>
+
+          <button
+            type="button"
+            className={`user-stat-card ${roleFilter === 'user' ? 'active-stat-card' : ''}`}
+            onClick={() => {
+              setRoleFilter((prev) => (prev === 'user' ? 'all' : 'user'));
+            }}
+            title="Filter staff users"
+          >
             <div className="user-stat-number stat-staff">{staffCount}</div>
-            <div className="user-stat-label">Staff Users</div>
-          </div>
+            <div className="user-stat-label">Staff</div>
+          </button>
         </div>
 
         {/* Search & Filter Controls */}
