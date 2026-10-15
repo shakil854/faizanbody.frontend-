@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { DEFAULT_ORDER_DATA, ORDER_SECTIONS, calculateOrderProgress } from './orderConstants';
 import { DigitalSignaturePad } from './DigitalSignaturePad';
+import { OrderComboboxInput } from './OrderComboboxInput';
 import { useAuth } from '../../context/AuthContext';
 
 export function OrderFormModal({
@@ -511,12 +512,12 @@ export function OrderFormModal({
                             </div>
 
                             <div className="finishing-item-bottom">
-                              <input
-                                type="text"
-                                className="modern-input-ctrl line-input"
-                                placeholder={`Enter ${item.label} (${item.subLabel}) details...`}
+                              <OrderComboboxInput
+                                id={`finishing-${item.key}`}
                                 value={itemData.value || ''}
-                                onChange={(e) => handleFinishingItemChange(item.key, 'value', e.target.value)}
+                                onChange={(val) => handleFinishingItemChange(item.key, 'value', val)}
+                                options={item.options || []}
+                                placeholder={`यहाँ ${item.label} (${item.subLabel}) लिखें या चुनें...`}
                                 readOnly={isViewMode}
                               />
                             </div>
@@ -588,7 +589,10 @@ export function OrderFormModal({
                         <div key={item.key} className={`modern-item-row ${isDone ? 'row-is-completed' : ''}`}>
                           {/* Line 1: Label on Left, Checkbox [] on Right */}
                           <div className="item-header-line">
-                            <span className="item-hindi-label">{item.label}</span>
+                            <span className="item-hindi-label">
+                              {item.label}
+                              {item.labelEnglish && <span className="item-en-sub">({item.labelEnglish})</span>}
+                            </span>
                             <div
                               className={`modern-checkbox-square ${isDone ? 'checked-green' : ''}`}
                               onClick={() => handleToggleCheckbox(sec.key, item.key, !isDone)}
@@ -600,16 +604,16 @@ export function OrderFormModal({
                             </div>
                           </div>
 
-                          {/* Line 2: Empty line for writing */}
+                          {/* Line 2: Empty line with editable Combobox (Type or Select) */}
                           <div className="item-input-wrap">
-                            <input
-                              type="text"
-                              className="modern-input-ctrl line-input"
-                              placeholder="यहाँ विवरण लिखें..."
+                            <OrderComboboxInput
+                              id={`${sec.key}-${item.key}`}
                               value={itemData.value || ''}
-                              onChange={(e) =>
-                                handleSectionItemChange(sec.key, item.key, 'value', e.target.value)
+                              onChange={(val) =>
+                                handleSectionItemChange(sec.key, item.key, 'value', val)
                               }
+                              options={item.options || []}
+                              placeholder="यहाँ विवरण लिखें या चुनें..."
                               readOnly={isViewMode}
                             />
                           </div>
@@ -617,17 +621,22 @@ export function OrderFormModal({
                           {/* Extra field (Jaali -> Vel) on its own line below */}
                           {item.extraKey && (
                             <div className="item-extra-separate-line">
-                              <span className="extra-lbl">{item.extraLabel}:</span>
-                              <input
-                                type="text"
-                                className="modern-input-ctrl line-input extra-input-full"
-                                placeholder="यहाँ वेल का विवरण लिखें..."
-                                value={itemsData[item.extraKey]?.value || ''}
-                                onChange={(e) =>
-                                  handleSectionItemChange(sec.key, item.extraKey, 'value', e.target.value)
-                                }
-                                readOnly={isViewMode}
-                              />
+                              <span className="extra-lbl">
+                                {item.extraLabel}
+                                {item.extraLabelEnglish && <span className="item-en-sub">({item.extraLabelEnglish})</span>}:
+                              </span>
+                              <div className="extra-input-full">
+                                <OrderComboboxInput
+                                  id={`${sec.key}-${item.extraKey}`}
+                                  value={itemsData[item.extraKey]?.value || ''}
+                                  onChange={(val) =>
+                                    handleSectionItemChange(sec.key, item.extraKey, 'value', val)
+                                  }
+                                  options={item.extraOptions || []}
+                                  placeholder="यहाँ वेल का विवरण लिखें या चुनें..."
+                                  readOnly={isViewMode}
+                                />
+                              </div>
                             </div>
                           )}
                         </div>

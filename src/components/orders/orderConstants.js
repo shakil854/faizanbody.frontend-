@@ -85,12 +85,62 @@ export const ORDER_SECTIONS = [
     titleHindi: 'केबिन वर्क',
     titleEnglish: 'CABIN WORK',
     items: [
-      { key: 'moro', label: 'मोरो' },
-      { key: 'peeth', label: 'पीठ' },
-      { key: 'panal_chhapni', label: 'पानल / दरवाज़ा की छापनी' },
-      { key: 'paga_khidki', label: 'पगा की खिड़की' },
-      { key: 'dashboard_prakar', label: 'डैस्कबोर्ड प्रकार' },
-      { key: 'anya_kaam', label: 'अन्य काम' },
+      {
+        key: 'moro',
+        label: 'मोरो',
+        labelEnglish: 'Moro',
+        options: [
+          'BS4 Company Show (BS4 कंपनी शो)',
+          'BS4 Anna Moro (BS4 अन्ना मोरो)',
+          'BS6 Company Show (BS6 कंपनी शो)',
+          'BS6 Anna Moro (BS6 अन्ना मोरो)',
+        ],
+      },
+      {
+        key: 'peeth',
+        label: 'पीठ',
+        labelEnglish: 'Peeth',
+        options: [
+          'Ply (प्लाई)',
+          'Lakdu (लकड़ी)',
+        ],
+      },
+      {
+        key: 'panal_chhapni',
+        label: 'पानल / दरवाज़ा की छापनी',
+        labelEnglish: 'Panel / Door Design',
+        options: [
+          'Apple (एप्पल)',
+          'Star (स्टार)',
+          'Kalash (कलश / કળશ)',
+        ],
+      },
+      {
+        key: 'paga_khidki',
+        label: 'पगा की खिड़की',
+        labelEnglish: 'Foot Window',
+        options: [
+          'Bari (बारी)',
+          'Apple (एप्पल)',
+          'Star (स्टार)',
+          'Kalash (कलश / કળશ)',
+        ],
+      },
+      {
+        key: 'dashboard_prakar',
+        label: 'डैस्कबोर्ड प्रकार',
+        labelEnglish: 'Dashboard Type',
+        options: [
+          'Regular (रेगुलर)',
+          'Porbandar Type (पोरबंदर टाइप)',
+        ],
+      },
+      {
+        key: 'anya_kaam',
+        label: 'अन्य काम',
+        labelEnglish: 'Other Work',
+        options: [],
+      },
     ],
   },
   {
@@ -98,11 +148,49 @@ export const ORDER_SECTIONS = [
     titleHindi: 'अंदर का काम',
     titleEnglish: 'INSIDE WORK',
     items: [
-      { key: 'niyamit_furniture_four_t', label: 'नियमित / फर्नीचर / फोर टी' },
-      { key: 'speaker_size', label: 'स्पीकर साइज' },
-      { key: 'sofa_seat', label: 'सोफा सीट' },
-      { key: 'carrier', label: 'कैरियर' },
-      { key: 'anya_kaam', label: 'अन्य काम' },
+      {
+        key: 'niyamit_furniture_four_t',
+        label: 'नियमित / फर्नीचर / फोर टी',
+        labelEnglish: 'Regular / Furniture / 4T',
+        options: [
+          'Sunmica (सनमाइका)',
+          'SEP (एसईपी)',
+          'Porbandar Type (पोरबंदर टाइप)',
+        ],
+      },
+      {
+        key: 'speaker_size',
+        label: 'स्पीकर साइज',
+        labelEnglish: 'Speaker Size',
+        options: [
+          '8/10',
+          'Round (राउंड)',
+          'Inda (इंडा)',
+        ],
+      },
+      {
+        key: 'sofa_seat',
+        label: 'सोफा सीट',
+        labelEnglish: 'Sofa Seat',
+        options: [
+          'Regular (रेगुलर)',
+        ],
+      },
+      {
+        key: 'carrier',
+        label: 'कैरियल / कैरियर',
+        labelEnglish: 'Carrier',
+        options: [
+          'Regular (रेगुलर)',
+          'Porbandar Type (पोरबंदर टाइप)',
+        ],
+      },
+      {
+        key: 'anya_kaam',
+        label: 'अन्य काम',
+        labelEnglish: 'Other Work',
+        options: [],
+      },
     ],
   },
   {
@@ -110,15 +198,83 @@ export const ORDER_SECTIONS = [
     titleHindi: 'बॉडी वर्क',
     titleEnglish: 'BODY WORK',
     items: [
-      { key: 'runner', label: 'रनर' },
-      { key: 'dhokha_lambai_matra', label: 'धोखा: लम्बाई / मात्रा' },
-      { key: 'side_oonchai', label: 'साइड ऊँचाई' },
-      { key: 'side_prakar', label: 'साइड प्रकार: पतरा / प्लाई' },
-      { key: 'plate_motai_mm', label: 'प्लेट की मोटाई/mm' },
-      { key: 'falka_prakar', label: 'फालका प्रकार: लोखंड / प्लाई / लकड़ी' },
-      { key: 'peeche_jaali_prakar', label: 'पीछे की जाली प्रकार', extraKey: 'peeche_vel', extraLabel: 'वेल' },
-      { key: 'side_khidki', label: 'साइड में खिड़की: ऊँचाई / लंबाई' },
-      { key: 'anya_kaam', label: 'अन्य काम' },
+      {
+        key: 'runner',
+        label: 'रनर',
+        labelEnglish: 'Runner',
+        options: [
+          '5 × 2.5',
+          '6 × 3',
+        ],
+      },
+      {
+        key: 'dhokha_lambai_matra',
+        label: 'धोखा: लम्बाई / मात्रा',
+        labelEnglish: 'Dhokha: Length / Qty',
+        options: [],
+      },
+      {
+        key: 'side_oonchai',
+        label: 'साइड ऊँचाई',
+        labelEnglish: 'Side Height',
+        options: [],
+      },
+      {
+        key: 'side_prakar',
+        label: 'साइड प्रकार: पतरा / प्लाई',
+        labelEnglish: 'Side Type: Sheet / Ply',
+        options: [
+          'Patra (पतरा)',
+          'Ply (प्लाई)',
+        ],
+      },
+      {
+        key: 'plate_motai_mm',
+        label: 'प्लेट की मोटाई/mm',
+        labelEnglish: 'Plate Thickness (mm)',
+        options: [
+          '4 mm',
+          '5 mm',
+        ],
+      },
+      {
+        key: 'falka_prakar',
+        label: 'फालका प्रकार: लोखंड / प्लाई / लकड़ी',
+        labelEnglish: 'Falka: Iron / Ply / Wood',
+        options: [
+          'Lokhand (लोखंड)',
+          'Ply (प्लाई)',
+          'Lakdi (लकड़ी)',
+        ],
+      },
+      {
+        key: 'peeche_jaali_prakar',
+        label: 'पीछे की जाली प्रकार',
+        labelEnglish: 'Rear Mesh Type',
+        options: [
+          'Regular (रेगुलर)',
+        ],
+        extraKey: 'peeche_vel',
+        extraLabel: 'वेल',
+        extraLabelEnglish: 'Vel',
+        extraOptions: [
+          'Chotla Bel (चोटला बेल)',
+          'Machhli (माछली)',
+          'Porbandar Type (पोरबंदर टाइप)',
+        ],
+      },
+      {
+        key: 'side_khidki',
+        label: 'साइड में खिड़की: ऊँचाई / लंबाई',
+        labelEnglish: 'Side Window: H / L',
+        options: [],
+      },
+      {
+        key: 'anya_kaam',
+        label: 'अन्य काम',
+        labelEnglish: 'Other Work',
+        options: [],
+      },
     ],
   },
   {
@@ -126,11 +282,39 @@ export const ORDER_SECTIONS = [
     titleHindi: 'माछरो',
     titleEnglish: 'MACHRO',
     items: [
-      { key: 'plate_oonchai_thambhla', label: 'प्लेट से ऊँचाई / थांभला मात्रा' },
-      { key: 'side_pipe_matra_prakar', label: 'साइड में पाइप / मात्रा/प्रकार' },
-      { key: 'bhaya_matra_prakar', label: 'भया: मात्रा/ प्रकार' },
-      { key: 'dhar', label: 'ढार' },
-      { key: 'top_pipe_angle_prakar', label: 'टोप पर पाइप / एंगल/ प्रकार' },
+      {
+        key: 'plate_oonchai_thambhla',
+        label: 'प्लेट से ऊँचाई / थांभला मात्रा',
+        labelEnglish: 'Plate Height / Pillar Qty',
+        options: [],
+      },
+      {
+        key: 'side_pipe_matra_prakar',
+        label: 'साइड में पाइप / मात्रा/प्रकार',
+        labelEnglish: 'Side Pipe / Qty / Type',
+        options: [],
+      },
+      {
+        key: 'bhaya_matra_prakar',
+        label: 'भया: मात्रा/ प्रकार',
+        labelEnglish: 'Bhaya: Qty / Type',
+        options: [],
+      },
+      {
+        key: 'dhar',
+        label: 'ढार',
+        labelEnglish: 'Dhar',
+        options: [],
+      },
+      {
+        key: 'top_pipe_angle_prakar',
+        label: 'टोप पर पाइप / एंगल/ प्रकार',
+        labelEnglish: 'Top Pipe / Angle / Type',
+        options: [
+          'Pipe (पाइप)',
+          'Angle (एंगल)',
+        ],
+      },
     ],
   },
   {
@@ -138,9 +322,27 @@ export const ORDER_SECTIONS = [
     titleHindi: 'ऐसेसरीज',
     titleEnglish: 'ACCESSORIES',
     items: [
-      { key: 'bari_prakar', label: 'बारी प्रकार' },
-      { key: 'niyamit', label: 'नियमित' },
-      { key: 'anya_kaam', label: 'अन्य काम' },
+      {
+        key: 'bari_prakar',
+        label: 'बारी प्रकार',
+        labelEnglish: 'Window Type',
+        options: [
+          'Marwadi (मारवाड़ी)',
+          'Rajkot Type (राजकोट टाइप)',
+        ],
+      },
+      {
+        key: 'niyamit',
+        label: 'नियमित',
+        labelEnglish: 'Regular Items',
+        options: [],
+      },
+      {
+        key: 'anya_kaam',
+        label: 'अन्य काम',
+        labelEnglish: 'Other Work',
+        options: [],
+      },
     ],
   },
   {
@@ -149,11 +351,45 @@ export const ORDER_SECTIONS = [
     titleEnglish: 'FINISHING WORK',
     isFinishing: true,
     items: [
-      { key: 'color', label: 'कलर', subLabel: 'COLOR' },
-      { key: 'redium', label: 'रेडियम', subLabel: 'REDIUM' },
-      { key: 'painting', label: 'पेंटिंग', subLabel: 'PAINTING' },
-      { key: 'vayring', label: 'वायरिंग', subLabel: 'VAYRING' },
-      { key: 'glass', label: 'ग्लास', subLabel: 'GLASS' },
+      {
+        key: 'color',
+        label: 'कलर',
+        subLabel: 'COLOR',
+        options: [
+          'Cabin PU Body National (केबिन PU बॉडी नेशनल)',
+          'Full PU (फुल PU)',
+        ],
+      },
+      {
+        key: 'redium',
+        label: 'रेडियम',
+        subLabel: 'REDIUM',
+        options: [
+          'Regular (रेगुलर)',
+        ],
+      },
+      {
+        key: 'painting',
+        label: 'पेंटिंग',
+        subLabel: 'PAINTING',
+        options: [
+          'Regular (रेगुलर)',
+        ],
+      },
+      {
+        key: 'vayring',
+        label: 'वायरिंग',
+        subLabel: 'VAYRING',
+        options: [
+          'Regular (रेगुलर)',
+        ],
+      },
+      {
+        key: 'glass',
+        label: 'ग्लास',
+        subLabel: 'GLASS',
+        options: [],
+      },
     ],
   },
 ];
