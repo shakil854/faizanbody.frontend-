@@ -26,6 +26,7 @@ export function OrderFormModal({
   const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const scrollRef = useRef(null);
+  const lastModeSwitchRef = useRef(0);
 
   useEffect(() => {
     if (initialData) {
@@ -151,10 +152,19 @@ export function OrderFormModal({
     }
   };
 
+  const handleSwitchMode = (newMode) => {
+    lastModeSwitchRef.current = Date.now();
+    setCurrentMode(newMode);
+  };
+
   const handleSubmit = async (e) => {
     if (e) e.preventDefault();
+    // Guard against touch ghost clicks immediately after switching from view to edit
+    if (Date.now() - lastModeSwitchRef.current < 600) {
+      return;
+    }
     if (isViewMode) {
-      setCurrentMode('edit');
+      handleSwitchMode('edit');
       return;
     }
 
@@ -200,7 +210,7 @@ export function OrderFormModal({
               <button
                 type="button"
                 className="btn-modal-header-edit"
-                onClick={() => setCurrentMode(currentMode === 'view' ? 'edit' : 'view')}
+                onClick={() => handleSwitchMode(currentMode === 'view' ? 'edit' : 'view')}
                 title={currentMode === 'view' ? 'Edit Details (सब विवरण बदलें)' : 'Switch to View Mode'}
               >
                 {currentMode === 'view' ? (
@@ -719,10 +729,15 @@ export function OrderFormModal({
               {isViewMode ? (
                 canEdit ? (
                   <button
+                    key="btn-view-edit"
                     type="button"
                     className="btn-modern-save-submit"
                     style={{ background: 'linear-gradient(135deg, #1e3a8a 0%, #2563eb 100%)' }}
-                    onClick={() => setCurrentMode('edit')}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      handleSwitchMode('edit');
+                    }}
                     title="Edit All Details (सब विवरण एडिट करें)"
                   >
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.3">
@@ -733,7 +748,18 @@ export function OrderFormModal({
                   </button>
                 ) : null
               ) : (
-                <button type="submit" className="btn-modern-save-submit" disabled={isSubmitting}>
+                <button
+                  key="btn-save-submit"
+                  type="submit"
+                  className="btn-modern-save-submit"
+                  disabled={isSubmitting}
+                  onClick={(e) => {
+                    if (Date.now() - lastModeSwitchRef.current < 600) {
+                      e.preventDefault();
+                      e.stopPropagation();
+                    }
+                  }}
+                >
                   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4">
                     <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" />
                     <polyline points="17 21 17 13 7 13 7 21" />
