@@ -1,6 +1,6 @@
 {
   "appId": "com.faizanbody.app",
-  "appName": "Faizan Body",
+  "appName": "Syncrobyte",
   "webDir": "dist",
   "bundledWebRuntime": false,
   "server": {
