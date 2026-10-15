@@ -2,8 +2,8 @@ import React, { useState, useRef, useEffect } from 'react';
 
 /**
  * OrderComboboxInput
- * Allows typing freeform text OR selecting from a bilingual dropdown list of options.
- * Matches Faizan Body physical job card specifications.
+ * Allows selecting from a bilingual dropdown WITHOUT opening on-screen mobile keyboard,
+ * while still allowing freeform typing when the user explicitly wants to type.
  */
 export function OrderComboboxInput({
   value = '',
@@ -14,13 +14,17 @@ export function OrderComboboxInput({
   id,
   className = '',
 }) {
+  const safeOptions = Array.isArray(options) ? options : [];
+  const hasOptions = safeOptions.length > 0;
+
+  // If value is set and not in safeOptions, start in custom typing mode
+  const isCustomInitial = hasOptions && value && !safeOptions.includes(value);
+  const [isCustomTyping, setIsCustomTyping] = useState(isCustomInitial);
   const [isOpen, setIsOpen] = useState(false);
   const [highlightedIndex, setHighlightedIndex] = useState(-1);
+
   const containerRef = useRef(null);
   const inputRef = useRef(null);
-
-  const safeOptions = Array.isArray(options) ? options : [];
-  const datalistId = id ? `datalist-${id}` : undefined;
 
   // Close dropdown on click outside
   useEffect(() => {
@@ -44,13 +48,42 @@ export function OrderComboboxInput({
       onChange(opt);
     }
     setIsOpen(false);
+    setIsCustomTyping(false);
+    // Explicitly blur so mobile keyboard NEVER opens on select!
     if (inputRef.current) {
-      inputRef.current.focus();
+      inputRef.current.blur();
+    }
+  };
+
+  const handleStartCustomTyping = (e) => {
+    if (e) e.stopPropagation();
+    setIsCustomTyping(true);
+    setIsOpen(false);
+    setTimeout(() => {
+      if (inputRef.current) {
+        inputRef.current.focus();
+      }
+    }, 60);
+  };
+
+  const handleSwitchToSelectMode = (e) => {
+    if (e) e.stopPropagation();
+    setIsCustomTyping(false);
+    setIsOpen(true);
+    if (inputRef.current) {
+      inputRef.current.blur();
+    }
+  };
+
+  const handleFieldClick = () => {
+    if (readOnly) return;
+    if (hasOptions && !isCustomTyping) {
+      setIsOpen((prev) => !prev);
     }
   };
 
   const handleKeyDown = (e) => {
-    if (readOnly || safeOptions.length === 0) return;
+    if (readOnly || !hasOptions) return;
 
     if (e.key === 'ArrowDown') {
       e.preventDefault();
@@ -78,85 +111,128 @@ export function OrderComboboxInput({
     }
   };
 
+  // Determine if input should be readOnly:
+  // 1. If form is in readOnly (viewMode) -> true
+  // 2. If field has options and user is in Select Mode -> true (prevents mobile keyboard!)
+  const isInputReadOnly = readOnly || (hasOptions && !isCustomTyping);
+
   return (
     <div
       ref={containerRef}
       className={`order-combobox-wrapper ${isOpen ? 'is-open' : ''} ${className}`}
     >
-      <div className="order-combobox-field">
+      <div
+        className={`order-combobox-field ${hasOptions && !isCustomTyping ? 'clickable-select-field' : ''}`}
+        onClick={handleFieldClick}
+      >
         <input
           ref={inputRef}
           type="text"
-          className="modern-input-ctrl line-input order-combobox-input"
-          placeholder={placeholder}
+          className={`modern-input-ctrl line-input order-combobox-input ${
+            hasOptions && !isCustomTyping ? 'cursor-pointer-input' : ''
+          }`}
+          placeholder={hasOptions && !isCustomTyping ? 'चुनें या लिखें... / Select...' : placeholder}
           value={value || ''}
           onChange={(e) => onChange && onChange(e.target.value)}
           onKeyDown={handleKeyDown}
-          readOnly={readOnly}
-          list={datalistId}
+          readOnly={isInputReadOnly}
+          inputMode={isInputReadOnly ? 'none' : 'text'}
           autoComplete="off"
         />
 
-        {datalistId && safeOptions.length > 0 && (
-          <datalist id={datalistId}>
-            {safeOptions.map((opt, i) => (
-              <option key={i} value={opt} />
-            ))}
-          </datalist>
-        )}
-
         {!readOnly && (
           <div className="order-combobox-actions">
+            {/* Clear Button */}
             {value && (
               <button
                 type="button"
                 className="btn-combobox-clear"
                 title="हटाएं / Clear"
-                onClick={() => {
+                onClick={(e) => {
+                  e.stopPropagation();
                   if (onChange) onChange('');
-                  if (inputRef.current) inputRef.current.focus();
+                  if (isCustomTyping && inputRef.current) {
+                    inputRef.current.focus();
+                  }
                 }}
               >
                 ✕
               </button>
             )}
 
-            {safeOptions.length > 0 && (
-              <button
-                type="button"
-                className={`btn-combobox-toggle ${isOpen ? 'active' : ''}`}
-                title="विकल्प चुनें / Choose options"
-                onClick={() => setIsOpen((prev) => !prev)}
-                tabIndex={-1}
-              >
-                <svg
-                  width="13"
-                  height="13"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2.5"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  style={{
-                    transform: isOpen ? 'rotate(180deg)' : 'rotate(0deg)',
-                    transition: 'transform 0.2s ease',
+            {/* If has options: Switch to Typing (Pencil) or Switch to Select */}
+            {hasOptions && (
+              <>
+                {!isCustomTyping ? (
+                  <button
+                    type="button"
+                    className="btn-combobox-pencil"
+                    title="खुद लिखें / Type custom text"
+                    onClick={handleStartCustomTyping}
+                  >
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z" />
+                      <path d="m15 5 4 4" />
+                    </svg>
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    className="btn-combobox-list"
+                    title="विकल्पों से चुनें / Choose from options"
+                    onClick={handleSwitchToSelectMode}
+                  >
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                      <line x1="8" y1="6" x2="21" y2="6" />
+                      <line x1="8" y1="12" x2="21" y2="12" />
+                      <line x1="8" y1="18" x2="21" y2="18" />
+                      <line x1="3" y1="6" x2="3.01" y2="6" />
+                      <line x1="3" y1="12" x2="3.01" y2="12" />
+                      <line x1="3" y1="18" x2="3.01" y2="18" />
+                    </svg>
+                  </button>
+                )}
+
+                {/* Dropdown Toggle Chevron */}
+                <button
+                  type="button"
+                  className={`btn-combobox-toggle ${isOpen ? 'active' : ''}`}
+                  title="विकल्प सूची / Options list"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setIsOpen((prev) => !prev);
                   }}
+                  tabIndex={-1}
                 >
-                  <polyline points="6 9 12 15 18 9" />
-                </svg>
-              </button>
+                  <svg
+                    width="13"
+                    height="13"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2.5"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    style={{
+                      transform: isOpen ? 'rotate(180deg)' : 'rotate(0deg)',
+                      transition: 'transform 0.2s ease',
+                    }}
+                  >
+                    <polyline points="6 9 12 15 18 9" />
+                  </svg>
+                </button>
+              </>
             )}
           </div>
         )}
       </div>
 
-      {/* Floating Dropdown List */}
-      {!readOnly && isOpen && safeOptions.length > 0 && (
+      {/* Floating Dropdown List (No Keyboard) */}
+      {!readOnly && isOpen && hasOptions && (
         <div className="order-combobox-menu animate-fade-in" role="listbox">
           <div className="combobox-menu-header">
-            <span>सुझाए गए विकल्प (Suggested Options)</span>
-            <span className="combobox-hint">क्लिक करें या लिखें</span>
+            <span>विकल्प चुनें (Choose Option)</span>
+            <span className="combobox-hint">टच करें</span>
           </div>
 
           <div className="combobox-options-scroll">
@@ -172,7 +248,10 @@ export function OrderComboboxInput({
                   }`}
                   role="option"
                   aria-selected={isSelected}
-                  onClick={() => handleSelectOption(opt)}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleSelectOption(opt);
+                  }}
                   onMouseEnter={() => setHighlightedIndex(idx)}
                 >
                   <span className="option-bilingual-text">{opt}</span>
@@ -180,6 +259,16 @@ export function OrderComboboxInput({
                 </div>
               );
             })}
+
+            {/* Action Row: Type Custom Text */}
+            <div
+              className="combobox-option-row combobox-custom-action-row"
+              onClick={handleStartCustomTyping}
+            >
+              <span className="option-bilingual-text custom-action-text">
+                ✍️ अन्य लिखें... (Type Custom Text)
+              </span>
+            </div>
           </div>
         </div>
       )}
