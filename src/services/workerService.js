@@ -1,5 +1,6 @@
 import axiosInstance from '../api/axiosInstance';
 import { ENDPOINTS } from '../api/endpoints';
+import { API_BASE_URL } from '../config/api.config';
 
 /**
  * High-Performance Worker Service with In-Memory Caching & SWR (Stale-While-Revalidate)
@@ -246,7 +247,7 @@ export function getAadharFullUrl(url) {
   if (url.startsWith('http://') || url.startsWith('https://') || url.startsWith('blob:') || url.startsWith('data:')) {
     return url;
   }
-  const base = (import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api/v1').replace(/\/api\/v1\/?$/, '');
+  const base = API_BASE_URL.replace(/\/api\/v1\/?$/, '');
   return `${base}${url.startsWith('/') ? '' : '/'}${url}`;
 }
 

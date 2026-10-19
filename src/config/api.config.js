@@ -1,14 +1,18 @@
 /**
  * Centralized API Configuration
  * 
- * NOTE: Agar aap live server pe deploy karte ho ya live API use karni ho,
- * to ya to `.env` me `VITE_API_BASE_URL` change kar do,
- * ya phir direct yaha niche LIVE_API_URL me apna live domain daal sakte ho!
+ * NOTE: Live API server URL: http://200.141.8.22:5001/api/v1
+ * Configuration is managed via .env (VITE_API_BASE_URL) or DEFAULT_API_URL fallback.
  */
 
-const DEFAULT_API_URL = 'https://faizanbody-backend.onrender.com/api/v1';
+const DEFAULT_API_URL = 'http://200.141.8.22:5001/api/v1';
 
-export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || DEFAULT_API_URL;
+const rawUrl = (import.meta.env.VITE_API_BASE_URL || DEFAULT_API_URL).trim();
+
+// Ensure base URL properly includes /api/v1 prefix
+export const API_BASE_URL = rawUrl.endsWith('/api/v1')
+  ? rawUrl
+  : `${rawUrl.replace(/\/+$/, '')}/api/v1`;
 
 export const APP_CONFIG = {
   appName: import.meta.env.VITE_APP_NAME || 'FaizanBody App',

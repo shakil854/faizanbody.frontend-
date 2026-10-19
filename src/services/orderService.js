@@ -1,6 +1,7 @@
 import axiosInstance from '../api/axiosInstance';
 import { ENDPOINTS } from '../api/endpoints';
 import { compressImageFile } from '../utils/nativeCamera';
+import { API_BASE_URL } from '../config/api.config';
 
 let cachedOrders = null;
 let lastFetchTime = 0;
@@ -205,7 +206,7 @@ export function getPhotoFullUrl(url) {
   if (url.startsWith('http://') || url.startsWith('https://') || url.startsWith('blob:') || url.startsWith('data:')) {
     return url;
   }
-  const base = (import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api/v1').replace(/\/api\/v1\/?$/, '');
+  const base = API_BASE_URL.replace(/\/api\/v1\/?$/, '');
   return `${base}${url.startsWith('/') ? '' : '/'}${url}`;
 }
 
