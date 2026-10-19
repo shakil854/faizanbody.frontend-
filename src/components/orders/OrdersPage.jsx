@@ -6,9 +6,11 @@ import { OrderFormModal } from './OrderFormModal';
 import { OrderJobSheetModal } from './OrderJobSheetModal';
 import { OrderDeleteModal } from './OrderDeleteModal';
 import { OrderPhotosModal } from './OrderPhotosModal';
+import { OrderBadgeSettingsModal } from './OrderBadgeSettingsModal';
 import { OrderFab } from './OrderFab';
 import { Snackbar } from '../workers/Snackbar';
 import { useAuth } from '../../context/AuthContext';
+import { getOrderBadgeSettings, getOrderBadgeColor } from '../../utils/orderBadgeSettings';
 
 export function OrdersPage({ onBackToHome }) {
   const { isAdmin, hasPermission } = useAuth();
@@ -25,7 +27,17 @@ export function OrdersPage({ onBackToHome }) {
   const [viewingOrder, setViewingOrder] = useState(null);
   const [deletingOrder, setDeletingOrder] = useState(null);
   const [photoModalOrder, setPhotoModalOrder] = useState(null);
+  const [isBadgeSettingsOpen, setIsBadgeSettingsOpen] = useState(false);
+  const [badgeSettings, setBadgeSettings] = useState(() => getOrderBadgeSettings());
   const [isDeleting, setIsDeleting] = useState(false);
+
+  useEffect(() => {
+    const handleSettingsUpdate = () => {
+      setBadgeSettings(getOrderBadgeSettings());
+    };
+    window.addEventListener('orderBadgeSettingsChanged', handleSettingsUpdate);
+    return () => window.removeEventListener('orderBadgeSettingsChanged', handleSettingsUpdate);
+  }, []);
 
   // Global Toast
   const [snackbar, setSnackbar] = useState({ message: '', type: 'info' });
@@ -142,6 +154,9 @@ export function OrdersPage({ onBackToHome }) {
   );
   const inProgressOrdersCount = totalOrdersCount - completedOrdersCount;
 
+  const effectiveBadgeCount = badgeSettings.countType === 'total' ? totalOrdersCount : inProgressOrdersCount;
+  const currentBadgeColor = getOrderBadgeColor(effectiveBadgeCount, badgeSettings);
+
   // Filtered & Searched Orders
   const filteredOrders = useMemo(() => {
     let result = [...orders];
@@ -239,6 +254,23 @@ export function OrdersPage({ onBackToHome }) {
             <span className="counter-chip-dot dot-completed"></span>
             <span className="counter-chip-label">Completed</span>
             <span className="counter-chip-badge badge-completed">{completedOrdersCount}</span>
+          </button>
+
+          <button
+            type="button"
+            className={`orders-counter-chip chip-badge-color chip-badge-${currentBadgeColor}`}
+            onClick={() => setIsBadgeSettingsOpen(true)}
+            title="Order Alert Color Settings (Red, Green, Blue)"
+            aria-label="Order Badge Color Settings"
+          >
+            <span className={`counter-chip-dot dot-${currentBadgeColor}`}></span>
+            <span className="counter-chip-label">Alert: {currentBadgeColor.toUpperCase()}</span>
+            <span className="chip-settings-gear">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="12" cy="12" r="3" />
+                <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" />
+              </svg>
+            </span>
           </button>
         </div>
 
@@ -370,6 +402,15 @@ export function OrdersPage({ onBackToHome }) {
           setPhotoModalOrder(updatedOrd);
           showSnackbar('Work photos updated successfully', 'success');
         }}
+      />
+
+      {/* Order Badge Alert Settings Modal (Red, Green, Blue) */}
+      <OrderBadgeSettingsModal
+        isOpen={isBadgeSettingsOpen}
+        onClose={() => setIsBadgeSettingsOpen(false)}
+        inProgressCount={inProgressOrdersCount}
+        totalCount={totalOrdersCount}
+        onSaved={() => showSnackbar('✓ Order alert badge settings updated!', 'success')}
       />
 
       {/* Global Snackbar Toast */}

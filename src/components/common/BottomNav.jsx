@@ -1,5 +1,6 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
+import { getOrderBadgeSettings, getOrderBadgeColor } from '../../utils/orderBadgeSettings';
 
 /**
  * Ultra-Luxury Bottom Navigation Bar (Compact & Sleek)
@@ -17,6 +18,19 @@ export function BottomNav({
   userCount = 0,
 }) {
   const { isAdmin, canAccessModule } = useAuth();
+  const [badgeSettings, setBadgeSettings] = useState(() => getOrderBadgeSettings());
+
+  useEffect(() => {
+    const handleUpdate = () => {
+      setBadgeSettings(getOrderBadgeSettings());
+    };
+    window.addEventListener('orderBadgeSettingsChanged', handleUpdate);
+    return () => window.removeEventListener('orderBadgeSettingsChanged', handleUpdate);
+  }, []);
+
+  const effectiveOrderCount = badgeSettings.countType === 'total' ? orderCount : inProgressOrderCount;
+  const orderBadgeColor = getOrderBadgeColor(effectiveOrderCount, badgeSettings);
+
   return (
     <nav className="mobile-bottom-bar android-nav-bar luxury-bottom-bar" aria-label="App Navigation">
       <div className="bottom-nav-container">
@@ -92,14 +106,31 @@ export function BottomNav({
                       d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"
                       fill="url(#navActiveOrderGrad)"
                     />
-                    <polyline points="14 2 14 8 20 8" fill="#93c5fd" />
+                    <polyline
+                      points="14 2 14 8 20 8"
+                      fill={orderBadgeColor === 'red' ? '#fca5a5' : orderBadgeColor === 'green' ? '#86efac' : '#93c5fd'}
+                    />
                     <line x1="16" y1="13" x2="8" y2="13" stroke="#ffffff" strokeWidth="2" strokeLinecap="round" />
                     <line x1="16" y1="17" x2="8" y2="17" stroke="#ffffff" strokeWidth="2" strokeLinecap="round" />
                     <polyline points="10 9 9 9 8 9" stroke="#ffffff" strokeWidth="2" strokeLinecap="round" />
                     <defs>
                       <linearGradient id="navActiveOrderGrad" x1="2" y1="2" x2="22" y2="22" gradientUnits="userSpaceOnUse">
-                        <stop stopColor="#2563eb" />
-                        <stop offset="1" stopColor="#1d4ed8" />
+                        {orderBadgeColor === 'red' ? (
+                          <>
+                            <stop stopColor="#ef4444" />
+                            <stop offset="1" stopColor="#dc2626" />
+                          </>
+                        ) : orderBadgeColor === 'green' ? (
+                          <>
+                            <stop stopColor="#10b981" />
+                            <stop offset="1" stopColor="#059669" />
+                          </>
+                        ) : (
+                          <>
+                            <stop stopColor="#2563eb" />
+                            <stop offset="1" stopColor="#1d4ed8" />
+                          </>
+                        )}
                       </linearGradient>
                     </defs>
                   </>
@@ -119,17 +150,37 @@ export function BottomNav({
                 )}
               </svg>
 
-              {/* Notification Badge for in-progress orders */}
-              {inProgressOrderCount > 0 ? (
-                <span className="nav-alert-badge nav-order-badge" title={`${inProgressOrderCount} in-progress order(s)`}>
+              {/* Notification Badge for orders with configurable thresholds (Red, Green, Blue) */}
+              {effectiveOrderCount > 0 ? (
+                <span
+                  className={`nav-alert-badge nav-order-badge nav-order-badge-${orderBadgeColor}`}
+                  title={`${effectiveOrderCount} ${badgeSettings.countType === 'total' ? 'total' : 'in-progress'} order(s)`}
+                >
                   <span className="alert-pulse-ring"></span>
-                  {inProgressOrderCount}
+                  {effectiveOrderCount}
                 </span>
               ) : orderCount !== undefined && orderCount > 0 ? (
                 <span className="nav-badge-dot">{orderCount}</span>
               ) : null}
             </div>
-            <span className="nav-label">Orders</span>
+            <span
+              className="nav-label"
+              style={
+                activeTab === 'orders'
+                  ? {
+                      color:
+                        orderBadgeColor === 'red'
+                          ? '#dc2626'
+                          : orderBadgeColor === 'green'
+                          ? '#059669'
+                          : '#2563eb',
+                      fontWeight: 700,
+                    }
+                  : undefined
+              }
+            >
+              Orders
+            </span>
           </button>
         )}
 
