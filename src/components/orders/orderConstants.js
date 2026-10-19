@@ -10,6 +10,7 @@ export const DEFAULT_ORDER_DATA = {
   owner_name: '',
   mobile_number: '',
   entry_date: new Date().toISOString().split('T')[0],
+  delivery_date: '',
   truck_chassis_no: '',
   shade_no: '',
   status: 'In Progress',

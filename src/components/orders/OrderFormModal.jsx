@@ -415,6 +415,19 @@ export function OrderFormModal({
                   />
                 </div>
 
+                {/* Delivery Date */}
+                <div className="modern-form-field">
+                  <label className="field-lbl">DELIVERY DATE</label>
+                  <input
+                    type="date"
+                    className="modern-input-ctrl"
+                    value={formData.delivery_date || ''}
+                    onChange={(e) => handleBasicChange('delivery_date', e.target.value)}
+                    readOnly={isViewMode}
+                    disabled={isViewMode}
+                  />
+                </div>
+
                 {/* Shade No */}
                 <div className="modern-form-field">
                   <label className="field-lbl">Shade No</label>

@@ -264,26 +264,29 @@ export const OrderCard = React.memo(function OrderCard({
         )}
       </div>
 
-      {/* Worker Dates Grid: Owner & Date */}
-      <div className="worker-dates-grid luxury-dates-grid">
-        {/* Owner */}
-        <div className="date-item coming-date-box" title={`Owner: ${order.owner_name || 'N/A'}`}>
-          <div className="date-icon-circle coming-icon-bg">
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#2563eb" strokeWidth="2.2">
+      {/* Owner Badge Row */}
+      {order.owner_name && (
+        <div className="order-owner-badge-row" title={`Owner: ${order.owner_name}${order.mobile_number ? ` • ${order.mobile_number}` : ''}`}>
+          <div className="order-owner-icon-wrap">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.3" strokeLinecap="round" strokeLinejoin="round">
               <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
               <circle cx="12" cy="7" r="4" />
             </svg>
           </div>
-          <div className="date-content">
-            <span className="date-label">OWNER</span>
-            <span className="date-value" title={order.owner_name || '—'}>{order.owner_name || '—'}</span>
-          </div>
+          <span className="order-owner-tag">OWNER:</span>
+          <span className="order-owner-text">
+            {order.owner_name}
+            {order.mobile_number ? ` • ${order.mobile_number}` : ''}
+          </span>
         </div>
+      )}
 
-        {/* Date */}
-        <div className="date-item going-date-box" title={`Date: ${order.order_date || 'N/A'}`}>
-          <div className="date-icon-circle going-icon-bg">
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#64748b" strokeWidth="2.2">
+      {/* Dates Grid: ENTRY DATE & DELIVERY DATE */}
+      <div className="worker-dates-grid luxury-dates-grid">
+        {/* Entry Date */}
+        <div className="date-item coming-date-box" title={`Entry Date: ${order.entry_date || order.order_date || 'N/A'}`}>
+          <div className="date-icon-circle coming-icon-bg">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#2563eb" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
               <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
               <line x1="16" y1="2" x2="16" y2="6" />
               <line x1="8" y1="2" x2="8" y2="6" />
@@ -291,8 +294,29 @@ export const OrderCard = React.memo(function OrderCard({
             </svg>
           </div>
           <div className="date-content">
-            <span className="date-label">DATE</span>
-            <span className="date-value" title={order.order_date || '—'}>{order.order_date || '—'}</span>
+            <span className="date-label">ENTRY DATE</span>
+            <span className="date-value" title={order.entry_date || order.order_date || '—'}>
+              {order.entry_date || order.order_date || '—'}
+            </span>
+          </div>
+        </div>
+
+        {/* Delivery Date */}
+        <div className="date-item delivery-date-box" title={`Delivery Date: ${order.delivery_date || 'Not set'}`}>
+          <div className="date-icon-circle delivery-icon-bg">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#059669" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+              <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
+              <line x1="16" y1="2" x2="16" y2="6" />
+              <line x1="8" y1="2" x2="8" y2="6" />
+              <line x1="3" y1="10" x2="21" y2="10" />
+              <path d="M9 16l2 2 4-4" />
+            </svg>
+          </div>
+          <div className="date-content">
+            <span className="date-label">DELIVERY DATE</span>
+            <span className="date-value" style={{ color: order.delivery_date ? '#059669' : '#94a3b8' }} title={order.delivery_date || '—'}>
+              {order.delivery_date || '—'}
+            </span>
           </div>
         </div>
       </div>

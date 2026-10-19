@@ -448,6 +448,10 @@ export function OrderJobSheetModal({ isOpen, onClose, order }) {
                       <span className="paper-hdr-label">ENTRY DATE:</span>
                       <span className="paper-hdr-underline">{order.entry_date || ''}</span>
                     </div>
+                    <div className="paper-hdr-field">
+                      <span className="paper-hdr-label">DELIVERY DATE:</span>
+                      <span className="paper-hdr-underline highlight-bold">{order.delivery_date || ''}</span>
+                    </div>
                   </div>
 
                   <div className="paper-hdr-row">

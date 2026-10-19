@@ -508,6 +508,11 @@
   border: 1px solid #e2e8f0;
 }
 
+.delivery-date-box {
+  background: linear-gradient(145deg, #f0fdf4 0%, #f7fee7 100%);
+  border: 1px solid #dcfce7;
+}
+
 .date-icon-circle {
   width: 24px;
   height: 24px;
@@ -526,6 +531,52 @@
 .going-icon-bg {
   background: #ffffff;
   box-shadow: 0 2px 6px rgba(15, 23, 42, 0.05);
+}
+
+.delivery-icon-bg {
+  background: #ffffff;
+  box-shadow: 0 1px 4px rgba(5, 150, 105, 0.08);
+}
+
+.order-owner-badge-row {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 0.32rem 0.6rem;
+  margin-bottom: 0.5rem;
+  font-size: 0.78rem;
+  overflow: hidden;
+}
+
+.order-owner-icon-wrap {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 5px;
+  background: #eff6ff;
+  color: #2563eb;
+  flex-shrink: 0;
+}
+
+.order-owner-tag {
+  font-size: 0.65rem;
+  font-weight: 700;
+  color: #64748b;
+  letter-spacing: 0.5px;
+  flex-shrink: 0;
+}
+
+.order-owner-text {
+  font-weight: 600;
+  color: #0f172a;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .date-content {
