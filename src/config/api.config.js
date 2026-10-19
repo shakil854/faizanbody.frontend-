@@ -1,11 +1,11 @@
 /**
  * Centralized API Configuration
  * 
- * NOTE: Live API server URL: http://200.141.8.22:5001/api/v1
+ * NOTE: Live API server URL (HTTPS): https://hobby-mpeg-observer-conviction.trycloudflare.com/api/v1
  * Configuration is managed via .env (VITE_API_BASE_URL) or DEFAULT_API_URL fallback.
  */
 
-const DEFAULT_API_URL = 'http://200.141.8.22:5001/api/v1';
+const DEFAULT_API_URL = 'https://hobby-mpeg-observer-conviction.trycloudflare.com/api/v1';
 
 const rawUrl = (import.meta.env.VITE_API_BASE_URL || DEFAULT_API_URL).trim();
 
