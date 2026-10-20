@@ -192,6 +192,16 @@ export const OrderCard = React.memo(function OrderCard({
                     <span className="pulse-indicator" style={{ background: '#059669', boxShadow: '0 0 0 2px rgba(5, 150, 105, 0.25)' }}></span>
                     Completed
                   </span>
+                ) : order.status === 'Incoming' ? (
+                  <span className="incoming-dot-pill">
+                    <span className="pulse-indicator pulse-incoming"></span>
+                    Incoming
+                  </span>
+                ) : order.status === 'Cancelled' ? (
+                  <span className="cancelled-dot-pill">
+                    <span className="pulse-indicator pulse-cancelled"></span>
+                    Cancelled
+                  </span>
                 ) : (
                   <span className="active-dot-pill">
                     <span className="pulse-indicator"></span>

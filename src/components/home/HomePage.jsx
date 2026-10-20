@@ -66,6 +66,7 @@ export function HomePage({ onNavigate, onQuickAddOrder }) {
   const leavingSoonCount = workers.filter((w) => isLeavingSoon(w.going_date)).length;
 
   const totalOrders = orders.length;
+  const incomingOrders = orders.filter((o) => o.status === 'Incoming').length;
   const activeOrders = orders.filter((o) => o.status === 'In Progress').length;
 
   const totalStockItems = stockItems.length;
@@ -103,6 +104,11 @@ export function HomePage({ onNavigate, onQuickAddOrder }) {
                   </div>
 
                   <div className="module-badge-group">
+                    {incomingOrders > 0 && (
+                      <span className="module-status-badge" style={{ background: '#fffbeb', color: '#b45309', borderColor: '#fde68a', marginRight: '6px' }}>
+                        {incomingOrders} Incoming
+                      </span>
+                    )}
                     <span className="module-status-badge" style={{ background: '#eff6ff', color: '#1d4ed8', borderColor: '#bfdbfe' }}>
                       {activeOrders} In Progress
                     </span>

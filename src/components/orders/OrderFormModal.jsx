@@ -320,6 +320,7 @@ export function OrderFormModal({
                     onChange={(e) => handleBasicChange('status', e.target.value)}
                     disabled={isViewMode}
                   >
+                    <option value="Incoming">📥 Incoming</option>
                     <option value="In Progress">⚡ In Progress</option>
                     <option value="Completed">✓ Completed</option>
                     <option value="Cancelled">✕ Cancelled</option>

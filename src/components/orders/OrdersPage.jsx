@@ -140,7 +140,7 @@ export function OrdersPage({ onBackToHome }) {
     }
   };
 
-  const [statusFilter, setStatusFilter] = useState('all'); // 'all' | 'in_progress' | 'completed'
+  const [statusFilter, setStatusFilter] = useState('all'); // 'all' | 'incoming' | 'in_progress' | 'completed'
 
   const isOrderCompleted = useCallback((order) => {
     const { total, done } = calculateOrderProgress(order);
@@ -148,11 +148,18 @@ export function OrdersPage({ onBackToHome }) {
   }, []);
 
   const totalOrdersCount = orders.length;
+  const incomingOrdersCount = useMemo(
+    () => orders.filter((o) => o.status === 'Incoming').length,
+    [orders]
+  );
   const completedOrdersCount = useMemo(
     () => orders.filter((o) => isOrderCompleted(o)).length,
     [orders, isOrderCompleted]
   );
-  const inProgressOrdersCount = totalOrdersCount - completedOrdersCount;
+  const inProgressOrdersCount = useMemo(
+    () => orders.filter((o) => !isOrderCompleted(o) && o.status !== 'Incoming' && o.status !== 'Cancelled').length,
+    [orders, isOrderCompleted]
+  );
 
   const effectiveBadgeCount = badgeSettings.countType === 'total' ? totalOrdersCount : inProgressOrdersCount;
   const currentBadgeColor = getOrderBadgeColor(effectiveBadgeCount, badgeSettings);
@@ -161,8 +168,10 @@ export function OrdersPage({ onBackToHome }) {
   const filteredOrders = useMemo(() => {
     let result = [...orders];
 
-    if (statusFilter === 'in_progress') {
-      result = result.filter((o) => !isOrderCompleted(o));
+    if (statusFilter === 'incoming') {
+      result = result.filter((o) => o.status === 'Incoming');
+    } else if (statusFilter === 'in_progress') {
+      result = result.filter((o) => !isOrderCompleted(o) && o.status !== 'Incoming' && o.status !== 'Cancelled');
     } else if (statusFilter === 'completed') {
       result = result.filter((o) => isOrderCompleted(o));
     }
@@ -232,6 +241,17 @@ export function OrdersPage({ onBackToHome }) {
             <span className="counter-chip-dot dot-all"></span>
             <span className="counter-chip-label">Total</span>
             <span className="counter-chip-badge">{totalOrdersCount}</span>
+          </button>
+
+          <button
+            type="button"
+            className={`orders-counter-chip chip-incoming ${statusFilter === 'incoming' ? 'active' : ''}`}
+            onClick={() => setStatusFilter(statusFilter === 'incoming' ? 'all' : 'incoming')}
+            title="Filter by incoming orders"
+          >
+            <span className="counter-chip-dot dot-incoming"></span>
+            <span className="counter-chip-label">Incoming</span>
+            <span className="counter-chip-badge badge-incoming">{incomingOrdersCount}</span>
           </button>
 
           <button

@@ -13146,32 +13146,39 @@
    Orders Top Status Micro-Counter Strip (Compact Luxury & 100% Mobile Responsive)
    ======================================================== */
 .orders-top-counter-strip {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
   gap: 0.35rem;
   width: 100%;
   max-width: 600px;
-  margin: -0.45rem auto 0 auto;
+  margin: -0.45rem auto 0.75rem auto;
   padding: 0;
   box-sizing: border-box;
   user-select: none;
 }
 
 .orders-counter-chip {
+  flex: 1 1 calc(33.333% - 0.35rem);
   min-width: 0;
-  width: 100%;
   box-sizing: border-box;
-  display: flex;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 0.28rem;
-  padding: 0.42rem 0.25rem;
+  gap: 0.32rem;
+  padding: 0.44rem 0.3rem;
   background: #ffffff;
   border: 1px solid #e2e8f0;
   border-radius: 12px;
   cursor: pointer;
   transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+  white-space: nowrap;
+}
+
+.orders-counter-chip:nth-child(4),
+.orders-counter-chip:nth-child(5) {
+  flex: 1 1 calc(50% - 0.35rem);
 }
 
 .orders-counter-chip:hover {
@@ -13192,6 +13199,23 @@
 
 .counter-chip-dot.dot-all {
   background: #64748b;
+}
+
+.counter-chip-dot.dot-incoming {
+  background: #f59e0b;
+  box-shadow: 0 0 6px rgba(245, 158, 11, 0.5);
+  animation: pulseIncomingDot 2s infinite ease-in-out;
+}
+
+@keyframes pulseIncomingDot {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.35);
+    opacity: 0.65;
+  }
 }
 
 .counter-chip-dot.dot-process {
@@ -13216,13 +13240,13 @@
 }
 
 .counter-chip-label {
-  font-size: 0.73rem;
+  font-size: 0.78rem;
   font-weight: 700;
   color: #475569;
   letter-spacing: -0.01em;
   white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  overflow: visible;
+  text-overflow: clip;
 }
 
 .counter-chip-badge {
@@ -13230,7 +13254,7 @@
   font-weight: 800;
   min-width: 18px;
   height: 18px;
-  padding: 0 0.28rem;
+  padding: 0 0.32rem;
   border-radius: 999px;
   background: #f1f5f9;
   color: #334155;
@@ -13254,6 +13278,22 @@
 
 .orders-counter-chip.active .counter-chip-badge {
   background: #2563eb;
+  color: #ffffff;
+}
+
+/* Active State for Incoming */
+.orders-counter-chip.chip-incoming.active {
+  background: #fffbeb;
+  border-color: #fde68a;
+  box-shadow: 0 2px 8px rgba(245, 158, 11, 0.15);
+}
+
+.orders-counter-chip.chip-incoming.active .counter-chip-label {
+  color: #b45309;
+}
+
+.orders-counter-chip.chip-incoming.active .counter-chip-badge {
+  background: #f59e0b;
   color: #ffffff;
 }
 
@@ -13289,18 +13329,48 @@
   color: #ffffff;
 }
 
+/* Status Pill for Incoming & Cancelled in OrderCard */
+.incoming-dot-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.32rem;
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: #d97706;
+}
+
+.pulse-incoming {
+  background: #f59e0b !important;
+  box-shadow: 0 0 0 2px rgba(245, 158, 11, 0.25) !important;
+}
+
+.cancelled-dot-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.32rem;
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: #dc2626;
+}
+
+.pulse-cancelled {
+  background: #ef4444 !important;
+  box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.25) !important;
+}
+
 /* Mobile Screen Breakpoints */
 @media (max-width: 420px) {
   .orders-top-counter-strip {
     gap: 0.28rem;
+    padding: 0;
   }
   .orders-counter-chip {
-    padding: 0.38rem 0.2rem;
-    gap: 0.22rem;
-    border-radius: 10px;
+    padding: 0.42rem 0.25rem;
+    gap: 0.26rem;
+    border-radius: 11px;
   }
   .counter-chip-label {
-    font-size: 0.7rem;
+    font-size: 0.72rem;
   }
   .counter-chip-badge {
     font-size: 0.68rem;
@@ -13316,20 +13386,21 @@
 
 @media (max-width: 350px) {
   .orders-top-counter-strip {
-    gap: 0.2rem;
+    gap: 0.22rem;
   }
   .orders-counter-chip {
-    padding: 0.32rem 0.12rem;
-    gap: 0.16rem;
+    padding: 0.38rem 0.18rem;
+    gap: 0.2rem;
+    border-radius: 10px;
   }
   .counter-chip-label {
-    font-size: 0.64rem;
+    font-size: 0.68rem;
   }
   .counter-chip-badge {
-    font-size: 0.62rem;
+    font-size: 0.63rem;
     min-width: 15px;
     height: 15px;
-    padding: 0 0.15rem;
+    padding: 0 0.18rem;
   }
 }
 
