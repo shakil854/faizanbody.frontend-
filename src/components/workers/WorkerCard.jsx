@@ -326,12 +326,14 @@ export const WorkerCard = React.memo(function WorkerCard({
       </div>
 
       {/* Aadhar Fullscreen View Modal */}
-      <AadharPreviewModal
-        isOpen={showAadharModal}
-        onClose={() => setShowAadharModal(false)}
-        workerName={worker.name}
-        aadharUrl={worker.aadhar_card}
-      />
+      {showAadharModal && (
+        <AadharPreviewModal
+          isOpen={showAadharModal}
+          onClose={() => setShowAadharModal(false)}
+          workerName={worker.name}
+          aadharUrl={worker.aadhar_card}
+        />
+      )}
 
       {/* Worker Jama - Udhar Khata Modal */}
       {showKhataModal && (

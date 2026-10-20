@@ -10,7 +10,6 @@ import { BottomNav } from '../common/BottomNav';
 import { isLeavingSoon, getDaysUntil } from '../../utils/dateAlerts';
 import { useAuth } from '../../context/AuthContext';
 
-const BATCH_SIZE = 25; // High-performance progressive rendering batch size
 
 export function WorkersPage({ onBackToHome, onAlertCountChange }) {
   const { isAdmin, hasPermission } = useAuth();
@@ -24,10 +23,6 @@ export function WorkersPage({ onBackToHome, onAlertCountChange }) {
   const [workers, setWorkers] = useState(() => workerService.getCachedWorkers());
   const [loading, setLoading] = useState(() => workerService.getCachedWorkers().length === 0);
   const [searchQuery, setSearchQuery] = useState('');
-  const [visibleLimit, setVisibleLimit] = useState(BATCH_SIZE);
-
-  // Sentinel ref for infinite scroll
-  const sentinelRef = useRef(null);
 
   // Modals state
   const [isFormOpen, setIsFormOpen] = useState(false);
@@ -69,20 +64,16 @@ export function WorkersPage({ onBackToHome, onAlertCountChange }) {
     return () => unsubscribe();
   }, [fetchWorkers]);
 
-  // Reset pagination limit on search
-  useEffect(() => {
-    setVisibleLimit(BATCH_SIZE);
-  }, [searchQuery]);
-
   // Count workers leaving within 5 days
   const leavingSoonCount = useMemo(() => {
     return workers.filter((w) => isLeavingSoon(w.going_date)).length;
   }, [workers]);
 
-
-  // Sync alert count with parent if provided
+  // Sync alert count with parent only when value genuinely changes
+  const lastAlertCountRef = useRef(null);
   useEffect(() => {
-    if (onAlertCountChange) {
+    if (onAlertCountChange && lastAlertCountRef.current !== leavingSoonCount) {
+      lastAlertCountRef.current = leavingSoonCount;
       onAlertCountChange(leavingSoonCount);
     }
   }, [leavingSoonCount, onAlertCountChange]);
@@ -170,36 +161,6 @@ export function WorkersPage({ onBackToHome, onAlertCountChange }) {
     });
   }, [workers, searchQuery]);
 
-  // Progressive rendering slice (renders only visible batch for 60fps scrolling)
-  const visibleWorkers = useMemo(() => {
-    return sortedWorkers.slice(0, visibleLimit);
-  }, [sortedWorkers, visibleLimit]);
-
-  const hasMore = visibleLimit < sortedWorkers.length;
-
-  // Infinite scroll intersection observer for progressive rendering
-  useEffect(() => {
-    if (!hasMore || loading) return;
-
-    const observer = new IntersectionObserver(
-      (entries) => {
-        if (entries[0].isIntersecting) {
-          setVisibleLimit((prev) => Math.min(prev + BATCH_SIZE, sortedWorkers.length));
-        }
-      },
-      { rootMargin: '250px' }
-    );
-
-    const currentSentinel = sentinelRef.current;
-    if (currentSentinel) {
-      observer.observe(currentSentinel);
-    }
-
-    return () => {
-      if (currentSentinel) observer.unobserve(currentSentinel);
-    };
-  }, [hasMore, loading, sortedWorkers.length]);
-
   return (
     <div className="workers-page-shell">
       {/* Main Content Area */}
@@ -285,33 +246,21 @@ export function WorkersPage({ onBackToHome, onAlertCountChange }) {
               )}
             </div>
           ) : (
-            /* High-Performance Progressively Rendered Cards */
-            <>
-              <div className="workers-grid">
-                {visibleWorkers.map((worker) => (
-                  <WorkerCard
-                    key={worker.id}
-                    worker={worker}
-                    onEdit={handleEdit}
-                    onDelete={handleDelete}
-                    canEdit={canEdit}
-                    canDelete={canDelete}
-                    canKhata={canKhata}
-                    canAadhar={canAadhar}
-                  />
-                ))}
-              </div>
-
-              {/* Infinite Scroll Sentinel for seamless progressive batch loading */}
-              {hasMore && (
-                <div ref={sentinelRef} className="list-progressive-loader">
-                  <div className="mini-pulse-bar"></div>
-                  <span className="loading-count-text">
-                    Showing {visibleWorkers.length} of {sortedWorkers.length} workers...
-                  </span>
-                </div>
-              )}
-            </>
+            /* High-Performance Smooth Virtualized Cards */
+            <div className="workers-grid">
+              {sortedWorkers.map((worker) => (
+                <WorkerCard
+                  key={worker.id}
+                  worker={worker}
+                  onEdit={handleEdit}
+                  onDelete={handleDelete}
+                  canEdit={canEdit}
+                  canDelete={canDelete}
+                  canKhata={canKhata}
+                  canAadhar={canAadhar}
+                />
+              ))}
+            </div>
           )}
         </div>
       </main>

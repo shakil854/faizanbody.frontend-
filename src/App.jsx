@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from './context/AuthContext';
 import { LoginPage } from './components/auth/LoginPage';
 import { ChangePasswordModal } from './components/auth/ChangePasswordModal';
@@ -41,6 +41,10 @@ export function App() {
   const [orderCount, setOrderCount] = useState(0);
   const [inProgressOrderCount, setInProgressOrderCount] = useState(0);
   const [userCount, setUserCount] = useState(0);
+
+  const handleAlertCountChange = useCallback((cnt) => {
+    setAlertCount((prev) => (prev !== cnt ? cnt : prev));
+  }, []);
 
   // Keep track of worker count & 5-day leaving alerts & stock counts & orders & users for nav badges
   useEffect(() => {
@@ -263,7 +267,7 @@ export function App() {
           <WorkersPage
             onBackToHome={() => navigateTo('home')}
             onNavigate={navigateTo}
-            onAlertCountChange={(cnt) => setAlertCount(cnt)}
+            onAlertCountChange={handleAlertCountChange}
           />
         )}
 
