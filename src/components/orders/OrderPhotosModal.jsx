@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import orderService, { getPhotoFullUrl } from '../../services/orderService';
 import { capturePhotoFromCamera, pickPhotosFromGallery } from '../../utils/nativeCamera';
-import { sharePhoto } from '../../utils/photoShare';
+import { sharePhoto, sharePhotos } from '../../utils/photoShare';
 
 export function OrderPhotosModal({ isOpen, onClose, order, onOrderUpdated }) {
   const { hasPermission } = useAuth();
@@ -13,6 +13,9 @@ export function OrderPhotosModal({ isOpen, onClose, order, onOrderUpdated }) {
   const [uploadError, setUploadError] = useState('');
   const [activePhotoIndex, setActivePhotoIndex] = useState(null); // For fullscreen preview
   const [sharingPhotoId, setSharingPhotoId] = useState(null);
+  const [selectedPhotoIds, setSelectedPhotoIds] = useState(() => new Set());
+  const [isSharingBatch, setIsSharingBatch] = useState(false);
+  const [sharingStatusText, setSharingStatusText] = useState('');
   const [zoomScale, setZoomScale] = useState(1);
   const [panOffset, setPanOffset] = useState({ x: 0, y: 0 });
   const [isDragging, setIsDragging] = useState(false);
@@ -27,6 +30,10 @@ export function OrderPhotosModal({ isOpen, onClose, order, onOrderUpdated }) {
   const [isDeletingAll, setIsDeletingAll] = useState(false);
   const fileInputRef = useRef(null);
   const cameraInputRef = useRef(null);
+
+  useEffect(() => {
+    setSelectedPhotoIds(new Set());
+  }, [order?.id, isOpen]);
 
   const handleCloseLightbox = () => {
     setActivePhotoIndex(null);
@@ -256,14 +263,72 @@ export function OrderPhotosModal({ isOpen, onClose, order, onOrderUpdated }) {
     }
   };
 
+
+  const toggleSelectPhoto = (photoKey, e) => {
+    e?.stopPropagation();
+    setSelectedPhotoIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(photoKey)) {
+        next.delete(photoKey);
+      } else {
+        next.add(photoKey);
+      }
+      return next;
+    });
+  };
+
+  const handleSelectAll = () => {
+    if (selectedPhotoIds.size === sortedPhotos.length) {
+      setSelectedPhotoIds(new Set());
+    } else {
+      setSelectedPhotoIds(new Set(sortedPhotos.map((p, idx) => p.id || p.key || p.url || idx)));
+    }
+  };
+
+  const handleShareBatch = async () => {
+    if (!sortedPhotos || sortedPhotos.length === 0) return;
+
+    let targetPhotos = [];
+    if (selectedPhotoIds.size > 0) {
+      targetPhotos = sortedPhotos.filter((p, idx) => selectedPhotoIds.has(p.id || p.key || p.url || idx));
+    } else {
+      // If none selected, share the latest photo
+      targetPhotos = [sortedPhotos[0]];
+    }
+
+    if (targetPhotos.length === 0) return;
+
+    setIsSharingBatch(true);
+    setSharingStatusText(`Preparing ${targetPhotos.length} photo${targetPhotos.length > 1 ? 's' : ''}...`);
+
+    try {
+      await sharePhotos({
+        photos: targetPhotos.map((p) => ({
+          ...p,
+          url: getPhotoFullUrl(p.url),
+        })),
+        truckNo: order.truck_chassis_no,
+        ownerName: order.owner_name,
+        onProgress: (current, total) => {
+          setSharingStatusText(`${current}/${total}`);
+        },
+      });
+    } catch (err) {
+      console.error('Failed to share photos:', err);
+    } finally {
+      setIsSharingBatch(false);
+      setSharingStatusText('');
+    }
+  };
+
   const handleShareSinglePhoto = async (photo, e) => {
     e?.stopPropagation();
     if (!photo) return;
     try {
       setSharingPhotoId(photo.id || 'active');
       const url = getPhotoFullUrl(photo.url);
-      await sharePhoto({
-        photoUrl: url,
+      await sharePhotos({
+        photos: [{ ...photo, url }],
         truckNo: order.truck_chassis_no,
         shadeNo: order.shade_no,
         ownerName: order.owner_name,
@@ -392,14 +457,24 @@ export function OrderPhotosModal({ isOpen, onClose, order, onOrderUpdated }) {
                 <button
                   type="button"
                   className="photos-share-latest-btn"
-                  onClick={() => handleShareSinglePhoto(sortedPhotos[0])}
-                  disabled={sharingPhotoId !== null}
-                  title="लेटेस्ट फोटो WhatsApp पर शेयर करें"
+                  onClick={handleShareBatch}
+                  disabled={isSharingBatch || sharingPhotoId !== null}
+                  title={
+                    selectedPhotoIds.size > 0
+                      ? `चुने हुए ${selectedPhotoIds.size} फोटो WhatsApp पर शेयर करें`
+                      : 'लेटेस्ट फोटो WhatsApp पर शेयर करें'
+                  }
                 >
                   <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.3">
                     <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" />
                   </svg>
-                  <span>{sharingPhotoId ? 'Sharing...' : 'Share'}</span>
+                  <span>
+                    {isSharingBatch
+                      ? (sharingStatusText || 'Sharing...')
+                      : selectedPhotoIds.size > 0
+                      ? `Share (${selectedPhotoIds.size})`
+                      : 'Share'}
+                  </span>
                 </button>
               )}
 
@@ -408,7 +483,7 @@ export function OrderPhotosModal({ isOpen, onClose, order, onOrderUpdated }) {
                   type="button"
                   className="photos-delete-all-btn"
                   onClick={handleDeleteAllPhotos}
-                  disabled={isDeletingAll || isUploading}
+                  disabled={isDeletingAll || isUploading || isSharingBatch}
                   title="Delete all photos for this order"
                 >
                   {isDeletingAll ? (
@@ -430,6 +505,37 @@ export function OrderPhotosModal({ isOpen, onClose, order, onOrderUpdated }) {
           )}
 
           {uploadError && <div className="photos-error-banner">{uploadError}</div>}
+
+          {/* Selection Sub-Toolbar for Multi-Photo Sharing */}
+          {sortedPhotos.length > 0 && (
+            <div className="photos-selection-toolbar">
+              <button
+                type="button"
+                className={`btn-select-all-pill ${selectedPhotoIds.size === sortedPhotos.length ? 'all-selected' : ''}`}
+                onClick={handleSelectAll}
+                title={selectedPhotoIds.size === sortedPhotos.length ? 'Deselect all photos' : 'Select all photos'}
+              >
+                <span className="select-pill-checkbox">
+                  {selectedPhotoIds.size === sortedPhotos.length ? '✓' : ''}
+                </span>
+                <span>
+                  {selectedPhotoIds.size === sortedPhotos.length
+                    ? 'Deselect All'
+                    : `Select All (${sortedPhotos.length})`}
+                </span>
+              </button>
+
+              <div className="selection-status-badge">
+                {selectedPhotoIds.size > 0 ? (
+                  <span className="selection-count-text">
+                    <strong>{selectedPhotoIds.size}</strong> of {sortedPhotos.length} selected
+                  </span>
+                ) : (
+                  <span className="selection-hint-text">Select multiple to share</span>
+                )}
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Photos Grid Content */}
@@ -460,6 +566,8 @@ export function OrderPhotosModal({ isOpen, onClose, order, onOrderUpdated }) {
               {sortedPhotos.map((photo, index) => {
                 const fullUrl = getPhotoFullUrl(photo.url);
                 const isLatest = index === 0; // Newest photo is first at the top
+                const photoKey = photo.id || photo.key || photo.url || index;
+                const isSelected = selectedPhotoIds.has(photoKey);
                 const uploadDate = photo.createdAt
                   ? new Date(photo.createdAt).toLocaleDateString('en-IN', {
                       day: 'numeric',
@@ -471,8 +579,8 @@ export function OrderPhotosModal({ isOpen, onClose, order, onOrderUpdated }) {
 
                 return (
                   <div
-                    key={photo.id || index}
-                    className={`order-photo-card ${isLatest ? 'is-latest' : ''}`}
+                    key={photoKey}
+                    className={`order-photo-card ${isLatest ? 'is-latest' : ''} ${isSelected ? 'is-selected' : ''}`}
                     onClick={() => setActivePhotoIndex(index)}
                   >
                     <div className="photo-thumb-wrapper">
@@ -482,9 +590,26 @@ export function OrderPhotosModal({ isOpen, onClose, order, onOrderUpdated }) {
                         className="photo-thumb-img"
                         loading="lazy"
                       />
+
+                      {/* Selection Checkbox on top-left of each photo */}
+                      <button
+                        type="button"
+                        className={`photo-card-select-btn ${isSelected ? 'is-selected' : ''}`}
+                        onClick={(e) => toggleSelectPhoto(photoKey, e)}
+                        title={isSelected ? 'Deselect photo' : 'Select photo to share'}
+                        aria-label={isSelected ? 'Deselect photo' : 'Select photo to share'}
+                      >
+                        {isSelected ? (
+                          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#ffffff" strokeWidth="3.2" strokeLinecap="round" strokeLinejoin="round">
+                            <polyline points="20 6 9 17 4 12" />
+                          </svg>
+                        ) : (
+                          <span className="select-circle-empty"></span>
+                        )}
+                      </button>
                       
                       {/* Latest badge on top left */}
-                      {isLatest && <span className="latest-photo-tag">Latest</span>}
+                      {isLatest && <span className="latest-photo-tag has-select">Latest</span>}
 
                       {/* WhatsApp Share button on photo */}
                       {canPrint && (

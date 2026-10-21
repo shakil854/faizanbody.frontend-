@@ -37,6 +37,7 @@ export const OrderCard = React.memo(function OrderCard({
       const url = getPhotoFullUrl(latestPhoto.url);
       await sharePhoto({
         photoUrl: url,
+        photo: latestPhoto,
         truckNo: order.truck_chassis_no,
         shadeNo: order.shade_no,
         ownerName: order.owner_name,

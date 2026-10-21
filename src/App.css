@@ -10429,6 +10429,129 @@
   transform: scale(1.1);
 }
 
+/* Multi-photo selection and sharing toolbar */
+.photos-selection-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.45rem 0.65rem;
+  background: #ffffff;
+  border-top: 1px solid #e2e8f0;
+  gap: 0.5rem;
+}
+
+.btn-select-all-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.38rem;
+  padding: 0.32rem 0.75rem;
+  background: #f1f5f9;
+  border: 1px solid #cbd5e1;
+  border-radius: 999px;
+  color: #334155;
+  font-size: 0.76rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-select-all-pill:hover {
+  background: #e2e8f0;
+  color: #0f172a;
+}
+
+.btn-select-all-pill.all-selected {
+  background: #eff6ff;
+  border-color: #3b82f6;
+  color: #1d4ed8;
+}
+
+.select-pill-checkbox {
+  width: 15px;
+  height: 15px;
+  border-radius: 4px;
+  border: 1.8px solid #94a3b8;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: 900;
+  background: #ffffff;
+  color: transparent;
+  transition: all 0.15s ease;
+}
+
+.btn-select-all-pill.all-selected .select-pill-checkbox {
+  background: #2563eb;
+  border-color: #2563eb;
+  color: #ffffff;
+}
+
+.selection-status-badge {
+  font-size: 0.75rem;
+  color: #64748b;
+  font-weight: 600;
+}
+
+.selection-count-text {
+  color: #16a34a;
+  font-weight: 700;
+}
+
+.selection-hint-text {
+  color: #94a3b8;
+  font-size: 0.72rem;
+}
+
+/* Photo Card Selection Checkbox Button */
+.photo-card-select-btn {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: rgba(15, 23, 42, 0.6);
+  backdrop-filter: blur(4px);
+  border: 2px solid rgba(255, 255, 255, 0.85);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  z-index: 5;
+  transition: all 0.18s ease;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.35);
+  padding: 0;
+}
+
+.photo-card-select-btn:hover {
+  transform: scale(1.1);
+  background: rgba(15, 23, 42, 0.8);
+  border-color: #ffffff;
+}
+
+.photo-card-select-btn.is-selected {
+  background: #2563eb;
+  border-color: #ffffff;
+  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.4), 0 3px 8px rgba(0, 0, 0, 0.4);
+}
+
+.select-circle-empty {
+  display: block;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+}
+
+.order-photo-card.is-selected {
+  border: 2px solid #2563eb !important;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.3), 0 8px 20px rgba(15, 23, 42, 0.18);
+}
+
+.latest-photo-tag.has-select {
+  left: 42px !important;
+}
+
 /* ========================================================
    📦 ULTRA-LUXURY RESPONSIVE STOCK & INVENTORY MODALS
    Mobile & Tablet Friendly with Full Touch Scroll
