@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useAuth } from './context/AuthContext';
 import { LoginPage } from './components/auth/LoginPage';
 import { ChangePasswordModal } from './components/auth/ChangePasswordModal';
@@ -34,6 +34,10 @@ export function App() {
   const [isQuickAddOpen, setIsQuickAddOpen] = useState(false);
   const [isChangePasswordOpen, setIsChangePasswordOpen] = useState(false);
   const [snackbar, setSnackbar] = useState({ message: '', type: 'info' });
+
+  // Navigation history stack for Android hardware back button
+  const navStackRef = useRef([currentPage || 'home']);
+  const lastBackPressTimeRef = useRef(0);
   const [workerCount, setWorkerCount] = useState(0);
   const [alertCount, setAlertCount] = useState(0);
   const [stockCount, setStockCount] = useState(0);
@@ -127,17 +131,30 @@ export function App() {
   useEffect(() => {
     const handleHashChange = () => {
       const hash = window.location.hash;
-      if (hash === '#workers') setCurrentPage('workers');
-      else if (hash === '#orders') setCurrentPage('orders');
-      else if (hash === '#stock') setCurrentPage('stock');
-      else if (hash === '#users') setCurrentPage('users');
-      else setCurrentPage('home');
+      const targetPage = hash === '#workers' ? 'workers'
+        : hash === '#orders' ? 'orders'
+        : hash === '#stock' ? 'stock'
+        : hash === '#users' ? 'users'
+        : 'home';
+
+      setCurrentPage((prev) => {
+        if (prev !== targetPage) {
+          // Keep navigation stack in sync
+          const stack = navStackRef.current;
+          if (stack.length >= 2 && stack[stack.length - 2] === targetPage) {
+            stack.pop();
+          } else if (stack[stack.length - 1] !== targetPage) {
+            stack.push(targetPage);
+          }
+          return targetPage;
+        }
+        return prev;
+      });
     };
 
     window.addEventListener('hashchange', handleHashChange);
     return () => window.removeEventListener('hashchange', handleHashChange);
   }, []);
-
 
   // Native Android Capacitor hardware back button & status bar integration
   useEffect(() => {
@@ -146,15 +163,57 @@ export function App() {
     import('@capacitor/app')
       .then(({ App: CapApp }) => {
         return CapApp.addListener('backButton', () => {
+          // 1. Check if quick add modal is open
           if (isQuickAddOpen) {
             setIsQuickAddOpen(false);
-          } else if (isChangePasswordOpen) {
+            return;
+          }
+
+          // 2. Check if change password modal is open
+          if (isChangePasswordOpen) {
             setIsChangePasswordOpen(false);
-          } else if (window.location.hash && window.location.hash !== '#home' && window.location.hash !== '') {
-            window.location.hash = '#home';
+            return;
+          }
+
+          // 3. Priority 1: If any in-page modal / popup / dialog / lightbox is open, close it first
+          const openModalCloseBtn = document.querySelector(
+            '.order-photo-lightbox .lightbox-close, .order-photos-overlay .photos-close-btn, .order-job-sheet-modal .close-btn, .order-form-modal .cancel-btn, .worker-form-modal .cancel-btn, .android-dialog .btn-secondary, .modal-backdrop .btn-secondary, .modal-backdrop .btn-close, .modal-backdrop .close-btn, .btn-modal-close'
+          );
+          if (openModalCloseBtn) {
+            openModalCloseBtn.click();
+            return;
+          }
+
+          // 4. Priority 2: Step back in visited page history stack
+          const stack = navStackRef.current;
+          if (stack.length > 1) {
+            stack.pop(); // remove current page
+            const prevPage = stack[stack.length - 1] || 'home';
+            setCurrentPage(prevPage);
+            window.location.hash = prevPage === 'home' ? '#home' : `#${prevPage}`;
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+            return;
+          }
+
+          // If on a page other than home and stack has no previous page, go back to home
+          if (currentPage !== 'home') {
+            navStackRef.current = ['home'];
             setCurrentPage('home');
-          } else {
+            window.location.hash = '#home';
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+            return;
+          }
+
+          // 5. Priority 3: At root Home screen - Double-tap back within 2 seconds to exit app
+          const now = Date.now();
+          if (now - lastBackPressTimeRef.current < 2000) {
             CapApp.exitApp();
+          } else {
+            lastBackPressTimeRef.current = now;
+            setSnackbar({
+              message: 'Press back again to exit (बाहर निकलने के लिए दोबारा Back दबाएं)',
+              type: 'info',
+            });
           }
         });
       })
@@ -173,9 +232,12 @@ export function App() {
     return () => {
       if (backListener && backListener.remove) backListener.remove();
     };
-  }, [isQuickAddOpen, isChangePasswordOpen]);
+  }, [isQuickAddOpen, isChangePasswordOpen, currentPage]);
 
   const navigateTo = (page) => {
+    if (page !== currentPage) {
+      navStackRef.current.push(page);
+    }
     setCurrentPage(page);
     window.location.hash = page === 'home' ? '#home' : `#${page}`;
     window.scrollTo({ top: 0, behavior: 'smooth' });
