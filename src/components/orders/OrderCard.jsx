@@ -83,17 +83,17 @@ export const OrderCard = React.memo(function OrderCard({
 
   const latestPhotoDate = formatPhotoDate(latestPhoto);
 
-  // Avatar initials from truck chassis number or owner name
+  // Avatar initials from owner name or truck chassis number
   const getInitials = () => {
-    if (order.truck_chassis_no) {
-      const clean = order.truck_chassis_no.replace(/[^a-zA-Z0-9]/g, '');
-      return clean.slice(0, 2).toUpperCase() || 'TR';
-    }
     if (order.owner_name) {
       const parts = order.owner_name.trim().split(/\s+/);
       return parts.length >= 2
         ? (parts[0][0] + parts[1][0]).toUpperCase()
         : order.owner_name.slice(0, 2).toUpperCase();
+    }
+    if (order.truck_chassis_no) {
+      const clean = order.truck_chassis_no.replace(/[^a-zA-Z0-9]/g, '');
+      return clean.slice(0, 2).toUpperCase() || 'TR';
     }
     return 'WO';
   };
@@ -184,7 +184,7 @@ export const OrderCard = React.memo(function OrderCard({
             <span className="avatar-initials">{getInitials()}</span>
           </div>
           <div className="worker-meta">
-            <h4 className="worker-name">{order.truck_chassis_no || order.order_no || 'Truck Order'}</h4>
+            <h4 className="worker-name">{order.owner_name || order.truck_chassis_no || order.order_no || 'Truck Order'}</h4>
             <div className="worker-status-subrow">
               <span className="worker-status-indicator">
                 {isCompleted ? (
@@ -227,7 +227,7 @@ export const OrderCard = React.memo(function OrderCard({
                 className="action-btn jobsheet-card-btn"
                 onClick={() => onViewJobSheet && onViewJobSheet(order)}
                 title="View Job Sheet, Print PDF Slips & WhatsApp"
-                aria-label={`View Job Sheet for ${order.truck_chassis_no || 'order'}`}
+                aria-label={`View Job Sheet for ${order.owner_name || order.truck_chassis_no || 'order'}`}
               >
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
@@ -246,10 +246,10 @@ export const OrderCard = React.memo(function OrderCard({
                   onOpen(order, 'edit');
                 }}
                 title="Edit Order Details"
-                aria-label={`Edit ${order.truck_chassis_no || 'order'}`}
+                aria-label={`Edit ${order.owner_name || order.truck_chassis_no || 'order'}`}
               >
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+                  <path d="M11 4H4a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
                   <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
                 </svg>
               </button>
@@ -260,7 +260,7 @@ export const OrderCard = React.memo(function OrderCard({
                 className="action-btn delete-btn"
                 onClick={() => onDelete(order)}
                 title="Delete Order"
-                aria-label={`Delete ${order.truck_chassis_no || 'order'}`}
+                aria-label={`Delete ${order.owner_name || order.truck_chassis_no || 'order'}`}
               >
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
                   <polyline points="3 6 5 6 21 6" />
@@ -274,21 +274,37 @@ export const OrderCard = React.memo(function OrderCard({
         )}
       </div>
 
-      {/* Owner Badge Row */}
-      {order.owner_name && (
-        <div className="order-owner-badge-row" title={`Owner: ${order.owner_name}${order.mobile_number ? ` • ${order.mobile_number}` : ''}`}>
-          <div className="order-owner-icon-wrap">
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.3" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
-              <circle cx="12" cy="7" r="4" />
-            </svg>
+      {/* Truck / Chassis Badge Row */}
+      {order.owner_name ? (
+        (order.truck_chassis_no || order.mobile_number) && (
+          <div className="order-owner-badge-row" title={`Truck: ${order.truck_chassis_no || '—'}${order.mobile_number ? ` • ${order.mobile_number}` : ''}`}>
+            <div className="order-owner-icon-wrap">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M10 17h4V5H2v12h3" />
+                <path d="M20 17h2v-3.34a4 4 0 0 0-1.17-2.83L19 9h-5v8h1" />
+                <circle cx="7.5" cy="17.5" r="2.5" />
+                <circle cx="17.5" cy="17.5" r="2.5" />
+              </svg>
+            </div>
+            <span className="order-owner-tag">TRUCK:</span>
+            <span className="order-owner-text">
+              {order.truck_chassis_no || '—'}
+              {order.mobile_number ? ` • ${order.mobile_number}` : ''}
+            </span>
           </div>
-          <span className="order-owner-tag">OWNER:</span>
-          <span className="order-owner-text">
-            {order.owner_name}
-            {order.mobile_number ? ` • ${order.mobile_number}` : ''}
-          </span>
-        </div>
+        )
+      ) : (
+        order.mobile_number && (
+          <div className="order-owner-badge-row" title={`Mobile: ${order.mobile_number}`}>
+            <div className="order-owner-icon-wrap">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z" />
+              </svg>
+            </div>
+            <span className="order-owner-tag">MOBILE:</span>
+            <span className="order-owner-text">{order.mobile_number}</span>
+          </div>
+        )
       )}
 
       {/* Dates Grid: ENTRY DATE & DELIVERY DATE */}
