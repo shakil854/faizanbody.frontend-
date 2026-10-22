@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { useAuth } from '../../context/AuthContext';
 import orderService, { getPhotoFullUrl } from '../../services/orderService';
 import { capturePhotoFromCamera, pickPhotosFromGallery } from '../../utils/nativeCamera';
@@ -34,6 +35,20 @@ export function OrderPhotosModal({ isOpen, onClose, order, onOrderUpdated }) {
   useEffect(() => {
     setSelectedPhotoIds(new Set());
   }, [order?.id, isOpen]);
+
+  // Handle ESC key to exit fullscreen photo view
+  useEffect(() => {
+    if (activePhotoIndex === null) return;
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') {
+        handleCloseLightbox();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [activePhotoIndex]);
 
   const handleCloseLightbox = () => {
     setActivePhotoIndex(null);
@@ -676,12 +691,33 @@ export function OrderPhotosModal({ isOpen, onClose, order, onOrderUpdated }) {
           )}
         </div>
 
-        {/* Fullscreen Lightbox Preview with Zoom Controls & No Side Arrows */}
-        {activePhotoIndex !== null && sortedPhotos[activePhotoIndex] && (
+        {/* Fullscreen Lightbox Preview with Portal, Responsive Back Button & Safe-Area Zoom Controls */}
+        {activePhotoIndex !== null && sortedPhotos[activePhotoIndex] && createPortal(
           <div className="order-photo-lightbox" onClick={handleCloseLightbox}>
             <div className="lightbox-content" onClick={(e) => e.stopPropagation()}>
               {/* Top Floating Controls Bar */}
               <div className="lightbox-top-bar">
+                {/* Left: Prominent Back Button (Responsive for mobile & touch) */}
+                <div className="lightbox-top-left">
+                  <button
+                    type="button"
+                    className="lightbox-back-btn lightbox-close"
+                    onClick={handleCloseLightbox}
+                    title="Back to photos (वापस जाएं)"
+                    aria-label="Back"
+                  >
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round">
+                      <line x1="19" y1="12" x2="5" y2="12" />
+                      <polyline points="12 19 5 12 12 5" />
+                    </svg>
+                    <span className="lightbox-back-label">Back</span>
+                  </button>
+                  <span className="lightbox-counter-pill">
+                    {activePhotoIndex + 1}/{sortedPhotos.length}
+                  </span>
+                </div>
+
+                {/* Center: Zoom Controls */}
                 <div className="lightbox-zoom-toolbar">
                   <button
                     type="button"
@@ -739,43 +775,29 @@ export function OrderPhotosModal({ isOpen, onClose, order, onOrderUpdated }) {
                   )}
                 </div>
 
-                <div className="lightbox-right-tools" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  {/* WhatsApp Share in Lightbox */}
+                {/* Right: Actions (WhatsApp Share + Close X) */}
+                <div className="lightbox-right-tools">
                   {canPrint && (
                     <button
                       type="button"
-                      className="lightbox-tool-btn share-btn"
+                      className="lightbox-share-btn"
                       onClick={() => handleShareSinglePhoto(sortedPhotos[activePhotoIndex])}
                       title="यह फोटो WhatsApp पर शेयर करें"
                       aria-label="Share photo"
-                      style={{
-                        background: '#16a34a',
-                        color: '#ffffff',
-                        borderColor: '#15803d',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '5px',
-                        padding: '0 10px',
-                        width: 'auto',
-                        height: '34px',
-                        borderRadius: '8px',
-                        cursor: 'pointer',
-                        border: 'none',
-                      }}
                     >
                       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.3">
                         <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" />
                       </svg>
-                      <span style={{ fontSize: '12px', fontWeight: 700 }}>WhatsApp</span>
+                      <span className="lightbox-share-label">WhatsApp</span>
                     </button>
                   )}
 
                   {/* Close Button */}
                   <button
                     type="button"
-                    className="lightbox-close"
+                    className="lightbox-close-circle lightbox-close"
                     onClick={handleCloseLightbox}
-                    title="Close Full View"
+                    title="Close Full View (बंद करें)"
                     aria-label="Close"
                   >
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
@@ -825,7 +847,8 @@ export function OrderPhotosModal({ isOpen, onClose, order, onOrderUpdated }) {
                 )}
               </div>
             </div>
-          </div>
+          </div>,
+          document.body
         )}
       </div>
     </div>
