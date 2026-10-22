@@ -29,7 +29,33 @@ function blobToBase64(blob) {
  */
 
 export async function ensureHtml2PdfLoaded() {
-  if (window.html2pdf) return window.html2pdf;
+  const getJsPdf = () => {
+    if (window.jspdf && window.jspdf.jsPDF) return window.jspdf.jsPDF;
+    if (typeof window.jsPDF === 'function') return window.jsPDF;
+    return null;
+  };
+
+  // 1. Ensure jsPDF is loaded
+  if (!getJsPdf()) {
+    await new Promise((resolve) => {
+      const existing = document.querySelector('script[src*="jspdf"]');
+      if (existing) {
+        if (getJsPdf()) return resolve();
+        existing.addEventListener('load', resolve);
+        existing.addEventListener('error', resolve);
+        setTimeout(resolve, 600);
+        return;
+      }
+      const script = document.createElement('script');
+      script.src = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';
+      script.onload = resolve;
+      script.onerror = resolve;
+      document.head.appendChild(script);
+    });
+  }
+
+  // 2. Ensure html2pdf & html2canvas are loaded
+  if (window.html2pdf && window.html2canvas) return window.html2pdf;
 
   return new Promise((resolve, reject) => {
     const existing = document.querySelector('script[src*="html2pdf"]');
@@ -182,6 +208,34 @@ export async function generatePdfBlob(element, customFileName = 'Order_Slip.pdf'
     return cvs;
   };
 
+  // Check if target has explicit .pdf-page elements (e.g. Worker Khata Statements or multi-page reports)
+  const allPdfPages = element.querySelectorAll('.pdf-page');
+  if (allPdfPages.length > 0 && JsPdf && html2canvas) {
+    const pdf = new JsPdf('p', 'mm', 'a4');
+    const pdfWidth = pdf.internal.pageSize.getWidth();
+    const pdfHeight = pdf.internal.pageSize.getHeight();
+    const margin = 6;
+    const printWidth = pdfWidth - (margin * 2);
+    const availableHeight = pdfHeight - (margin * 2);
+
+    for (let i = 0; i < allPdfPages.length; i++) {
+      if (i > 0) pdf.addPage();
+      const canvas = await renderPageCanvas(allPdfPages[i]);
+      const imgData = canvas.toDataURL('image/jpeg', 0.98);
+      const printHeight = (canvas.height * printWidth) / canvas.width;
+      if (printHeight <= availableHeight) {
+        pdf.addImage(imgData, 'JPEG', margin, margin, printWidth, printHeight);
+      } else {
+        const scale = availableHeight / printHeight;
+        const finalWidth = printWidth * scale;
+        const finalHeight = printHeight * scale;
+        const xOffset = margin + (printWidth - finalWidth) / 2;
+        pdf.addImage(imgData, 'JPEG', xOffset, margin, finalWidth, finalHeight);
+      }
+    }
+    return pdf.output('blob');
+  }
+
   // Check if target has 2-page full order (Page 1 + Page 2) scoped to the element
   const p1 = element.querySelector('#pdf-page-1');
   const p2 = element.querySelector('#pdf-page-2');
@@ -241,11 +295,12 @@ export async function generatePdfBlob(element, customFileName = 'Order_Slip.pdf'
   // Fallback
   const html2pdf = window.html2pdf;
   const worker = html2pdf().set({
-    margin: [6, 6, 6, 6],
+    margin: [4, 4, 4, 4],
     filename: customFileName,
     image: { type: 'jpeg', quality: 0.98 },
     html2canvas: { scale: 2, useCORS: true, width: 720, windowWidth: 720, x: 0, y: 0, scrollX: 0, scrollY: 0 },
     jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
+    pagebreak: { mode: ['css', 'legacy'] },
   }).from(element);
   return await worker.output('blob');
 }

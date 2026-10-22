@@ -8903,10 +8903,552 @@
   min-height: 42px;
 }
 
-.btn-whatsapp-share:hover {
+.btn-whatsapp-share:hover:not(:disabled) {
   background: #20ba59;
   transform: translateY(-1px);
   box-shadow: 0 4px 12px rgba(37, 211, 102, 0.25);
+}
+
+.btn-whatsapp-share:disabled {
+  opacity: 0.7;
+  cursor: wait;
+}
+
+.btn-download-pdf-icon {
+  background: #f1f5f9;
+  border: 1px solid #cbd5e1;
+  color: #1e293b;
+  border-radius: 12px;
+  width: 42px;
+  min-width: 42px;
+  height: 42px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  padding: 0;
+  flex-shrink: 0;
+}
+
+.btn-download-pdf-icon:hover:not(:disabled) {
+  background: #e2e8f0;
+  color: #2563eb;
+  border-color: #2563eb;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.15);
+}
+
+.btn-download-pdf-icon:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+@media (max-width: 420px) {
+  .btn-whatsapp-share span {
+    font-size: 0.76rem;
+  }
+  .btn-add-entry-toggle {
+    font-size: 0.78rem;
+    padding: 0.6rem 0.4rem;
+  }
+}
+
+/* Toast feedback for PDF Generation */
+.khata-pdf-toast-banner {
+  background: #eff6ff;
+  border: 1px solid #93c5fd;
+  color: #1d4ed8;
+  font-size: 0.8rem;
+  font-weight: 700;
+  padding: 0.5rem 0.85rem;
+  border-radius: 10px;
+  margin-bottom: 0.75rem;
+  text-align: center;
+  animation: fadeInModal 0.2s ease;
+}
+
+/* Date Range Filter Card */
+.khata-date-range-card {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  padding: 0.75rem 0.85rem;
+  margin-bottom: 0.85rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.date-range-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.date-range-title {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.76rem;
+  font-weight: 800;
+  color: #1e293b;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+.btn-clear-date-filter {
+  background: #fee2e2;
+  border: 1px solid #fca5a5;
+  color: #b91c1c;
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 0.2rem 0.55rem;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.btn-clear-date-filter:hover {
+  background: #fecaca;
+}
+
+.date-range-fields-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.5rem;
+}
+
+.date-range-col {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.date-range-label {
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: #64748b;
+}
+
+.date-range-input {
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  padding: 0.42rem 0.55rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #0f172a;
+  font-family: inherit;
+  width: 100%;
+  box-sizing: border-box;
+  outline: none;
+  transition: border-color 0.15s ease;
+}
+
+.date-range-input:focus {
+  border-color: #2563eb;
+  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.15);
+}
+
+.date-range-info-pill {
+  font-size: 0.72rem;
+  color: #1d4ed8;
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  padding: 0.35rem 0.6rem;
+  border-radius: 8px;
+  line-height: 1.4;
+}
+
+/* ========================================================
+   WORKER KHATA STATEMENT A4 PRINTABLE STYLES
+   ======================================================== */
+.khata-printable-paper {
+  width: 720px;
+  background: #ffffff;
+  color: #0f172a;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  box-sizing: border-box;
+  line-height: 1.35;
+}
+
+.khata-pdf-sheet-page {
+  width: 720px;
+  background: #ffffff;
+  padding: 18px 24px 14px;
+  box-sizing: border-box;
+  page-break-after: auto;
+  break-after: auto;
+  position: relative;
+}
+
+.khata-pdf-sheet-page:not(:last-child) {
+  page-break-after: always;
+  break-after: page;
+}
+
+.khata-pdf-sheet-page:last-child {
+  page-break-after: avoid !important;
+  break-after: avoid !important;
+}
+
+/* Header Banner */
+.khata-pdf-top-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 2px solid #1e3a8a;
+  padding-bottom: 8px;
+  margin-bottom: 9px;
+}
+
+.khata-pdf-main-brand {
+  font-size: 24px;
+  font-weight: 900;
+  color: #1e3a8a;
+  margin: 0 0 2px 0;
+  letter-spacing: 0.04em;
+  line-height: 1.1;
+}
+
+.khata-pdf-sub-brand {
+  font-size: 11px;
+  font-weight: 700;
+  color: #475569;
+  margin: 0 0 2px 0;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.khata-pdf-brand-extra {
+  font-size: 9.5px;
+  color: #64748b;
+  margin: 0;
+}
+
+.khata-pdf-statement-badge {
+  background: #1e3a8a;
+  color: #ffffff;
+  padding: 8px 14px;
+  border-radius: 8px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  box-shadow: 0 2px 6px rgba(30, 58, 138, 0.25);
+}
+
+.khata-pdf-statement-badge .badge-eng {
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 0.06em;
+}
+
+.khata-pdf-statement-badge .badge-hin {
+  font-size: 10px;
+  font-weight: 600;
+  color: #93c5fd;
+}
+
+/* Continuation Header (Page 2+) */
+.khata-pdf-continuation-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1.5px solid #cbd5e1;
+  padding-bottom: 8px;
+  margin-bottom: 14px;
+  font-size: 10px;
+  font-weight: 700;
+  color: #475569;
+  text-transform: uppercase;
+}
+
+/* Meta Card */
+.khata-pdf-meta-card {
+  background: #f8fafc;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  padding: 6px 12px;
+  margin-bottom: 9px;
+}
+
+.khata-meta-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  row-gap: 4px;
+  column-gap: 16px;
+}
+
+.meta-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 10px;
+}
+
+.meta-lbl {
+  font-weight: 700;
+  color: #475569;
+  white-space: nowrap;
+}
+
+.meta-val {
+  font-weight: 600;
+  color: #0f172a;
+}
+
+.meta-worker-name {
+  font-weight: 900;
+  color: #1e3a8a;
+  font-size: 11.5px;
+}
+
+.meta-period-val {
+  font-weight: 800;
+  color: #2563eb;
+}
+
+/* 4 KPI Box Row */
+.khata-pdf-kpi-row {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 7px;
+  margin-bottom: 9px;
+}
+
+.pdf-kpi-box {
+  border-radius: 8px;
+  padding: 6px 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  box-sizing: border-box;
+}
+
+.pdf-kpi-box.box-salary {
+  background: #f0fdf4;
+  border: 1px solid #86efac;
+}
+
+.pdf-kpi-box.box-salary .kpi-hdr { color: #166534; font-size: 8.5px; font-weight: 800; }
+.pdf-kpi-box.box-salary .kpi-val { color: #15803d; font-size: 15px; font-weight: 900; }
+
+.pdf-kpi-box.box-upad {
+  background: #fffbeb;
+  border: 1px solid #fde68a;
+}
+
+.pdf-kpi-box.box-upad .kpi-hdr { color: #92400e; font-size: 8.5px; font-weight: 800; }
+.pdf-kpi-box.box-upad .kpi-val { color: #b45309; font-size: 15px; font-weight: 900; }
+
+.pdf-kpi-box.box-payment {
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+}
+
+.pdf-kpi-box.box-payment .kpi-hdr { color: #1e40af; font-size: 8.5px; font-weight: 800; }
+.pdf-kpi-box.box-payment .kpi-val { color: #1d4ed8; font-size: 15px; font-weight: 900; }
+
+.pdf-kpi-box.box-balance.due-pay {
+  background: #ecfdf5;
+  border: 1.5px solid #10b981;
+}
+
+.pdf-kpi-box.box-balance.due-pay .kpi-hdr { color: #065f46; font-size: 8.5px; font-weight: 800; }
+.pdf-kpi-box.box-balance.due-pay .kpi-val { color: #047857; font-size: 15px; font-weight: 900; }
+
+.pdf-kpi-box.box-balance.due-adv {
+  background: #fef2f2;
+  border: 1.5px solid #f87171;
+}
+
+.pdf-kpi-box.box-balance.due-adv .kpi-hdr { color: #991b1b; font-size: 8.5px; font-weight: 800; }
+.pdf-kpi-box.box-balance.due-adv .kpi-val { color: #b91c1c; font-size: 15px; font-weight: 900; }
+
+.kpi-desc {
+  font-size: 8px;
+  color: #64748b;
+  font-weight: 600;
+}
+
+/* Table */
+.khata-pdf-table-container {
+  margin-bottom: 12px;
+}
+
+.khata-pdf-section-title {
+  font-size: 10.5px;
+  font-weight: 800;
+  color: #1e293b;
+  margin-bottom: 6px;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.khata-pdf-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 9.5px;
+}
+
+.khata-pdf-table th {
+  background: #1e3a8a;
+  color: #ffffff;
+  padding: 5px 6px;
+  font-weight: 700;
+  text-align: left;
+  border: 1px solid #1e3a8a;
+  font-size: 9px;
+}
+
+.khata-pdf-table td {
+  padding: 4px 6px;
+  border: 1px solid #e2e8f0;
+  vertical-align: middle;
+  color: #0f172a;
+  font-size: 9px;
+}
+
+.khata-pdf-table tr.row-even {
+  background: #f8fafc;
+}
+
+.pdf-pill-badge {
+  display: inline-block;
+  font-size: 8px;
+  font-weight: 700;
+  padding: 1.5px 5px;
+  border-radius: 4px;
+  white-space: nowrap;
+}
+
+.pdf-pill-badge.badge-salary { background: #dcfce7; color: #15803d; }
+.pdf-pill-badge.badge-upad { background: #fef3c7; color: #b45309; }
+.pdf-pill-badge.badge-payment { background: #dbeafe; color: #1d4ed8; }
+
+.pdf-tx-notes {
+  font-weight: 600;
+  color: #1e293b;
+  display: block;
+  word-break: break-word;
+}
+
+.pdf-tx-mode {
+  font-size: 8px;
+  color: #64748b;
+  background: #f1f5f9;
+  padding: 1.5px 4px;
+  border-radius: 4px;
+  display: inline-block;
+}
+
+.khata-pdf-totals-tr td {
+  background: #f1f5f9;
+  border-top: 2px solid #1e3a8a;
+  border-bottom: 2px solid #1e3a8a;
+  font-size: 9.5px;
+  padding: 5px 6px;
+}
+
+/* Settlement Callout */
+.khata-pdf-settlement-callout {
+  background: #f8fafc;
+  border: 1.5px solid #1e3a8a;
+  border-radius: 8px;
+  padding: 6px 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 8px;
+  margin-bottom: 12px;
+}
+
+.settle-title {
+  font-size: 10px;
+  font-weight: 900;
+  color: #1e3a8a;
+  display: block;
+  margin-bottom: 1px;
+}
+
+.settle-desc {
+  font-size: 9px;
+  font-weight: 600;
+  color: #334155;
+}
+
+.settle-amount {
+  font-size: 16px;
+  font-weight: 900;
+  color: #1e3a8a;
+}
+
+/* Signatures */
+.khata-pdf-sign-row {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 14px;
+  margin-bottom: 8px;
+  padding: 0 10px;
+}
+
+.sign-col {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  width: 180px;
+}
+
+.sign-col.right-sign {
+  align-items: flex-end;
+}
+
+.sign-draw-line {
+  width: 140px;
+  height: 1px;
+  background: #0f172a;
+  margin-bottom: 4px;
+}
+
+.sign-owner-lbl {
+  font-size: 9.5px;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.sign-sub-lbl {
+  font-size: 8.5px;
+  color: #64748b;
+}
+
+/* Footer Note */
+.khata-pdf-bottom-notice {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-top: 1px solid #e2e8f0;
+  padding-top: 6px;
+  font-size: 8px;
+  color: #94a3b8;
+}
+
+.khata-pdf-page-footer-cont {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-top: 1px dashed #cbd5e1;
+  padding-top: 6px;
+  margin-top: 10px;
+  font-size: 9px;
+  color: #64748b;
+  font-weight: 600;
+}
+
+.pdf-page-num-tag {
+  font-weight: 700;
+  color: #475569;
 }
 
 /* Add Entry Box */
