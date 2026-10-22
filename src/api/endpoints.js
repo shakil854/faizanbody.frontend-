@@ -26,11 +26,16 @@ export const ENDPOINTS = {
   USER_TOGGLE_STATUS: (id) => `/users/${id}/toggle-status`,
   AUTH: {
     LOGIN: '/auth/login',
+    VERIFY_LOGIN_OTP: '/auth/verify-login-otp',
+    RESEND_LOGIN_OTP: '/auth/resend-login-otp',
     ME: '/auth/me',
     FORGOT_PASSWORD: '/auth/forgot-password',
     VERIFY_OTP: '/auth/verify-otp',
     RESET_PASSWORD: '/auth/reset-password',
     CHANGE_PASSWORD: '/auth/change-password',
     SEND_CHANGE_PASSWORD_OTP: '/auth/send-change-password-otp',
+    SESSIONS: '/auth/sessions',
+    REVOKE_SESSION: (id) => `/auth/sessions/${id}`,
+    REVOKE_USER_SESSIONS: (userId) => `/auth/users/${userId}/sessions`,
   },
 };

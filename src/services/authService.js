@@ -24,6 +24,58 @@ export const authService = {
   },
 
   /**
+   * Verify 6-digit Login OTP to finalize login
+   */
+  async verifyLoginOtp(userId, otp) {
+    const res = await axiosInstance.post(ENDPOINTS.AUTH.VERIFY_LOGIN_OTP, {
+      userId,
+      otp: otp?.trim(),
+    });
+
+    const payload = res.data?.data;
+    if (payload?.token) {
+      localStorage.setItem(TOKEN_KEY, payload.token);
+      localStorage.setItem('token', payload.token);
+      localStorage.setItem(USER_KEY, JSON.stringify(payload.user));
+    }
+    return payload;
+  },
+
+  /**
+   * Resend 6-digit Login OTP
+   */
+  async resendLoginOtp(userId) {
+    const res = await axiosInstance.post(ENDPOINTS.AUTH.RESEND_LOGIN_OTP, {
+      userId,
+    });
+    return res.data;
+  },
+
+  /**
+   * Fetch all active sessions across users (Admin)
+   */
+  async getSessions() {
+    const res = await axiosInstance.get(ENDPOINTS.AUTH.SESSIONS);
+    return res.data?.data || [];
+  },
+
+  /**
+   * Revoke/Logout a specific device session
+   */
+  async revokeSession(sessionId) {
+    const res = await axiosInstance.delete(ENDPOINTS.AUTH.REVOKE_SESSION(sessionId));
+    return res.data;
+  },
+
+  /**
+   * Revoke all device sessions for a user
+   */
+  async revokeUserSessions(userId) {
+    const res = await axiosInstance.delete(ENDPOINTS.AUTH.REVOKE_USER_SESSIONS(userId));
+    return res.data;
+  },
+
+  /**
    * Log out and clear saved session
    */
   logout() {

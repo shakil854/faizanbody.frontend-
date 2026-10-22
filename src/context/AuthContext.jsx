@@ -33,17 +33,42 @@ export function AuthProvider({ children }) {
     initAuth();
   }, []);
 
-  const login = useCallback(async (email, password) => {
-    const result = await authService.login(email, password);
-    setUser(result.user);
-    setToken(result.token);
-    return result;
-  }, []);
-
   const logout = useCallback(() => {
     authService.logout();
     setUser(null);
     setToken(null);
+  }, []);
+
+  // Listen for remote session revocation by admin
+  useEffect(() => {
+    const handleRevoked = (e) => {
+      logout();
+      alert(e.detail || 'Your device session has been logged out remotely by administrator.');
+    };
+    window.addEventListener('auth:session_revoked', handleRevoked);
+    return () => window.removeEventListener('auth:session_revoked', handleRevoked);
+  }, [logout]);
+
+  const login = useCallback(async (identifier, password) => {
+    const result = await authService.login(identifier, password);
+    if (result && !result.requiresOtp && result.token) {
+      setUser(result.user);
+      setToken(result.token);
+    }
+    return result;
+  }, []);
+
+  const verifyLoginOtp = useCallback(async (userId, otp) => {
+    const result = await authService.verifyLoginOtp(userId, otp);
+    if (result?.token) {
+      setUser(result.user);
+      setToken(result.token);
+    }
+    return result;
+  }, []);
+
+  const resendLoginOtp = useCallback(async (userId) => {
+    return await authService.resendLoginOtp(userId);
   }, []);
 
   const updateUser = useCallback((updatedFields) => {
@@ -95,6 +120,8 @@ export function AuthProvider({ children }) {
     isAuthenticated,
     loading,
     login,
+    verifyLoginOtp,
+    resendLoginOtp,
     logout,
     updateUser,
     hasPermission,

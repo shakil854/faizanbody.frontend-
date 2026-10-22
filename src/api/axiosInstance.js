@@ -68,10 +68,14 @@ axiosInstance.interceptors.response.use(
 
       switch (status) {
         case 401:
-          // Unauthorized: Token expire ya invalid
-          console.warn('Session expired or unauthorized. Redirecting to login...');
-          // localStorage.removeItem('token');
-          // window.location.href = '/login';
+          // Unauthorized: Token expired, invalid, or remote session revoked by admin
+          if (data?.sessionRevoked) {
+            localStorage.removeItem('faizanbody_auth_token');
+            localStorage.removeItem('token');
+            localStorage.removeItem('faizanbody_auth_user');
+            sessionStorage.removeItem('token');
+            window.dispatchEvent(new CustomEvent('auth:session_revoked', { detail: data?.message || 'Session ended by admin' }));
+          }
           break;
         case 403:
           // Forbidden
