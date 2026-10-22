@@ -12,6 +12,7 @@ export const ENDPOINTS = {
   WORKER_TRANSACTIONS: (id) => `/workers/${id}/transactions`,
   WORKER_TRANSACTION_DELETE: (workerId, txId) => `/workers/${workerId}/transactions/${txId}`,
   ORDERS: '/orders',
+  ORDER_BADGE_SETTINGS: '/orders/badge-settings',
   STOCK_CATEGORIES: '/stock/categories',
   STOCK_CATEGORY_DELETE: (id) => `/stock/categories/${id}`,
   STOCK_ITEMS: '/stock/items',

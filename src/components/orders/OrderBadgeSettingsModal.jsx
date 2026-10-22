@@ -5,32 +5,63 @@ import {
   getOrderBadgeColor,
   DEFAULT_ORDER_BADGE_SETTINGS,
 } from '../../utils/orderBadgeSettings';
+import { orderService } from '../../services/orderService';
 
 export function OrderBadgeSettingsModal({
   isOpen,
   onClose,
   inProgressCount = 0,
+  incomingCount = 0,
   totalCount = 0,
   onSaved,
 }) {
   const [settings, setSettings] = useState(DEFAULT_ORDER_BADGE_SETTINGS);
+  const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
     if (isOpen) {
       setSettings(getOrderBadgeSettings());
+      // Also sync from backend
+      orderService.getBadgeSettings().then((remoteSettings) => {
+        if (remoteSettings) setSettings(remoteSettings);
+      }).catch(() => {});
     }
   }, [isOpen]);
 
   if (!isOpen) return null;
 
-  const currentCount = settings.countType === 'total' ? totalCount : inProgressCount;
-  const previewColor = getOrderBadgeColor(currentCount, settings);
+  const currentCount =
+    settings.countType === 'total'
+      ? totalCount
+      : settings.countType === 'incoming'
+      ? incomingCount
+      : inProgressCount;
 
-  const handleSave = (e) => {
+  const currentBasisLabel =
+    settings.countType === 'total'
+      ? 'Total Orders'
+      : settings.countType === 'incoming'
+      ? 'Incoming Orders'
+      : 'In-Progress Orders';
+
+  const inProgressColor = getOrderBadgeColor(inProgressCount, settings);
+  const incomingColor = getOrderBadgeColor(incomingCount, settings);
+
+  const handleSave = async (e) => {
     e.preventDefault();
-    const saved = saveOrderBadgeSettings(settings);
-    if (onSaved) onSaved(saved);
-    onClose();
+    try {
+      setIsSaving(true);
+      const saved = await orderService.updateBadgeSettings(settings);
+      if (onSaved) onSaved(saved);
+      onClose();
+    } catch (err) {
+      console.error('Error saving badge settings:', err);
+      saveOrderBadgeSettings(settings);
+      if (onSaved) onSaved(settings);
+      onClose();
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const handleReset = () => {
@@ -57,25 +88,47 @@ export function OrderBadgeSettingsModal({
 
         <h3 className="dialog-title">Order Alert Color Settings</h3>
         <p className="dialog-message">
-          Set threshold rules when the bottom Orders badge turns <strong>Red</strong>, <strong>Green</strong>, or <strong>Blue</strong>:
+          Set threshold rules for bottom <strong>In-Progress Orders</strong> badge and top <strong>Incoming Orders</strong> filter:
         </p>
 
-        {/* Live Badge Preview Box */}
-        <div className={`badge-preview-luxury-card preview-${previewColor}`}>
-          <div className="preview-info-col">
-            <span className="preview-label">Live Preview (Current Status):</span>
-            <span className="preview-details">
-              {settings.countType === 'total' ? 'Total Orders' : 'In-Progress Orders'}: <strong>{currentCount}</strong>
-            </span>
-          </div>
-          <div className="preview-badge-display">
-            <div className={`nav-alert-badge nav-order-badge nav-order-badge-${previewColor} preview-badge-element`}>
-              <span className="alert-pulse-ring"></span>
-              {currentCount}
+        {/* Dual Live Preview: Bottom Shortcut (In-Progress) & Top Filter (Incoming) */}
+        <div className="dual-preview-grid">
+          {/* Card 1: Bottom Orders Shortcut */}
+          <div className={`badge-preview-luxury-card preview-${inProgressColor}`}>
+            <div className="preview-info-col">
+              <span className="preview-label">Bottom Bar (In-Progress):</span>
+              <span className="preview-details">
+                Orders: <strong>{inProgressCount}</strong>
+              </span>
             </div>
-            <span className={`preview-color-pill pill-${previewColor}`}>
-              {previewColor.toUpperCase()}
-            </span>
+            <div className="preview-badge-display">
+              <div className={`nav-alert-badge nav-order-badge nav-order-badge-${inProgressColor} preview-badge-element`}>
+                <span className="alert-pulse-ring"></span>
+                {inProgressCount}
+              </div>
+              <span className={`preview-color-pill pill-${inProgressColor}`}>
+                {inProgressColor.toUpperCase()}
+              </span>
+            </div>
+          </div>
+
+          {/* Card 2: Top Incoming Filter */}
+          <div className={`badge-preview-luxury-card preview-${incomingColor}`}>
+            <div className="preview-info-col">
+              <span className="preview-label">Top Filter (Incoming):</span>
+              <span className="preview-details">
+                Incoming: <strong>{incomingCount}</strong>
+              </span>
+            </div>
+            <div className="preview-badge-display">
+              <div className={`nav-alert-badge nav-order-badge nav-order-badge-${incomingColor} preview-badge-element`}>
+                <span className="alert-pulse-ring"></span>
+                {incomingCount}
+              </div>
+              <span className={`preview-color-pill pill-${incomingColor}`}>
+                {incomingColor.toUpperCase()}
+              </span>
+            </div>
           </div>
         </div>
 
@@ -83,13 +136,20 @@ export function OrderBadgeSettingsModal({
           {/* Tracking Type Toggle */}
           <div className="badge-form-group">
             <label className="badge-field-label">Count Basis:</label>
-            <div className="badge-type-selector">
+            <div className="badge-type-selector badge-type-selector-3">
               <button
                 type="button"
                 className={`badge-type-chip ${settings.countType === 'in_progress' ? 'active' : ''}`}
                 onClick={() => setSettings((prev) => ({ ...prev, countType: 'in_progress' }))}
               >
-                In-Progress Orders ({inProgressCount})
+                In-Progress ({inProgressCount})
+              </button>
+              <button
+                type="button"
+                className={`badge-type-chip ${settings.countType === 'incoming' ? 'active' : ''}`}
+                onClick={() => setSettings((prev) => ({ ...prev, countType: 'incoming' }))}
+              >
+                Incoming ({incomingCount})
               </button>
               <button
                 type="button"
@@ -206,8 +266,9 @@ export function OrderBadgeSettingsModal({
               <button
                 type="submit"
                 className="btn btn-primary"
+                disabled={isSaving}
               >
-                Save Settings
+                {isSaving ? 'Saving to Cloud...' : 'Save Settings'}
               </button>
             </div>
           </div>

@@ -44,6 +44,7 @@ export function App() {
   const [lowStockCount, setLowStockCount] = useState(0);
   const [orderCount, setOrderCount] = useState(0);
   const [inProgressOrderCount, setInProgressOrderCount] = useState(0);
+  const [incomingOrderCount, setIncomingOrderCount] = useState(0);
   const [userCount, setUserCount] = useState(0);
 
   const handleAlertCountChange = useCallback((cnt) => {
@@ -92,7 +93,9 @@ export function App() {
       .then((res) => {
         if (res && res.data) {
           setOrderCount(res.data.length);
-          const inProg = res.data.filter((o) => !checkOrderCompleted(o)).length;
+          const incoming = res.data.filter((o) => o.status === 'Incoming').length;
+          setIncomingOrderCount(incoming);
+          const inProg = res.data.filter((o) => !checkOrderCompleted(o) && o.status !== 'Incoming' && o.status !== 'Cancelled').length;
           setInProgressOrderCount(inProg);
         }
       })
@@ -100,7 +103,9 @@ export function App() {
 
     const unsubOrders = orderService.subscribe((orders) => {
       setOrderCount(orders.length);
-      const inProg = orders.filter((o) => !checkOrderCompleted(o)).length;
+      const incoming = orders.filter((o) => o.status === 'Incoming').length;
+      setIncomingOrderCount(incoming);
+      const inProg = orders.filter((o) => !checkOrderCompleted(o) && o.status !== 'Incoming' && o.status !== 'Cancelled').length;
       setInProgressOrderCount(inProg);
     });
 
@@ -349,6 +354,7 @@ export function App() {
           lowStockCount={lowStockCount}
           orderCount={orderCount}
           inProgressOrderCount={inProgressOrderCount}
+          incomingOrderCount={incomingOrderCount}
           userCount={userCount}
         />
       </div>

@@ -32,8 +32,16 @@ export function OrdersPage({ onBackToHome }) {
   const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
-    const handleSettingsUpdate = () => {
-      setBadgeSettings(getOrderBadgeSettings());
+    orderService.getBadgeSettings().then((s) => {
+      if (s) setBadgeSettings(s);
+    }).catch(() => {});
+
+    const handleSettingsUpdate = (e) => {
+      if (e?.detail) {
+        setBadgeSettings(e.detail);
+      } else {
+        setBadgeSettings(getOrderBadgeSettings());
+      }
     };
     window.addEventListener('orderBadgeSettingsChanged', handleSettingsUpdate);
     return () => window.removeEventListener('orderBadgeSettingsChanged', handleSettingsUpdate);
@@ -161,8 +169,8 @@ export function OrdersPage({ onBackToHome }) {
     [orders, isOrderCompleted]
   );
 
-  const effectiveBadgeCount = badgeSettings.countType === 'total' ? totalOrdersCount : inProgressOrdersCount;
-  const currentBadgeColor = getOrderBadgeColor(effectiveBadgeCount, badgeSettings);
+  const inProgressBadgeColor = getOrderBadgeColor(inProgressOrdersCount, badgeSettings);
+  const incomingBadgeColor = getOrderBadgeColor(incomingOrdersCount, badgeSettings);
 
   // Filtered & Searched Orders
   const filteredOrders = useMemo(() => {
@@ -245,24 +253,28 @@ export function OrdersPage({ onBackToHome }) {
 
           <button
             type="button"
-            className={`orders-counter-chip chip-incoming ${statusFilter === 'incoming' ? 'active' : ''}`}
+            className={`orders-counter-chip chip-incoming ${statusFilter === 'incoming' ? 'active' : ''} chip-alert-${incomingBadgeColor}`}
             onClick={() => setStatusFilter(statusFilter === 'incoming' ? 'all' : 'incoming')}
-            title="Filter by incoming orders"
+            title={`Incoming orders: ${incomingOrdersCount} (${incomingBadgeColor.toUpperCase()})`}
           >
-            <span className="counter-chip-dot dot-incoming"></span>
+            <span className={`counter-chip-dot dot-${incomingBadgeColor}`}></span>
             <span className="counter-chip-label">Incoming</span>
-            <span className="counter-chip-badge badge-incoming">{incomingOrdersCount}</span>
+            <span className={`counter-chip-badge badge-incoming badge-alert-${incomingBadgeColor}`}>
+              {incomingOrdersCount}
+            </span>
           </button>
 
           <button
             type="button"
-            className={`orders-counter-chip chip-process ${statusFilter === 'in_progress' ? 'active' : ''}`}
+            className={`orders-counter-chip chip-process ${statusFilter === 'in_progress' ? 'active' : ''} chip-alert-${inProgressBadgeColor}`}
             onClick={() => setStatusFilter(statusFilter === 'in_progress' ? 'all' : 'in_progress')}
-            title="Filter by orders currently in progress"
+            title={`In-Process orders: ${inProgressOrdersCount} (${inProgressBadgeColor.toUpperCase()})`}
           >
-            <span className="counter-chip-dot dot-process"></span>
+            <span className={`counter-chip-dot dot-${inProgressBadgeColor}`}></span>
             <span className="counter-chip-label">In Process</span>
-            <span className="counter-chip-badge badge-process">{inProgressOrdersCount}</span>
+            <span className={`counter-chip-badge badge-process badge-alert-${inProgressBadgeColor}`}>
+              {inProgressOrdersCount}
+            </span>
           </button>
 
           <button
@@ -278,13 +290,15 @@ export function OrdersPage({ onBackToHome }) {
 
           <button
             type="button"
-            className={`orders-counter-chip chip-badge-color chip-badge-${currentBadgeColor}`}
+            className={`orders-counter-chip chip-badge-color chip-badge-${inProgressBadgeColor}`}
             onClick={() => setIsBadgeSettingsOpen(true)}
             title="Order Alert Color Settings (Red, Green, Blue)"
             aria-label="Order Badge Color Settings"
           >
-            <span className={`counter-chip-dot dot-${currentBadgeColor}`}></span>
-            <span className="counter-chip-label">Alert: {currentBadgeColor.toUpperCase()}</span>
+            <span className={`counter-chip-dot dot-${inProgressBadgeColor}`}></span>
+            <span className="counter-chip-label">
+              Alert: {inProgressBadgeColor.toUpperCase()}
+            </span>
             <span className="chip-settings-gear">
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
                 <circle cx="12" cy="12" r="3" />
@@ -429,6 +443,7 @@ export function OrdersPage({ onBackToHome }) {
         isOpen={isBadgeSettingsOpen}
         onClose={() => setIsBadgeSettingsOpen(false)}
         inProgressCount={inProgressOrdersCount}
+        incomingCount={incomingOrdersCount}
         totalCount={totalOrdersCount}
         onSaved={() => showSnackbar('✓ Order alert badge settings updated!', 'success')}
       />

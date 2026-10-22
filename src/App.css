@@ -14365,6 +14365,17 @@
 }
 
 /* Live Preview Card inside Modal */
+.dual-preview-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  margin: 0.4rem 0 0.85rem;
+}
+.dual-preview-grid .badge-preview-luxury-card {
+  margin: 0;
+  padding: 0.6rem 0.85rem;
+}
+
 .badge-preview-luxury-card {
   display: flex;
   align-items: center;
@@ -14606,6 +14617,46 @@
   gap: 0.5rem;
   flex: 1;
   justify-content: flex-end;
+}
+
+/* 3-item Count Basis Selector */
+.badge-type-selector.badge-type-selector-3 .badge-type-chip {
+  padding: 0.45rem 0.35rem;
+  font-size: 0.72rem;
+  line-height: 1.25;
+}
+
+/* Dynamic Alert Colors on Filter Chips */
+.orders-counter-chip.chip-alert-red {
+  border-color: #fca5a5;
+  background: #fff5f5;
+}
+.orders-counter-chip.chip-alert-green {
+  border-color: #86efac;
+  background: #f0fdf4;
+}
+.orders-counter-chip.chip-alert-blue {
+  border-color: #93c5fd;
+  background: #eff6ff;
+}
+
+.counter-chip-badge.badge-alert-red {
+  background: #dc2626 !important;
+  color: #ffffff !important;
+}
+.counter-chip-badge.badge-alert-green {
+  background: #16a34a !important;
+  color: #ffffff !important;
+}
+.counter-chip-badge.badge-alert-blue {
+  background: #2563eb !important;
+  color: #ffffff !important;
+}
+
+.chip-basis-mini {
+  font-size: 0.65rem;
+  font-weight: 600;
+  opacity: 0.85;
 }
 
 

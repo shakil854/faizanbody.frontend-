@@ -2,6 +2,7 @@ import axiosInstance from '../api/axiosInstance';
 import { ENDPOINTS } from '../api/endpoints';
 import { compressImageFile } from '../utils/nativeCamera';
 import { API_BASE_URL } from '../config/api.config';
+import { getOrderBadgeSettings, saveOrderBadgeSettings } from '../utils/orderBadgeSettings';
 
 let cachedOrders = null;
 let lastFetchTime = 0;
@@ -198,6 +199,40 @@ export const orderService = {
     }
 
     return response.data;
+  },
+
+  /**
+   * Fetch Order Alert color badge threshold settings from backend (falls back to local storage)
+   */
+  async getBadgeSettings() {
+    try {
+      const response = await axiosInstance.get(ENDPOINTS.ORDER_BADGE_SETTINGS);
+      if (response.data && response.data.data) {
+        saveOrderBadgeSettings(response.data.data);
+        return response.data.data;
+      }
+    } catch (err) {
+      console.warn('Could not fetch badge settings from backend, using local settings:', err.message);
+    }
+    return getOrderBadgeSettings();
+  },
+
+  /**
+   * Save Order Alert color badge threshold settings to backend
+   */
+  async updateBadgeSettings(newSettings) {
+    // 1. Instant local update for smooth immediate UI response
+    const local = saveOrderBadgeSettings(newSettings);
+    // 2. Persist to backend
+    try {
+      const response = await axiosInstance.put(ENDPOINTS.ORDER_BADGE_SETTINGS, newSettings);
+      if (response.data && response.data.data) {
+        return saveOrderBadgeSettings(response.data.data);
+      }
+    } catch (err) {
+      console.error('Failed to sync badge settings to backend:', err);
+    }
+    return local;
   },
 };
 

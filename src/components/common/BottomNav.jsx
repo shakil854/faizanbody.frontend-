@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { getOrderBadgeSettings, getOrderBadgeColor } from '../../utils/orderBadgeSettings';
+import { orderService } from '../../services/orderService';
 
 /**
  * Ultra-Luxury Bottom Navigation Bar (Compact & Sleek)
@@ -15,20 +16,30 @@ export function BottomNav({
   lowStockCount = 0,
   orderCount = 0,
   inProgressOrderCount = 0,
+  incomingOrderCount = 0,
   userCount = 0,
 }) {
   const { isAdmin, canAccessModule } = useAuth();
   const [badgeSettings, setBadgeSettings] = useState(() => getOrderBadgeSettings());
 
   useEffect(() => {
-    const handleUpdate = () => {
-      setBadgeSettings(getOrderBadgeSettings());
+    orderService.getBadgeSettings().then((s) => {
+      if (s) setBadgeSettings(s);
+    }).catch(() => {});
+
+    const handleUpdate = (e) => {
+      if (e?.detail) {
+        setBadgeSettings(e.detail);
+      } else {
+        setBadgeSettings(getOrderBadgeSettings());
+      }
     };
     window.addEventListener('orderBadgeSettingsChanged', handleUpdate);
     return () => window.removeEventListener('orderBadgeSettingsChanged', handleUpdate);
   }, []);
 
-  const effectiveOrderCount = badgeSettings.countType === 'total' ? orderCount : inProgressOrderCount;
+  // Bottom Orders shortcut strictly displays In-Process orders count and its alert color
+  const effectiveOrderCount = inProgressOrderCount;
   const orderBadgeColor = getOrderBadgeColor(effectiveOrderCount, badgeSettings);
 
   return (
@@ -154,7 +165,7 @@ export function BottomNav({
               {effectiveOrderCount > 0 ? (
                 <span
                   className={`nav-alert-badge nav-order-badge nav-order-badge-${orderBadgeColor}`}
-                  title={`${effectiveOrderCount} ${badgeSettings.countType === 'total' ? 'total' : 'in-progress'} order(s)`}
+                  title={`${effectiveOrderCount} in-progress order(s)`}
                 >
                   <span className="alert-pulse-ring"></span>
                   {effectiveOrderCount}
