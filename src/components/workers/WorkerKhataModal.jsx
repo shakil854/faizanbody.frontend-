@@ -20,6 +20,7 @@ export function WorkerKhataModal({ isOpen, onClose, worker, canManage = true }) 
 
   // Add Entry Form state
   const [showAddForm, setShowAddForm] = useState(false);
+  const [editingTx, setEditingTx] = useState(null);
   const [entryType, setEntryType] = useState('upad'); // 'upad', 'payment', 'salary'
   const [amount, setAmount] = useState('');
   const [date, setDate] = useState(() => new Date().toISOString().split('T')[0]);
@@ -72,6 +73,7 @@ export function WorkerKhataModal({ isOpen, onClose, worker, canManage = true }) 
     if (isOpen && worker?.id) {
       fetchKhata();
       setShowAddForm(false);
+      setEditingTx(null);
       setFormError('');
       setAmount('');
       setNotes('');
@@ -142,7 +144,33 @@ export function WorkerKhataModal({ isOpen, onClose, worker, canManage = true }) 
   // Return early ONLY AFTER all hooks have executed
   if (!isOpen || !worker) return null;
 
-  // Handle Save New Entry
+  // Start editing an existing transaction
+  const handleStartEdit = (tx) => {
+    setEditingTx(tx);
+    setEntryType(tx.type || 'upad');
+    setAmount(String(tx.amount || ''));
+    setDate(tx.date ? String(tx.date).slice(0, 10) : new Date().toISOString().split('T')[0]);
+    setNotes(tx.notes || '');
+    setPaymentMode(tx.payment_mode || 'Cash');
+    setFormError('');
+    setShowAddForm(true);
+    setTimeout(() => {
+      amountInputRef.current?.focus();
+      amountInputRef.current?.select?.();
+    }, 60);
+  };
+
+  // Cancel adding or editing entry
+  const handleCancelForm = () => {
+    setShowAddForm(false);
+    setEditingTx(null);
+    setAmount('');
+    setNotes('');
+    setDate(new Date().toISOString().split('T')[0]);
+    setFormError('');
+  };
+
+  // Handle Save New Entry or Update Existing Entry
   const handleSaveEntry = async (e) => {
     if (e && e.preventDefault) e.preventDefault();
     if (isSubmitting) return;
@@ -157,23 +185,43 @@ export function WorkerKhataModal({ isOpen, onClose, worker, canManage = true }) 
 
     try {
       setIsSubmitting(true);
-      const res = await workerService.addWorkerTransaction(worker.id, {
-        type: entryType,
-        amount: numAmount,
-        date: date || new Date().toISOString().split('T')[0],
-        notes: notes.trim(),
-        payment_mode: paymentMode,
-      });
+      if (editingTx) {
+        const res = await workerService.updateWorkerTransaction(worker.id, editingTx.id, {
+          type: entryType,
+          amount: numAmount,
+          date: date || new Date().toISOString().split('T')[0],
+          notes: notes.trim(),
+          payment_mode: paymentMode,
+        });
 
-      if (res && res.transaction) {
-        setTransactions((prev) => [res.transaction, ...(Array.isArray(prev) ? prev : [])]);
-        if (res.summary) {
-          setSummary(res.summary);
+        if (res && res.transaction) {
+          setTransactions((prev) =>
+            (Array.isArray(prev) ? prev : []).map((t) => (t.id === editingTx.id ? res.transaction : t))
+          );
+          if (res.summary) {
+            setSummary(res.summary);
+          }
+        }
+      } else {
+        const res = await workerService.addWorkerTransaction(worker.id, {
+          type: entryType,
+          amount: numAmount,
+          date: date || new Date().toISOString().split('T')[0],
+          notes: notes.trim(),
+          payment_mode: paymentMode,
+        });
+
+        if (res && res.transaction) {
+          setTransactions((prev) => [res.transaction, ...(Array.isArray(prev) ? prev : [])]);
+          if (res.summary) {
+            setSummary(res.summary);
+          }
         }
       }
 
       setAmount('');
       setNotes('');
+      setEditingTx(null);
       setShowAddForm(false);
     } catch (err) {
       const msg = err.response?.data?.message || err.message || 'Failed to save transaction entry';
@@ -452,7 +500,17 @@ export function WorkerKhataModal({ isOpen, onClose, worker, canManage = true }) 
               <button
                 type="button"
                 className={`btn ${showAddForm ? 'btn-secondary' : 'btn-primary'} btn-add-entry-toggle`}
-                onClick={() => setShowAddForm((prev) => !prev)}
+                onClick={() => {
+                  if (showAddForm) {
+                    handleCancelForm();
+                  } else {
+                    setEditingTx(null);
+                    setAmount('');
+                    setNotes('');
+                    setDate(new Date().toISOString().split('T')[0]);
+                    setShowAddForm(true);
+                  }
+                }}
               >
                 {showAddForm ? (
                   <>
@@ -514,10 +572,12 @@ export function WorkerKhataModal({ isOpen, onClose, worker, canManage = true }) 
             </button>
           </div>
 
-          {/* Expandable Add Entry Form */}
+          {/* Expandable Add / Edit Entry Form */}
           {showAddForm && (
             <div className="khata-add-entry-box">
-              <h4 className="entry-box-title">Record New Transaction</h4>
+              <h4 className="entry-box-title">
+                {editingTx ? '✏️ Edit Transaction' : 'Record New Transaction'}
+              </h4>
 
               {formError && (
                 <div className="form-alert-error" style={{ marginBottom: '0.65rem' }}>
@@ -643,7 +703,7 @@ export function WorkerKhataModal({ isOpen, onClose, worker, canManage = true }) 
                   <button
                     type="button"
                     className="btn btn-secondary"
-                    onClick={() => setShowAddForm(false)}
+                    onClick={handleCancelForm}
                     disabled={isSubmitting}
                   >
                     Cancel
@@ -653,7 +713,9 @@ export function WorkerKhataModal({ isOpen, onClose, worker, canManage = true }) 
                     className="btn btn-primary"
                     disabled={isSubmitting}
                   >
-                    {isSubmitting ? 'Saving...' : 'Save Entry'}
+                    {isSubmitting
+                      ? (editingTx ? 'Updating...' : 'Saving...')
+                      : (editingTx ? 'Update Entry' : 'Save Entry')}
                   </button>
                 </div>
               </form>
@@ -773,17 +835,32 @@ export function WorkerKhataModal({ isOpen, onClose, worker, canManage = true }) 
                       </span>
 
                       {canManage && (
-                        <button
-                          type="button"
-                          className="tx-delete-btn"
-                          onClick={() => setDeletingTx(tx)}
-                          title="Delete entry"
-                        >
-                          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                            <polyline points="3 6 5 6 21 6" />
-                            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
-                          </svg>
-                        </button>
+                        <div className="tx-actions-btn-group">
+                          <button
+                            type="button"
+                            className="tx-action-btn tx-edit-btn"
+                            onClick={() => handleStartEdit(tx)}
+                            title="Edit entry"
+                            aria-label="Edit entry"
+                          >
+                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                              <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+                              <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+                            </svg>
+                          </button>
+                          <button
+                            type="button"
+                            className="tx-action-btn tx-delete-btn"
+                            onClick={() => setDeletingTx(tx)}
+                            title="Delete entry"
+                            aria-label="Delete entry"
+                          >
+                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                              <polyline points="3 6 5 6 21 6" />
+                              <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                            </svg>
+                          </button>
+                        </div>
                       )}
                     </div>
                   </div>

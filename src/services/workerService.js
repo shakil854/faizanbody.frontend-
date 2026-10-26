@@ -209,6 +209,34 @@ export const workerService = {
   },
 
   /**
+   * Update an existing transaction (upad, payment, salary) for a worker
+   */
+  async updateWorkerTransaction(workerId, transactionId, transactionData) {
+    const response = await axiosInstance.put(
+      ENDPOINTS.WORKER_TRANSACTION_DELETE(workerId, transactionId),
+      transactionData
+    );
+    const data = response.data?.data;
+
+    // Update in cachedWorkers immediately so cards refresh instantly
+    if (data && data.summary && cachedWorkers) {
+      const numId = Number(workerId);
+      cachedWorkers = cachedWorkers.map((w) => {
+        if (w.id === numId) {
+          return {
+            ...w,
+            khata: data.summary,
+          };
+        }
+        return w;
+      });
+      notifyListeners();
+    }
+
+    return data;
+  },
+
+  /**
    * Delete a transaction record
    */
   async deleteWorkerTransaction(workerId, transactionId) {

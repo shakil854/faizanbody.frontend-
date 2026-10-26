@@ -9820,6 +9820,45 @@
   color: #2563eb;
 }
 
+.tx-actions-btn-group {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.tx-action-btn {
+  border: none;
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.18s ease;
+  flex-shrink: 0;
+}
+
+.tx-edit-btn {
+  background: #eff6ff;
+  border: none;
+  color: #2563eb;
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.18s ease;
+  flex-shrink: 0;
+}
+
+.tx-edit-btn:hover {
+  background: #2563eb;
+  color: #ffffff;
+}
+
 .tx-delete-btn {
   background: #fee2e2;
   border: none;
