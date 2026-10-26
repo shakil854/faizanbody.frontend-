@@ -21,6 +21,12 @@ export function WorkerFormModal({ isOpen, onClose, onSave, initialData }) {
   const fileInputRef = useRef(null);
   const cameraInputRef = useRef(null);
 
+  // Field refs for Enter key navigation
+  const nameInputRef = useRef(null);
+  const mobileInputRef = useRef(null);
+  const comingDateInputRef = useRef(null);
+  const goingDateInputRef = useRef(null);
+
   useEffect(() => {
     if (initialData) {
       setName(initialData.name || '');
@@ -42,6 +48,13 @@ export function WorkerFormModal({ isOpen, onClose, onSave, initialData }) {
     }
     setError('');
     setIsSubmitting(false);
+
+    if (isOpen) {
+      const timer = setTimeout(() => {
+        nameInputRef.current?.focus();
+      }, 60);
+      return () => clearTimeout(timer);
+    }
   }, [initialData, isOpen]);
 
   if (!isOpen) return null;
@@ -102,15 +115,18 @@ export function WorkerFormModal({ isOpen, onClose, onSave, initialData }) {
   };
 
   const handleSubmit = async (e) => {
-    e.preventDefault();
+    if (e && e.preventDefault) e.preventDefault();
+    if (isSubmitting) return;
     setError('');
 
     if (!name.trim()) {
       setError('Worker name is required (कार्यकर्ता का नाम आवश्यक है)');
+      nameInputRef.current?.focus();
       return;
     }
     if (!comingDate) {
       setError('Coming date is required (आने की तारीख आवश्यक है)');
+      comingDateInputRef.current?.focus();
       return;
     }
 
@@ -258,12 +274,19 @@ export function WorkerFormModal({ isOpen, onClose, onSave, initialData }) {
                   </svg>
                 </span>
                 <input
+                  ref={nameInputRef}
                   id="workerName"
                   type="text"
                   className="form-input"
                   placeholder="e.g. Mohammad Faizan / Rashid Khan"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      mobileInputRef.current?.focus();
+                    }
+                  }}
                   autoFocus
                   required
                 />
@@ -282,12 +305,19 @@ export function WorkerFormModal({ isOpen, onClose, onSave, initialData }) {
                   </svg>
                 </span>
                 <input
+                  ref={mobileInputRef}
                   id="workerMobile"
                   type="tel"
                   className="form-input"
                   placeholder="e.g. 9876543210"
                   value={mobile}
                   onChange={(e) => setMobile(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      comingDateInputRef.current?.focus();
+                    }
+                  }}
                   maxLength={15}
                 />
               </div>
@@ -433,11 +463,18 @@ export function WorkerFormModal({ isOpen, onClose, onSave, initialData }) {
                   </svg>
                 </span>
                 <input
+                  ref={comingDateInputRef}
                   id="comingDate"
                   type="date"
                   className="form-input date-input"
                   value={comingDate}
                   onChange={(e) => setComingDate(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      goingDateInputRef.current?.focus();
+                    }
+                  }}
                   required
                 />
               </div>
@@ -456,12 +493,19 @@ export function WorkerFormModal({ isOpen, onClose, onSave, initialData }) {
                   </svg>
                 </span>
                 <input
+                  ref={goingDateInputRef}
                   id="goingDate"
                   type="date"
                   className="form-input date-input"
                   value={goingDate}
                   min={comingDate || undefined}
                   onChange={(e) => setGoingDate(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      handleSubmit(e);
+                    }
+                  }}
                 />
               </div>
             </div>

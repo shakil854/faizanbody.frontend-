@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { workerService } from '../../services/workerService';
 import { sharePdfFile, downloadPdfFile } from '../../utils/pdfGenerator';
 
@@ -27,6 +27,22 @@ export function WorkerKhataModal({ isOpen, onClose, worker, canManage = true }) 
   const [paymentMode, setPaymentMode] = useState('Cash');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formError, setFormError] = useState('');
+
+  // Refs for seamless Enter key field navigation
+  const amountInputRef = useRef(null);
+  const dateInputRef = useRef(null);
+  const notesInputRef = useRef(null);
+  const paymentModeRef = useRef(null);
+
+  // Auto-focus amount input whenever the add form opens
+  useEffect(() => {
+    if (showAddForm) {
+      const timer = setTimeout(() => {
+        amountInputRef.current?.focus();
+      }, 60);
+      return () => clearTimeout(timer);
+    }
+  }, [showAddForm]);
 
   // Delete confirmation state
   const [deletingTx, setDeletingTx] = useState(null);
@@ -128,12 +144,14 @@ export function WorkerKhataModal({ isOpen, onClose, worker, canManage = true }) 
 
   // Handle Save New Entry
   const handleSaveEntry = async (e) => {
-    e.preventDefault();
+    if (e && e.preventDefault) e.preventDefault();
+    if (isSubmitting) return;
     setFormError('');
 
     const numAmount = Number(amount);
     if (!numAmount || numAmount <= 0) {
       setFormError('Please enter a valid amount (₹)');
+      amountInputRef.current?.focus();
       return;
     }
 
@@ -540,11 +558,18 @@ export function WorkerKhataModal({ isOpen, onClose, worker, canManage = true }) 
                     <div className="input-with-icon">
                       <span className="field-icon rupee-icon">₹</span>
                       <input
+                        ref={amountInputRef}
                         type="number"
                         className="form-input amount-input"
                         placeholder="e.g. 1500"
                         value={amount}
                         onChange={(e) => setAmount(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            e.preventDefault();
+                            dateInputRef.current?.focus();
+                          }
+                        }}
                         autoFocus
                         required
                         min="1"
@@ -556,10 +581,17 @@ export function WorkerKhataModal({ isOpen, onClose, worker, canManage = true }) 
                   <div className="form-group">
                     <label className="form-label">Date *</label>
                     <input
+                      ref={dateInputRef}
                       type="date"
                       className="form-input date-input"
                       value={date}
                       onChange={(e) => setDate(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault();
+                          notesInputRef.current?.focus();
+                        }
+                      }}
                       required
                     />
                   </div>
@@ -570,20 +602,34 @@ export function WorkerKhataModal({ isOpen, onClose, worker, canManage = true }) 
                   <div className="form-group">
                     <label className="form-label">Notes / Description (Optional)</label>
                     <input
+                      ref={notesInputRef}
                       type="text"
                       className="form-input"
                       placeholder="e.g. Body work wage / Ration advance / Cash paid"
                       value={notes}
                       onChange={(e) => setNotes(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault();
+                          paymentModeRef.current?.focus();
+                        }
+                      }}
                     />
                   </div>
 
                   <div className="form-group">
                     <label className="form-label">Payment Mode</label>
                     <select
+                      ref={paymentModeRef}
                       className="form-input select-mode"
                       value={paymentMode}
                       onChange={(e) => setPaymentMode(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault();
+                          handleSaveEntry(e);
+                        }
+                      }}
                     >
                       <option value="Cash">Cash</option>
                       <option value="Online/UPI">Online / PhonePe / GPay</option>
