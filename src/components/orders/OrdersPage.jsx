@@ -309,24 +309,6 @@ export function OrdersPage({ onBackToHome }) {
               </svg>
             </span>
           </button>
-
-          <button
-            type="button"
-            className="orders-counter-chip chip-dropdown-options"
-            onClick={() => setIsDropdownOptionsOpen(true)}
-            title="ऑर्डर फ़ील्ड्स के ड्रॉपडाउन विकल्प सेटिंग्स (Manage Dropdown Options)"
-            aria-label="Order Dropdown Options"
-          >
-            <span className="chip-settings-gear">
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.3" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M12 20h9" />
-                <path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z" />
-              </svg>
-            </span>
-            <span className="counter-chip-label">
-              ड्रॉपडाउन विकल्प (Options)
-            </span>
-          </button>
         </div>
 
         {/* Orders List Content */}
