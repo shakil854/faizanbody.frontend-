@@ -7,6 +7,7 @@ import { OrderJobSheetModal } from './OrderJobSheetModal';
 import { OrderDeleteModal } from './OrderDeleteModal';
 import { OrderPhotosModal } from './OrderPhotosModal';
 import { OrderBadgeSettingsModal } from './OrderBadgeSettingsModal';
+import { OrderDropdownOptionsModal } from './OrderDropdownOptionsModal';
 import { OrderFab } from './OrderFab';
 import { Snackbar } from '../workers/Snackbar';
 import { useAuth } from '../../context/AuthContext';
@@ -28,6 +29,7 @@ export function OrdersPage({ onBackToHome }) {
   const [deletingOrder, setDeletingOrder] = useState(null);
   const [photoModalOrder, setPhotoModalOrder] = useState(null);
   const [isBadgeSettingsOpen, setIsBadgeSettingsOpen] = useState(false);
+  const [isDropdownOptionsOpen, setIsDropdownOptionsOpen] = useState(false);
   const [badgeSettings, setBadgeSettings] = useState(() => getOrderBadgeSettings());
   const [isDeleting, setIsDeleting] = useState(false);
 
@@ -35,6 +37,7 @@ export function OrdersPage({ onBackToHome }) {
     orderService.getBadgeSettings().then((s) => {
       if (s) setBadgeSettings(s);
     }).catch(() => {});
+    orderService.getDropdownOptions().catch(() => {});
 
     const handleSettingsUpdate = (e) => {
       if (e?.detail) {
@@ -306,6 +309,24 @@ export function OrdersPage({ onBackToHome }) {
               </svg>
             </span>
           </button>
+
+          <button
+            type="button"
+            className="orders-counter-chip chip-dropdown-options"
+            onClick={() => setIsDropdownOptionsOpen(true)}
+            title="ऑर्डर फ़ील्ड्स के ड्रॉपडाउन विकल्प सेटिंग्स (Manage Dropdown Options)"
+            aria-label="Order Dropdown Options"
+          >
+            <span className="chip-settings-gear">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.3" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M12 20h9" />
+                <path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z" />
+              </svg>
+            </span>
+            <span className="counter-chip-label">
+              ड्रॉपडाउन विकल्प (Options)
+            </span>
+          </button>
         </div>
 
         {/* Orders List Content */}
@@ -446,6 +467,13 @@ export function OrdersPage({ onBackToHome }) {
         incomingCount={incomingOrdersCount}
         totalCount={totalOrdersCount}
         onSaved={() => showSnackbar('✓ Order alert badge settings updated!', 'success')}
+      />
+
+      {/* Order Dropdown Options Modal (Add/Edit/Delete Dropdown items) */}
+      <OrderDropdownOptionsModal
+        isOpen={isDropdownOptionsOpen}
+        onClose={() => setIsDropdownOptionsOpen(false)}
+        onSaved={() => showSnackbar('✓ ड्रॉपडाउन विकल्प अपडेट हो गए!', 'success')}
       />
 
       {/* Global Snackbar Toast */}

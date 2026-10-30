@@ -538,11 +538,14 @@ export function OrderFormModal({
                             <div className="finishing-item-bottom">
                               <OrderComboboxInput
                                 id={`finishing-${item.key}`}
+                                fieldKey={item.key}
+                                fieldLabel={`${item.label} (${item.subLabel})`}
                                 value={itemData.value || ''}
                                 onChange={(val) => handleFinishingItemChange(item.key, 'value', val)}
                                 options={item.options || []}
                                 placeholder={`यहाँ ${item.label} (${item.subLabel}) लिखें या चुनें...`}
                                 readOnly={isViewMode}
+                                allowManageOptions={!isViewMode}
                               />
                             </div>
                           </div>
@@ -632,6 +635,8 @@ export function OrderFormModal({
                           <div className="item-input-wrap">
                             <OrderComboboxInput
                               id={`${sec.key}-${item.key}`}
+                              fieldKey={item.key}
+                              fieldLabel={`${item.label} ${item.labelEnglish ? `(${item.labelEnglish})` : ''}`}
                               value={itemData.value || ''}
                               onChange={(val) =>
                                 handleSectionItemChange(sec.key, item.key, 'value', val)
@@ -639,6 +644,7 @@ export function OrderFormModal({
                               options={item.options || []}
                               placeholder="यहाँ विवरण लिखें या चुनें..."
                               readOnly={isViewMode}
+                              allowManageOptions={!isViewMode}
                             />
                           </div>
 
@@ -652,6 +658,8 @@ export function OrderFormModal({
                               <div className="extra-input-full">
                                 <OrderComboboxInput
                                   id={`${sec.key}-${item.extraKey}`}
+                                  fieldKey={item.extraKey}
+                                  fieldLabel={`${item.extraLabel} ${item.extraLabelEnglish ? `(${item.extraLabelEnglish})` : ''}`}
                                   value={itemsData[item.extraKey]?.value || ''}
                                   onChange={(val) =>
                                     handleSectionItemChange(sec.key, item.extraKey, 'value', val)
@@ -659,6 +667,7 @@ export function OrderFormModal({
                                   options={item.extraOptions || []}
                                   placeholder="यहाँ वेल का विवरण लिखें या चुनें..."
                                   readOnly={isViewMode}
+                                  allowManageOptions={!isViewMode}
                                 />
                               </div>
                             </div>

@@ -3,6 +3,7 @@ import { ENDPOINTS } from '../api/endpoints';
 import { compressImageFile } from '../utils/nativeCamera';
 import { API_BASE_URL } from '../config/api.config';
 import { getOrderBadgeSettings, saveOrderBadgeSettings } from '../utils/orderBadgeSettings';
+import { getStoredDropdownOptions, saveDropdownOptions } from '../utils/orderDropdownSettings';
 
 let cachedOrders = null;
 let lastFetchTime = 0;
@@ -231,6 +232,38 @@ export const orderService = {
       }
     } catch (err) {
       console.error('Failed to sync badge settings to backend:', err);
+    }
+    return local;
+  },
+
+  /**
+   * Fetch custom dropdown options from backend (falls back to local storage)
+   */
+  async getDropdownOptions() {
+    try {
+      const response = await axiosInstance.get(ENDPOINTS.ORDER_DROPDOWN_OPTIONS);
+      if (response.data && response.data.data) {
+        saveDropdownOptions(response.data.data);
+        return response.data.data;
+      }
+    } catch (err) {
+      console.warn('Could not fetch dropdown options from backend, using local cache:', err.message);
+    }
+    return getStoredDropdownOptions();
+  },
+
+  /**
+   * Save custom dropdown options to backend & local storage
+   */
+  async updateDropdownOptions(options) {
+    const local = saveDropdownOptions(options);
+    try {
+      const response = await axiosInstance.put(ENDPOINTS.ORDER_DROPDOWN_OPTIONS, options);
+      if (response.data && response.data.data) {
+        return saveDropdownOptions(response.data.data);
+      }
+    } catch (err) {
+      console.error('Failed to sync dropdown options to backend:', err);
     }
     return local;
   },
