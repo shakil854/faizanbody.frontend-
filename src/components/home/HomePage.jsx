@@ -1,58 +1,39 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { workerService } from '../../services/workerService';
 import { orderService } from '../../services/orderService';
 import { stockService } from '../../services/stockService';
 import { isLeavingSoon } from '../../utils/dateAlerts';
 
-export function HomePage({ onNavigate, onQuickAddOrder }) {
-  const { isAdmin, canAccessModule } = useAuth();
-  // Initialize with cached workers instantly (0ms loading)
+export function HomePage({ onNavigate, onQuickAddWorker }) {
+  const { user, isAdmin, canAccessModule } = useAuth();
+
+  // Instant SWR cache initialization
   const [workers, setWorkers] = useState(() => workerService.getCachedWorkers());
   const [orders, setOrders] = useState(() => orderService.getCachedOrders());
   const [stockItems, setStockItems] = useState(() => stockService.getCachedItems());
+  const [searchQuery, setSearchQuery] = useState('');
+  const [isSearchFocused, setIsSearchFocused] = useState(false);
+  const searchContainerRef = useRef(null);
 
   useEffect(() => {
-    // 1. Subscribe to real-time cache updates
-    const unsubWorkers = workerService.subscribe((updatedList) => {
-      setWorkers(updatedList);
-    });
+    // Real-time cache subscriptions
+    const unsubWorkers = workerService.subscribe((list) => setWorkers(list));
+    const unsubOrders = orderService.subscribe((list) => setOrders(list));
+    const unsubStock = stockService.subscribeItems((list) => setStockItems(list));
 
-    const unsubOrders = orderService.subscribe((updatedList) => {
-      setOrders(updatedList);
-    });
+    // Silent background fetch
+    workerService.getWorkers().then((res) => {
+      if (res?.data) setWorkers(res.data);
+    }).catch(() => {});
 
-    const unsubStock = stockService.subscribeItems((updatedList) => {
-      setStockItems(updatedList);
-    });
+    orderService.getOrders().then((res) => {
+      if (res?.data) setOrders(res.data);
+    }).catch(() => {});
 
-    // 2. Fetch/revalidate silently in background
-    workerService
-      .getWorkers()
-      .then((res) => {
-        if (res && res.data) {
-          setWorkers(res.data);
-        }
-      })
-      .catch(() => {});
-
-    orderService
-      .getOrders()
-      .then((res) => {
-        if (res && res.data) {
-          setOrders(res.data);
-        }
-      })
-      .catch(() => {});
-
-    stockService
-      .getItems()
-      .then((res) => {
-        if (res && res.data) {
-          setStockItems(res.data);
-        }
-      })
-      .catch(() => {});
+    stockService.getItems().then((res) => {
+      if (res?.data) setStockItems(res.data);
+    }).catch(() => {});
 
     return () => {
       unsubWorkers();
@@ -61,6 +42,18 @@ export function HomePage({ onNavigate, onQuickAddOrder }) {
     };
   }, []);
 
+  // Close search dropdown on click outside
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (searchContainerRef.current && !searchContainerRef.current.contains(e.target)) {
+        setIsSearchFocused(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  // Compute live counts
   const totalWorkers = workers.length;
   const activeWorkers = workers.filter((w) => !w.going_date).length;
   const leavingSoonCount = workers.filter((w) => isLeavingSoon(w.going_date)).length;
@@ -70,235 +63,299 @@ export function HomePage({ onNavigate, onQuickAddOrder }) {
   const activeOrders = orders.filter((o) => o.status === 'In Progress').length;
 
   const totalStockItems = stockItems.length;
-  const lowStockCount = stockItems.filter((i) => Number(i.quantity) <= Number(i.min_alert_quantity)).length;
+  const lowStockCount = stockItems.filter(
+    (i) => Number(i.quantity) <= Number(i.min_alert_quantity)
+  ).length;
 
+  // Instant search results from orders
+  const searchResults = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
+    if (!q) return [];
+
+    const matchedOrders = orders.filter((o) =>
+      (o.truck_chassis_no && o.truck_chassis_no.toLowerCase().includes(q)) ||
+      (o.owner_name && o.owner_name.toLowerCase().includes(q)) ||
+      (o.order_no && o.order_no.toLowerCase().includes(q)) ||
+      (o.mobile_number && o.mobile_number.includes(q))
+    ).slice(0, 5);
+
+    return matchedOrders;
+  }, [searchQuery, orders]);
+
+  // Time-based English greeting
+  const hour = new Date().getHours();
+  const greeting =
+    hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
+
+  const todayDateStr = new Date().toLocaleDateString('en-US', {
+    weekday: 'short',
+    month: 'short',
+    day: 'numeric',
+  });
 
   return (
-    <div className="home-dashboard">
-      <div className="android-body home-content">
-        {/* Management Modules Section */}
-        <section className="dashboard-section">
-          <div className="section-title-row">
-            <h3 className="section-heading">Management Modules</h3>
-            <span className="section-badge">Fast Access</span>
+    <div className="home-dashboard compact-home-shell">
+      <div className="android-body compact-home-content">
+
+        {/* 1. Greeting & Live Pulse Bar */}
+        <div className="home-pulse-bar">
+          <div className="pulse-greeting-group">
+            <span className="pulse-greeting-text">
+              {greeting}, <strong>{user?.name || 'Faizan Body'}</strong>
+            </span>
+            <span className="pulse-date-tag">📅 {todayDateStr}</span>
           </div>
 
-          <div className="modules-grid single-column-grid">
-            {/* 1. Work Orders / Job Cards Card */}
-            {canAccessModule('orders') && (
-              <div
-                className="module-card featured-module order-featured-card"
-                onClick={() => onNavigate('orders')}
-                role="button"
-                tabIndex={0}
-              >
-                <div className="module-card-top">
-                  <div className="module-icon-box" style={{ background: 'linear-gradient(135deg, #1e3a8a 0%, #2563eb 100%)', color: '#fff' }}>
-                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-                      <polyline points="14 2 14 8 20 8" />
-                      <line x1="16" y1="13" x2="8" y2="13" />
-                      <line x1="16" y1="17" x2="8" y2="17" />
-                      <polyline points="10 9 9 9 8 9" />
-                    </svg>
-                  </div>
+          <div className="pulse-status-badge">
+            <span className="pulse-indicator-dot"></span>
+            <span className="pulse-status-text">Workshop Active</span>
+          </div>
+        </div>
 
-                  <div className="module-badge-group">
-                    {incomingOrders > 0 && (
-                      <span className="module-status-badge" style={{ background: '#fffbeb', color: '#b45309', borderColor: '#fde68a', marginRight: '6px' }}>
-                        {incomingOrders} Incoming
-                      </span>
-                    )}
-                    <span className="module-status-badge" style={{ background: '#eff6ff', color: '#1d4ed8', borderColor: '#bfdbfe' }}>
-                      {activeOrders} In Progress
-                    </span>
-                  </div>
-                </div>
-                <div className="module-info">
-                  <h4 className="module-title">Orders</h4>
-                  <p className="module-desc">
-                    Track truck body fabrication, cabin, finishing tasks, task checkoffs & digital job sheets.
-                  </p>
-                </div>
-                <div className="module-footer">
-                  <span className="open-link-text">
-                    Open Orders
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                      <line x1="5" y1="12" x2="19" y2="12" />
-                      <polyline points="12 5 19 12 12 19" />
-                    </svg>
-                  </span>
-                  <span className="module-count-pill" style={{ background: '#dbeafe', color: '#1e40af' }}>{totalOrders} Orders</span>
-                </div>
-              </div>
+        {/* 2. Instant Chassis & Order Quick Search Bar */}
+        <div className="home-quick-search-box" ref={searchContainerRef}>
+          <div className="search-input-wrapper">
+            <svg className="search-lens-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.3">
+              <circle cx="11" cy="11" r="8" />
+              <line x1="21" y1="21" x2="16.65" y2="16.65" />
+            </svg>
+            <input
+              type="text"
+              className="search-input-field"
+              placeholder="Search chassis number, owner, or order #..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              onFocus={() => setIsSearchFocused(true)}
+            />
+            {searchQuery && (
+              <button
+                type="button"
+                className="btn-search-clear"
+                onClick={() => setSearchQuery('')}
+                title="Clear search"
+              >
+                ✕
+              </button>
             )}
+          </div>
 
-            {/* 2. Stock & Materials Inventory Card */}
-            {canAccessModule('stock') && (
-              <div
-                className={`module-card featured-module ${lowStockCount > 0 ? 'module-card-with-alert' : ''}`}
-                onClick={() => onNavigate('stock')}
-                role="button"
-                tabIndex={0}
-              >
-                <div className="module-card-top">
-                  <div
-                    className="module-icon-box"
-                    style={{
-                      background: lowStockCount > 0
-                        ? 'linear-gradient(135deg, #b91c1c 0%, #ef4444 100%)'
-                        : 'linear-gradient(135deg, #0284c7 0%, #0369a1 100%)',
-                      color: '#fff',
-                    }}
-                  >
-                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z" />
-                      <path d="m3.3 7 8.7 5 8.7-5" />
-                      <path d="M12 22V12" />
-                    </svg>
-                  </div>
-
-                  <div className="module-badge-group">
-                    {lowStockCount > 0 ? (
-                      <span className="module-red-alert-pill">
-                        <span className="pulse-red-dot"></span>
-                        {lowStockCount} Low Stock
-                      </span>
-                    ) : (
-                      <span
-                        className="module-status-badge"
-                        style={{ background: '#f0fdf4', color: '#166534', borderColor: '#bbf7d0' }}
-                      >
-                        Stock In Control
-                      </span>
-                    )}
-                  </div>
-                </div>
-                <div className="module-info">
-                  <h4 className="module-title">Stock & Inventory</h4>
-                  <p className="module-desc">
-                    Manage truck body steel channels, sheets, hardware, paint & track in/out balances.
-                  </p>
-                </div>
-                <div className="module-footer">
-                  <span className="open-link-text">
-                    Open Stock
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                      <line x1="5" y1="12" x2="19" y2="12" />
-                      <polyline points="12 5 19 12 12 19" />
-                    </svg>
-                  </span>
-                  <span className="module-count-pill" style={{ background: '#e0f2fe', color: '#0369a1' }}>
-                    {totalStockItems} Materials
-                  </span>
-                </div>
+          {/* Live Search Results Dropdown */}
+          {isSearchFocused && searchQuery.trim() && (
+            <div className="search-results-floating-card animate-fade-in">
+              <div className="search-results-head">
+                <span>Search Results ({searchResults.length}):</span>
               </div>
-            )}
-
-            {/* 3. Workers Directory Card */}
-            {canAccessModule('workers') && (
-              <div
-                className={`module-card featured-module ${leavingSoonCount > 0 ? 'module-card-with-alert' : ''}`}
-                onClick={() => onNavigate('workers')}
-                role="button"
-                tabIndex={0}
-              >
-                <div className="module-card-top">
-                  <div className="module-icon-box worker-module-icon">
-                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
-                      <circle cx="9" cy="7" r="4" />
-                      <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
-                      <path d="M16 3.13a4 4 0 0 1 0 7.75" />
-                    </svg>
-                  </div>
-                  
-                  <div className="module-badge-group">
-                    {leavingSoonCount > 0 && (
-                      <span className="module-red-alert-pill">
-                        <span className="pulse-red-dot"></span>
-                        {leavingSoonCount} Leaving Soon
-                      </span>
-                    )}
-                    <span className="module-status-badge">
-                      {activeWorkers} On Duty
-                    </span>
-                  </div>
+              {searchResults.length === 0 ? (
+                <div className="search-no-match">
+                  <span>No matching orders found</span>
                 </div>
-                <div className="module-info">
-                  <h4 className="module-title">Workers Directory</h4>
-                  <p className="module-desc">
-                    Manage worker records, coming & going dates, profiles, and attendance.
-                  </p>
-                </div>
-                <div className="module-footer">
-                  <span className="open-link-text">
-                    Open Directory
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                      <line x1="5" y1="12" x2="19" y2="12" />
-                      <polyline points="12 5 19 12 12 19" />
-                    </svg>
-                  </span>
-                  <span className="module-count-pill">{totalWorkers} Workers</span>
-                </div>
-              </div>
-            )}
-
-            {/* 4. User Management & Permissions Card (Admin Only) */}
-            {isAdmin && (
-              <div
-                className="module-card featured-module user-mgmt-featured-card"
-                onClick={() => onNavigate('users')}
-                role="button"
-                tabIndex={0}
-              >
-                <div className="module-card-top">
-                  <div
-                    className="module-icon-box"
-                    style={{
-                      background: 'linear-gradient(135deg, #4338ca 0%, #6366f1 100%)',
-                      color: '#ffffff',
-                    }}
-                  >
-                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
-                      <circle cx="9" cy="7" r="4" />
-                      <path d="M22 21v-2a4 4 0 0 0-3-3.87" />
-                      <path d="M16 3.13a4 4 0 0 1 0 7.75" />
-                    </svg>
-                  </div>
-
-                  <div className="module-badge-group">
-                    <span
-                      className="module-status-badge"
-                      style={{ background: '#f5f3ff', color: '#6d28d9', borderColor: '#ddd6fe' }}
+              ) : (
+                <div className="search-results-list">
+                  {searchResults.map((ord) => (
+                    <div
+                      key={ord.id}
+                      className="search-result-row"
+                      onClick={() => {
+                        onNavigate('orders');
+                        setIsSearchFocused(false);
+                      }}
                     >
-                      👑 Admin Control
-                    </span>
-                  </div>
+                      <div className="search-row-main">
+                        <span className="search-chassis-no">
+                          🚛 {ord.truck_chassis_no || 'No Chassis'}
+                        </span>
+                        <span className="search-owner-text">
+                          {ord.owner_name} {ord.order_no ? `(#${ord.order_no})` : ''}
+                        </span>
+                      </div>
+                      <span className={`search-status-tag status-${ord.status === 'Incoming' ? 'incoming' : 'progress'}`}>
+                        {ord.status || 'In Progress'}
+                      </span>
+                    </div>
+                  ))}
                 </div>
-                <div className="module-info">
-                  <h4 className="module-title">User Management & Permissions</h4>
-                  <p className="module-desc">
-                    Create staff accounts, reset passwords & assign screen permissions (Orders, Stock, Workers).
-                  </p>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* 3. Quick Action Buttons Row (Placed directly below Search Box, 100% Mobile Responsive) */}
+        <div className="home-compact-actions-row">
+          {canAccessModule('orders') && (
+            <button
+              type="button"
+              className="compact-action-btn action-order"
+              onClick={() => onNavigate('orders')}
+            >
+              <span className="action-btn-icon bg-btn-blue">＋</span>
+              <span className="action-btn-text">New Order</span>
+            </button>
+          )}
+
+          {canAccessModule('stock') && (
+            <button
+              type="button"
+              className="compact-action-btn action-stock"
+              onClick={() => onNavigate('stock')}
+            >
+              <span className="action-btn-icon bg-btn-cyan">📦</span>
+              <span className="action-btn-text">Add Stock</span>
+            </button>
+          )}
+
+          {canAccessModule('workers') && (
+            <button
+              type="button"
+              className="compact-action-btn action-worker"
+              onClick={() => {
+                if (onQuickAddWorker) onQuickAddWorker();
+                else onNavigate('workers');
+              }}
+            >
+              <span className="action-btn-icon bg-btn-emerald">👷</span>
+              <span className="action-btn-text">Add Worker</span>
+            </button>
+          )}
+        </div>
+
+        {/* 4. 2x2 COMPACT MODULE TILES */}
+        <div className="compact-tiles-grid">
+          {/* Work Orders Tile */}
+          {canAccessModule('orders') && (
+            <div
+              className="compact-tile tile-theme-orders"
+              onClick={() => onNavigate('orders')}
+              role="button"
+              tabIndex={0}
+            >
+              <div className="compact-tile-top">
+                <div className="compact-icon-wrapper bg-blue-grad">
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.3" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                    <polyline points="14 2 14 8 20 8" />
+                    <line x1="16" y1="13" x2="8" y2="13" />
+                    <line x1="16" y1="17" x2="8" y2="17" />
+                  </svg>
                 </div>
-                <div className="module-footer">
-                  <span className="open-link-text">
-                    Manage Users
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                      <line x1="5" y1="12" x2="19" y2="12" />
-                      <polyline points="12 5 19 12 12 19" />
-                    </svg>
-                  </span>
-                  <span className="module-count-pill" style={{ background: '#ede9fe', color: '#5b21b6' }}>
-                    Access Control
-                  </span>
-                </div>
+                <span className="compact-stat-bubble bubble-blue">{totalOrders} Orders</span>
               </div>
-            )}
-          </div>
-        </section>
+
+              <div className="compact-tile-middle">
+                <h3 className="compact-module-heading">Work Orders</h3>
+                <p className="compact-status-hint text-blue">
+                  {activeOrders > 0 ? `⚡ ${activeOrders} In Progress` : 'Truck Body Fabrication'}
+                  {incomingOrders > 0 ? ` • ${incomingOrders} Incoming` : ''}
+                </p>
+              </div>
+
+              <div className="compact-tile-bottom">
+                <span className="compact-open-tag">Open Orders</span>
+                <span className="compact-arrow-icon">→</span>
+              </div>
+            </div>
+          )}
+
+          {/* Stock & Inventory Tile */}
+          {canAccessModule('stock') && (
+            <div
+              className={`compact-tile tile-theme-stock ${lowStockCount > 0 ? 'tile-has-warning' : ''}`}
+              onClick={() => onNavigate('stock')}
+              role="button"
+              tabIndex={0}
+            >
+              <div className="compact-tile-top">
+                <div className="compact-icon-wrapper bg-cyan-grad">
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.3" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z" />
+                    <path d="m3.3 7 8.7 5 8.7-5" />
+                    <path d="M12 22V12" />
+                  </svg>
+                </div>
+                <span className="compact-stat-bubble bubble-cyan">{totalStockItems} Materials</span>
+              </div>
+
+              <div className="compact-tile-middle">
+                <h3 className="compact-module-heading">Stock & Inventory</h3>
+                <p className={`compact-status-hint ${lowStockCount > 0 ? 'text-red' : 'text-cyan'}`}>
+                  {lowStockCount > 0 ? `⚠️ ${lowStockCount} Low Stock Alert` : '✓ Optimal Inventory'}
+                </p>
+              </div>
+
+              <div className="compact-tile-bottom">
+                <span className="compact-open-tag">View Stock</span>
+                <span className="compact-arrow-icon">→</span>
+              </div>
+            </div>
+          )}
+
+          {/* Workers Directory Tile */}
+          {canAccessModule('workers') && (
+            <div
+              className={`compact-tile tile-theme-workers ${leavingSoonCount > 0 ? 'tile-has-warning' : ''}`}
+              onClick={() => onNavigate('workers')}
+              role="button"
+              tabIndex={0}
+            >
+              <div className="compact-tile-top">
+                <div className="compact-icon-wrapper bg-emerald-grad">
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.3" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+                    <circle cx="9" cy="7" r="4" />
+                    <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+                    <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+                  </svg>
+                </div>
+                <span className="compact-stat-bubble bubble-emerald">{totalWorkers} Workers</span>
+              </div>
+
+              <div className="compact-tile-middle">
+                <h3 className="compact-module-heading">Workers Directory</h3>
+                <p className={`compact-status-hint ${leavingSoonCount > 0 ? 'text-amber' : 'text-emerald'}`}>
+                  {activeWorkers} On Duty
+                  {leavingSoonCount > 0 ? ` • ${leavingSoonCount} Leaving Soon` : ''}
+                </p>
+              </div>
+
+              <div className="compact-tile-bottom">
+                <span className="compact-open-tag">Workers Khata</span>
+                <span className="compact-arrow-icon">→</span>
+              </div>
+            </div>
+          )}
+
+          {/* User Access & Security Tile (Admin Only) */}
+          {isAdmin && (
+            <div
+              className="compact-tile tile-theme-users"
+              onClick={() => onNavigate('users')}
+              role="button"
+              tabIndex={0}
+            >
+              <div className="compact-tile-top">
+                <div className="compact-icon-wrapper bg-purple-grad">
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.3" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10" />
+                    <path d="m9 12 2 2 4-4" />
+                  </svg>
+                </div>
+                <span className="compact-stat-bubble bubble-purple">👑 Admin</span>
+              </div>
+
+              <div className="compact-tile-middle">
+                <h3 className="compact-module-heading">User & Security</h3>
+                <p className="compact-status-hint text-purple">
+                  Staff Permissions & Sessions
+                </p>
+              </div>
+
+              <div className="compact-tile-bottom">
+                <span className="compact-open-tag">Manage Access</span>
+                <span className="compact-arrow-icon">→</span>
+              </div>
+            </div>
+          )}
+        </div>
+
       </div>
     </div>
   );
