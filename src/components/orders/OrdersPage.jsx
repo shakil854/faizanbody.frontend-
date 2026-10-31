@@ -200,6 +200,15 @@ export function OrdersPage({ onBackToHome }) {
       );
     }
 
+    // Sort by Entry Date: pehele aaya ho vo upar (earliest date first), last date last me
+    result.sort((a, b) => {
+      const dateA = a.entry_date || a.order_date || '9999-12-31';
+      const dateB = b.entry_date || b.order_date || '9999-12-31';
+      const cmp = String(dateA).localeCompare(String(dateB));
+      if (cmp !== 0) return cmp;
+      return (a.id || 0) - (b.id || 0);
+    });
+
     return result;
   }, [orders, statusFilter, searchQuery, isOrderCompleted]);
 

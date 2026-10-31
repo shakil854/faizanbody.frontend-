@@ -10,6 +10,17 @@ let lastFetchTime = 0;
 const CACHE_TTL_MS = 60000;
 const listeners = new Set();
 
+export const sortOrdersByEntryDate = (list) => {
+  if (!Array.isArray(list)) return [];
+  return [...list].sort((a, b) => {
+    const dateA = a.entry_date || a.order_date || '9999-12-31';
+    const dateB = b.entry_date || b.order_date || '9999-12-31';
+    const cmp = String(dateA).localeCompare(String(dateB));
+    if (cmp !== 0) return cmp;
+    return (a.id || 0) - (b.id || 0);
+  });
+};
+
 function notifyListeners() {
   if (cachedOrders) {
     listeners.forEach((callback) => {
@@ -44,7 +55,7 @@ export const orderService = {
       const data = response.data;
 
       if (isDefaultFetch && data && Array.isArray(data.data)) {
-        cachedOrders = data.data;
+        cachedOrders = sortOrdersByEntryDate(data.data);
         lastFetchTime = Date.now();
         notifyListeners();
       }
@@ -77,7 +88,7 @@ export const orderService = {
     const newOrder = response.data?.data;
 
     if (newOrder && cachedOrders) {
-      cachedOrders = [newOrder, ...cachedOrders];
+      cachedOrders = sortOrdersByEntryDate([newOrder, ...cachedOrders]);
       notifyListeners();
     }
 
@@ -89,7 +100,7 @@ export const orderService = {
     const updated = response.data?.data;
 
     if (updated && cachedOrders) {
-      cachedOrders = cachedOrders.map((o) => (o.id === Number(id) ? updated : o));
+      cachedOrders = sortOrdersByEntryDate(cachedOrders.map((o) => (o.id === Number(id) ? updated : o)));
       notifyListeners();
     }
 
