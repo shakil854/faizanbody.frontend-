@@ -84,6 +84,33 @@ export const OrderCard = React.memo(function OrderCard({
 
   const latestPhotoDate = formatPhotoDate(latestPhoto);
 
+  const cleanPhone = order.mobile_number ? String(order.mobile_number).replace(/[^0-9]/g, '') : '';
+  const waPhone = cleanPhone.length === 10 ? `91${cleanPhone}` : cleanPhone;
+
+  const handleCall = (e) => {
+    e.stopPropagation();
+    if (!cleanPhone) return;
+    window.location.href = `tel:${cleanPhone}`;
+  };
+
+  const handleWhatsApp = (e) => {
+    e.stopPropagation();
+    if (!cleanPhone) return;
+    const waNativeUrl = `whatsapp://send?phone=${waPhone}`;
+    const waWebUrl = `https://wa.me/${waPhone}`;
+
+    try {
+      window.location.href = waNativeUrl;
+      setTimeout(() => {
+        if (!document.hidden) {
+          window.open(waWebUrl, '_blank');
+        }
+      }, 500);
+    } catch {
+      window.open(waWebUrl, '_blank');
+    }
+  };
+
   // Avatar initials from owner name or truck chassis number
   const getInitials = () => {
     if (order.owner_name) {
@@ -276,36 +303,64 @@ export const OrderCard = React.memo(function OrderCard({
       </div>
 
       {/* Truck / Chassis Badge Row */}
-      {order.owner_name ? (
-        (order.truck_chassis_no || order.mobile_number) && (
-          <div className="order-owner-badge-row" title={`Truck: ${order.truck_chassis_no || '—'}${order.mobile_number ? ` • ${order.mobile_number}` : ''}`}>
-            <div className="order-owner-icon-wrap">
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M10 17h4V5H2v12h3" />
-                <path d="M20 17h2v-3.34a4 4 0 0 0-1.17-2.83L19 9h-5v8h1" />
-                <circle cx="7.5" cy="17.5" r="2.5" />
-                <circle cx="17.5" cy="17.5" r="2.5" />
-              </svg>
-            </div>
-            <span className="order-owner-tag">TRUCK:</span>
-            <span className="order-owner-text">
-              {order.truck_chassis_no || '—'}
-              {order.mobile_number ? ` • ${order.mobile_number}` : ''}
-            </span>
+      {order.truck_chassis_no && (
+        <div className="order-owner-badge-row" title={`Truck: ${order.truck_chassis_no}`}>
+          <div className="order-owner-icon-wrap">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M10 17h4V5H2v12h3" />
+              <path d="M20 17h2v-3.34a4 4 0 0 0-1.17-2.83L19 9h-5v8h1" />
+              <circle cx="7.5" cy="17.5" r="2.5" />
+              <circle cx="17.5" cy="17.5" r="2.5" />
+            </svg>
           </div>
-        )
-      ) : (
-        order.mobile_number && (
-          <div className="order-owner-badge-row" title={`Mobile: ${order.mobile_number}`}>
-            <div className="order-owner-icon-wrap">
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+          <span className="order-owner-tag">TRUCK:</span>
+          <span className="order-owner-text">{order.truck_chassis_no}</span>
+        </div>
+      )}
+
+      {/* Customer Mobile & Direct Call / WhatsApp Actions */}
+      {order.mobile_number && (
+        <div
+          className="worker-contact-row order-contact-row"
+          style={{ marginBottom: '0.5rem' }}
+          onClick={(e) => e.stopPropagation()}
+        >
+          <div className="contact-mobile-link">
+            <span className="phone-icon-pill">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#2563eb" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z" />
               </svg>
-            </div>
-            <span className="order-owner-tag">MOBILE:</span>
-            <span className="order-owner-text">{order.mobile_number}</span>
+            </span>
+            <span className="mobile-number-text">{order.mobile_number}</span>
           </div>
-        )
+
+          <div className="contact-quick-actions">
+            <button
+              type="button"
+              className="quick-contact-btn quick-call-btn"
+              title={`Call ${order.owner_name || order.truck_chassis_no || 'Customer'}`}
+              onClick={handleCall}
+            >
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z" />
+              </svg>
+              Call
+            </button>
+            {cleanPhone && (
+              <button
+                type="button"
+                className="quick-contact-btn quick-whatsapp-btn"
+                title={`WhatsApp ${order.owner_name || order.truck_chassis_no || 'Customer'}`}
+                onClick={handleWhatsApp}
+              >
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" />
+                </svg>
+                WhatsApp
+              </button>
+            )}
+          </div>
+        </div>
       )}
 
       {/* Dates Grid: ENTRY DATE & DELIVERY DATE */}
