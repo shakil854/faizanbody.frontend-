@@ -321,6 +321,8 @@ export function OrderPhotosModal({ isOpen, onClose, order, onOrderUpdated }) {
         photos: targetPhotos.map((p) => ({
           ...p,
           url: getPhotoFullUrl(p.url),
+          truckNo: order.truck_chassis_no,
+          ownerName: order.owner_name,
         })),
         truckNo: order.truck_chassis_no,
         ownerName: order.owner_name,
@@ -343,7 +345,7 @@ export function OrderPhotosModal({ isOpen, onClose, order, onOrderUpdated }) {
       setSharingPhotoId(photo.id || 'active');
       const url = getPhotoFullUrl(photo.url);
       await sharePhotos({
-        photos: [{ ...photo, url }],
+        photos: [{ ...photo, url, truckNo: order.truck_chassis_no, ownerName: order.owner_name }],
         truckNo: order.truck_chassis_no,
         shadeNo: order.shade_no,
         ownerName: order.owner_name,

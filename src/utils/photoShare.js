@@ -111,7 +111,7 @@ export function formatPhotoDateTime(createdAt) {
  * - Bottom-Left: 🚚 FAIZAN BODY & Truck Number
  * - Bottom-Right: 📅 Date & Time
  */
-function watermarkImageElement(img, { brandName = 'FAIZAN BODY', dateStr = '', truckNo = '' }) {
+function watermarkImageElement(img, { brandName = 'FAIZAN BODY', dateStr = '', truckNo = '', truck_chassis_no = '' }) {
   const origW = img.naturalWidth || img.width || 1200;
   const origH = img.naturalHeight || img.height || 800;
 
@@ -142,33 +142,94 @@ function watermarkImageElement(img, { brandName = 'FAIZAN BODY', dateStr = '', t
   const margin = Math.round(24 * scale);
   const strokeW = Math.max(2, Math.round(3 * scale));
 
+  // Compute date width on the right first to know exact space available on the left
+  const dateFontSize = Math.round(19 * scale);
+  let dateWidth = 0;
+  if (dateStr) {
+    ctx.save();
+    ctx.font = `700 ${dateFontSize}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`;
+    dateWidth = ctx.measureText(dateStr).width;
+    ctx.restore();
+  }
+
   // ==========================================
-  // LEFT: FAIZAN BODY (Pure transparent text, NO box)
+  // LEFT: FAIZAN BODY & Truck / Chassis No
   // ==========================================
+  const brandText = (brandName || 'FAIZAN BODY').trim();
+  const cleanTruck = String(truckNo || truck_chassis_no || '').trim();
+
   ctx.save();
-  const brandFontSize = Math.round(26 * scale);
+  let brandFontSize = Math.round(26 * scale);
   ctx.font = `900 ${brandFontSize}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`;
   ctx.textAlign = 'left';
   ctx.textBaseline = 'bottom';
 
-  const brandText = 'FAIZAN BODY';
   const brandX = margin;
   const brandY = h - margin;
 
-  // Dark outline for crystal-clear readability against any light/dark background
-  ctx.strokeStyle = 'rgba(0, 0, 0, 0.88)';
-  ctx.lineWidth = strokeW;
-  ctx.lineJoin = 'round';
-  ctx.miterLimit = 2;
-  ctx.strokeText(brandText, brandX, brandY);
+  const leftText = cleanTruck ? `${brandText} • ${cleanTruck}` : brandText;
+  const maxLeftWidth = w - dateWidth - margin * 3;
+  const leftWidth = ctx.measureText(leftText).width;
 
-  // Pure white text fill with drop shadow
-  ctx.fillStyle = '#ffffff';
-  ctx.shadowColor = 'rgba(0, 0, 0, 0.9)';
-  ctx.shadowBlur = Math.round(4 * scale);
-  ctx.shadowOffsetX = Math.round(1.5 * scale);
-  ctx.shadowOffsetY = Math.round(1.5 * scale);
-  ctx.fillText(brandText, brandX, brandY);
+  if (leftWidth > maxLeftWidth && cleanTruck) {
+    const fitRatio = maxLeftWidth / leftWidth;
+    if (fitRatio >= 0.72) {
+      // Scale down slightly to fit on the clean single bottom line
+      brandFontSize = Math.round(brandFontSize * fitRatio);
+      ctx.font = `900 ${brandFontSize}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`;
+
+      ctx.strokeStyle = 'rgba(0, 0, 0, 0.88)';
+      ctx.lineWidth = strokeW;
+      ctx.lineJoin = 'round';
+      ctx.miterLimit = 2;
+      ctx.strokeText(leftText, brandX, brandY);
+
+      ctx.fillStyle = '#ffffff';
+      ctx.shadowColor = 'rgba(0, 0, 0, 0.9)';
+      ctx.shadowBlur = Math.round(4 * scale);
+      ctx.shadowOffsetX = Math.round(1.5 * scale);
+      ctx.shadowOffsetY = Math.round(1.5 * scale);
+      ctx.fillText(leftText, brandX, brandY);
+    } else {
+      // Narrow portrait or long truck name: 2 stacked lines
+      const lineSpacing = Math.round(brandFontSize * 1.15);
+      const truckY = brandY - lineSpacing;
+
+      // Line 1 (Upper): Truck / Chassis Number
+      ctx.font = `800 ${Math.round(brandFontSize * 0.88)}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`;
+      ctx.strokeStyle = 'rgba(0, 0, 0, 0.88)';
+      ctx.lineWidth = strokeW;
+      ctx.lineJoin = 'round';
+      ctx.miterLimit = 2;
+      ctx.strokeText(cleanTruck, brandX, truckY);
+
+      ctx.fillStyle = '#ffffff';
+      ctx.shadowColor = 'rgba(0, 0, 0, 0.9)';
+      ctx.shadowBlur = Math.round(4 * scale);
+      ctx.shadowOffsetX = Math.round(1.5 * scale);
+      ctx.shadowOffsetY = Math.round(1.5 * scale);
+      ctx.fillText(cleanTruck, brandX, truckY);
+
+      // Line 2 (Bottom): FAIZAN BODY
+      ctx.font = `900 ${brandFontSize}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`;
+      ctx.strokeText(brandText, brandX, brandY);
+      ctx.fillText(brandText, brandX, brandY);
+    }
+  } else {
+    // Standard single line: "FAIZAN BODY • MB1NFCHD2TRHZ0880"
+    ctx.strokeStyle = 'rgba(0, 0, 0, 0.88)';
+    ctx.lineWidth = strokeW;
+    ctx.lineJoin = 'round';
+    ctx.miterLimit = 2;
+    ctx.strokeText(leftText, brandX, brandY);
+
+    ctx.fillStyle = '#ffffff';
+    ctx.shadowColor = 'rgba(0, 0, 0, 0.9)';
+    ctx.shadowBlur = Math.round(4 * scale);
+    ctx.shadowOffsetX = Math.round(1.5 * scale);
+    ctx.shadowOffsetY = Math.round(1.5 * scale);
+    ctx.fillText(leftText, brandX, brandY);
+  }
   ctx.restore();
 
   // ==========================================
@@ -176,7 +237,6 @@ function watermarkImageElement(img, { brandName = 'FAIZAN BODY', dateStr = '', t
   // ==========================================
   if (dateStr) {
     ctx.save();
-    const dateFontSize = Math.round(19 * scale);
     ctx.font = `700 ${dateFontSize}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`;
     ctx.textAlign = 'right';
     ctx.textBaseline = 'bottom';
@@ -486,8 +546,10 @@ export async function sharePhotos({
  * Backward compatible single photo share function
  */
 export async function sharePhoto({ photoUrl, photo, truckNo, ownerName, shadeNo }) {
-  const photoObj = photo || { url: photoUrl };
+  const photoObj = photo ? { ...photo } : { url: photoUrl };
   if (!photoObj.url) photoObj.url = photoUrl;
+  if (truckNo && !photoObj.truckNo) photoObj.truckNo = truckNo;
+  if (ownerName && !photoObj.ownerName) photoObj.ownerName = ownerName;
   return sharePhotos({
     photos: [photoObj],
     truckNo,
