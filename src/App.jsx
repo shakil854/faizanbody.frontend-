@@ -6,6 +6,7 @@ import { AppHeader } from './components/common/AppHeader';
 import { HomePage } from './components/home/HomePage';
 import { WorkersPage } from './components/workers/WorkersPage';
 import { OrdersPage } from './components/orders/OrdersPage';
+import { QuotationsPage } from './components/quotations/QuotationsPage';
 import { StockPage } from './components/stock/StockPage';
 import { UsersPage } from './components/users/UsersPage';
 import { WorkerFormModal } from './components/workers/WorkerFormModal';
@@ -14,6 +15,7 @@ import { BottomNav } from './components/common/BottomNav';
 import { workerService } from './services/workerService';
 import { stockService } from './services/stockService';
 import { orderService } from './services/orderService';
+import { quotationService } from './services/quotationService';
 import { userService } from './services/userService';
 import { calculateOrderProgress } from './components/orders/orderConstants';
 import { isLeavingSoon } from './utils/dateAlerts';
@@ -26,6 +28,7 @@ export function App() {
     const hash = window.location.hash;
     if (hash === '#workers') return 'workers';
     if (hash === '#orders') return 'orders';
+    if (hash === '#quotations') return isAdmin ? 'quotations' : 'home';
     if (hash === '#stock') return 'stock';
     if (hash === '#users') return 'users';
     return 'home';
@@ -138,6 +141,7 @@ export function App() {
       const hash = window.location.hash;
       const targetPage = hash === '#workers' ? 'workers'
         : hash === '#orders' ? 'orders'
+        : hash === '#quotations' ? (isAdmin ? 'quotations' : 'home')
         : hash === '#stock' ? 'stock'
         : hash === '#users' ? 'users'
         : 'home';
@@ -320,6 +324,12 @@ export function App() {
 
         {currentPage === 'orders' && (
           <OrdersPage
+            onBackToHome={() => navigateTo('home')}
+          />
+        )}
+
+        {currentPage === 'quotations' && isAdmin && (
+          <QuotationsPage
             onBackToHome={() => navigateTo('home')}
           />
         )}

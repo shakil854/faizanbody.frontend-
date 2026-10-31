@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { workerService } from '../../services/workerService';
 import { orderService } from '../../services/orderService';
+import { quotationService } from '../../services/quotationService';
 import { stockService } from '../../services/stockService';
 import { isLeavingSoon } from '../../utils/dateAlerts';
 
@@ -11,6 +12,7 @@ export function HomePage({ onNavigate, onQuickAddWorker }) {
   // Instant SWR cache initialization
   const [workers, setWorkers] = useState(() => workerService.getCachedWorkers());
   const [orders, setOrders] = useState(() => orderService.getCachedOrders());
+  const [quotations, setQuotations] = useState(() => quotationService.getCachedQuotations());
   const [stockItems, setStockItems] = useState(() => stockService.getCachedItems());
   const [searchQuery, setSearchQuery] = useState('');
   const [isSearchFocused, setIsSearchFocused] = useState(false);
@@ -21,6 +23,14 @@ export function HomePage({ onNavigate, onQuickAddWorker }) {
     const unsubWorkers = workerService.subscribe((list) => setWorkers(list));
     const unsubOrders = orderService.subscribe((list) => setOrders(list));
     const unsubStock = stockService.subscribeItems((list) => setStockItems(list));
+    let unsubQuotes = () => {};
+
+    if (isAdmin) {
+      unsubQuotes = quotationService.subscribe((list) => setQuotations(list));
+      quotationService.getQuotations().then((res) => {
+        if (res?.data) setQuotations(res.data);
+      }).catch(() => {});
+    }
 
     // Silent background fetch
     workerService.getWorkers().then((res) => {
@@ -38,9 +48,10 @@ export function HomePage({ onNavigate, onQuickAddWorker }) {
     return () => {
       unsubWorkers();
       unsubOrders();
+      unsubQuotes();
       unsubStock();
     };
-  }, []);
+  }, [isAdmin]);
 
   // Close search dropdown on click outside
   useEffect(() => {
@@ -58,6 +69,7 @@ export function HomePage({ onNavigate, onQuickAddWorker }) {
   const activeWorkers = workers.filter((w) => !w.going_date).length;
   const leavingSoonCount = workers.filter((w) => isLeavingSoon(w.going_date)).length;
 
+  const totalQuotations = quotations.length;
   const totalOrders = orders.length;
   const incomingOrders = orders.filter((o) => o.status === 'Incoming').length;
   const activeOrders = orders.filter((o) => o.status === 'In Progress').length;
@@ -192,6 +204,17 @@ export function HomePage({ onNavigate, onQuickAddWorker }) {
             </button>
           )}
 
+          {canAccessModule('quotations') && (
+            <button
+              type="button"
+              className="compact-action-btn action-quote"
+              onClick={() => onNavigate('quotations')}
+            >
+              <span className="action-btn-icon bg-btn-amber">📋</span>
+              <span className="action-btn-text">Quotation</span>
+            </button>
+          )}
+
           {canAccessModule('stock') && (
             <button
               type="button"
@@ -220,6 +243,40 @@ export function HomePage({ onNavigate, onQuickAddWorker }) {
 
         {/* 4. 2x2 COMPACT MODULE TILES */}
         <div className="compact-tiles-grid">
+          {/* Quotations Tile */}
+          {canAccessModule('quotations') && (
+            <div
+              className="compact-tile tile-theme-quotations"
+              onClick={() => onNavigate('quotations')}
+              role="button"
+              tabIndex={0}
+            >
+              <div className="compact-tile-top">
+                <div className="compact-icon-wrapper bg-amber-grad">
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.3" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                    <polyline points="14 2 14 8 20 8" />
+                    <line x1="9" y1="13" x2="15" y2="13" />
+                    <line x1="9" y1="17" x2="13" y2="17" />
+                  </svg>
+                </div>
+                <span className="compact-stat-bubble bubble-amber">{totalQuotations} Quotes</span>
+              </div>
+
+              <div className="compact-tile-middle">
+                <h3 className="compact-module-heading">Quotations</h3>
+                <p className="compact-status-hint text-amber">
+                  Rates, Estimates & Discounts
+                </p>
+              </div>
+
+              <div className="compact-tile-bottom">
+                <span className="compact-open-tag">Open Quotations</span>
+                <span className="compact-arrow-icon">→</span>
+              </div>
+            </div>
+          )}
+
           {/* Work Orders Tile */}
           {canAccessModule('orders') && (
             <div

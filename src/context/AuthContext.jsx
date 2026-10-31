@@ -104,6 +104,7 @@ export function AuthProvider({ children }) {
     if (isAdmin) return true;
 
     if (moduleId === 'users') return false; // Strictly admin only
+    if (moduleId === 'quotations' || moduleId === 'quotation') return false; // Strictly admin only
     if (moduleId === 'orders') return hasPermission('orders:view');
     if (moduleId === 'stock') return hasPermission('stock:view');
     if (moduleId === 'workers') return hasPermission('workers:view');
