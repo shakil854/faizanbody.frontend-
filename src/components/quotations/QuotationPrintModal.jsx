@@ -29,7 +29,7 @@ export function QuotationPrintModal({ isOpen, onClose, quotation }) {
       quotation.items.forEach((it, idx) => {
         const variantText = it.variant_name ? ` (${it.variant_name})` : '';
         lines.push(`${idx + 1}. *${it.name}${variantText}*`);
-        lines.push(`   ₹${it.rate} × ${it.qty} = *₹${Number(it.amount).toLocaleString('en-IN')}*`);
+        lines.push(`   ${it.qty} × ₹${it.rate} = *₹${Number(it.amount).toLocaleString('en-IN')}*`);
       });
     }
 
@@ -128,8 +128,8 @@ export function QuotationPrintModal({ isOpen, onClose, quotation }) {
               <tr>
                 <th style={{ width: '8%', textAlign: 'center' }}>Sr.</th>
                 <th style={{ width: '47%' }}>Item Description (वस्तु का नाम)</th>
-                <th style={{ width: '15%', textAlign: 'right' }}>Rate (₹)</th>
                 <th style={{ width: '12%', textAlign: 'center' }}>Qty</th>
+                <th style={{ width: '15%', textAlign: 'right' }}>Rate (₹)</th>
                 <th style={{ width: '18%', textAlign: 'right' }}>Amount (₹)</th>
               </tr>
             </thead>
@@ -143,10 +143,10 @@ export function QuotationPrintModal({ isOpen, onClose, quotation }) {
                       <span className="print-item-variant">Size/Option: {it.variant_name}</span>
                     )}
                   </td>
+                  <td style={{ textAlign: 'center' }} className="font-mono">{it.qty}</td>
                   <td style={{ textAlign: 'right' }} className="font-mono">
                     ₹{Number(it.rate).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
                   </td>
-                  <td style={{ textAlign: 'center' }} className="font-mono">{it.qty}</td>
                   <td style={{ textAlign: 'right' }} className="font-mono font-semibold">
                     ₹{Number(it.amount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
                   </td>

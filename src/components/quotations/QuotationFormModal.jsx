@@ -521,7 +521,15 @@ export function QuotationFormModal({
           focusInput('[data-nav-name="extra"]');
         } else if (navName === 'extra') {
           const lastIdx = items.length - 1;
-          focusInput(`[data-nav-row="${lastIdx}"][data-nav-col="qty"]`);
+          const lastRow = items[lastIdx];
+          if (lastRow?.has_options) {
+            const sel = lastRow.selected_option_index || 0;
+            if (!focusInput(`[data-nav-row="${lastIdx}"][data-nav-col="opt_rate"][data-nav-opt="${sel}"]`)) {
+              focusInput(`[data-nav-row="${lastIdx}"][data-nav-col="rate"]`);
+            }
+          } else {
+            focusInput(`[data-nav-row="${lastIdx}"][data-nav-col="rate"]`);
+          }
         }
         return;
       }
@@ -536,10 +544,12 @@ export function QuotationFormModal({
       const row = items[rowIdx];
       if (!row) return;
 
-      // 1. ENTER KEY: Forward step-by-step
+      // 1. ENTER KEY: Forward step-by-step (Name -> Qty -> Rate -> Next row)
       if (key === 'Enter') {
         e.preventDefault();
         if (navCol === 'name') {
+          focusInput(`[data-nav-row="${rowIdx}"][data-nav-col="qty"]`);
+        } else if (navCol === 'qty') {
           if (row.has_options) {
             const sel = row.selected_option_index || 0;
             if (!focusInput(`[data-nav-row="${rowIdx}"][data-nav-col="opt_rate"][data-nav-opt="${sel}"]`)) {
@@ -548,9 +558,10 @@ export function QuotationFormModal({
           } else {
             focusInput(`[data-nav-row="${rowIdx}"][data-nav-col="rate"]`);
           }
-        } else if (navCol === 'rate' || navCol === 'opt_rate' || navCol === 'opt_name') {
-          focusInput(`[data-nav-row="${rowIdx}"][data-nav-col="qty"]`);
-        } else if (navCol === 'qty') {
+        } else if (navCol === 'opt_name') {
+          const optIdx = target.getAttribute('data-nav-opt');
+          focusInput(`[data-nav-row="${rowIdx}"][data-nav-col="opt_rate"][data-nav-opt="${optIdx}"]`);
+        } else if (navCol === 'rate' || navCol === 'opt_rate') {
           if (rowIdx < items.length - 1) {
             // Next existing row
             focusInput(`[data-nav-row="${rowIdx + 1}"][data-nav-col="name"]`);
@@ -600,15 +611,18 @@ export function QuotationFormModal({
         } else {
           // At Row 0: move up to Header
           if (navCol === 'name') focusInput('[data-nav-name="customer"]');
-          else if (navCol === 'qty') focusInput('[data-nav-name="chassis"]');
-          else focusInput('[data-nav-name="date"]');
+          else if (navCol === 'qty') focusInput('[data-nav-name="date"]');
+          else focusInput('[data-nav-name="chassis"]');
         }
         return;
       }
 
-      // 4. ARROW RIGHT (→): Move to next column
+      // 4. ARROW RIGHT (→): Move to next column (Name -> Qty -> Rate -> Next Row Name)
       if (key === 'ArrowRight' && isAtEnd()) {
         if (navCol === 'name') {
+          e.preventDefault();
+          focusInput(`[data-nav-row="${rowIdx}"][data-nav-col="qty"]`);
+        } else if (navCol === 'qty') {
           e.preventDefault();
           if (row.has_options) {
             const sel = row.selected_option_index || 0;
@@ -623,9 +637,6 @@ export function QuotationFormModal({
           const optIdx = target.getAttribute('data-nav-opt');
           focusInput(`[data-nav-row="${rowIdx}"][data-nav-col="opt_rate"][data-nav-opt="${optIdx}"]`);
         } else if (navCol === 'opt_rate' || navCol === 'rate') {
-          e.preventDefault();
-          focusInput(`[data-nav-row="${rowIdx}"][data-nav-col="qty"]`);
-        } else if (navCol === 'qty') {
           if (rowIdx < items.length - 1) {
             e.preventDefault();
             focusInput(`[data-nav-row="${rowIdx + 1}"][data-nav-col="name"]`);
@@ -634,29 +645,33 @@ export function QuotationFormModal({
         return;
       }
 
-      // 5. ARROW LEFT (←): Move to previous column
+      // 5. ARROW LEFT (←): Move to previous column (Rate -> Qty -> Name)
       if (key === 'ArrowLeft' && isAtStart()) {
-        if (navCol === 'qty') {
-          e.preventDefault();
-          if (row.has_options) {
-            const sel = row.selected_option_index || 0;
-            if (!focusInput(`[data-nav-row="${rowIdx}"][data-nav-col="opt_rate"][data-nav-opt="${sel}"]`)) {
-              focusInput(`[data-nav-row="${rowIdx}"][data-nav-col="opt_rate"]`);
-            }
-          } else {
-            focusInput(`[data-nav-row="${rowIdx}"][data-nav-col="rate"]`);
-          }
-        } else if (navCol === 'opt_rate') {
+        if (navCol === 'opt_rate') {
           e.preventDefault();
           const optIdx = target.getAttribute('data-nav-opt');
-          focusInput(`[data-nav-row="${rowIdx}"][data-nav-col="opt_name"][data-nav-opt="${optIdx}"]`);
+          if (focusInput(`[data-nav-row="${rowIdx}"][data-nav-col="opt_name"][data-nav-opt="${optIdx}"]`)) {
+            return;
+          }
+          focusInput(`[data-nav-row="${rowIdx}"][data-nav-col="qty"]`);
         } else if (navCol === 'opt_name' || navCol === 'rate') {
+          e.preventDefault();
+          focusInput(`[data-nav-row="${rowIdx}"][data-nav-col="qty"]`);
+        } else if (navCol === 'qty') {
           e.preventDefault();
           focusInput(`[data-nav-row="${rowIdx}"][data-nav-col="name"]`);
         } else if (navCol === 'name') {
           if (rowIdx > 0) {
             e.preventDefault();
-            focusInput(`[data-nav-row="${rowIdx - 1}"][data-nav-col="qty"]`);
+            const prevRow = items[rowIdx - 1];
+            if (prevRow?.has_options) {
+              const sel = prevRow.selected_option_index || 0;
+              if (!focusInput(`[data-nav-row="${rowIdx - 1}"][data-nav-col="opt_rate"][data-nav-opt="${sel}"]`)) {
+                focusInput(`[data-nav-row="${rowIdx - 1}"][data-nav-col="rate"]`);
+              }
+            } else {
+              focusInput(`[data-nav-row="${rowIdx - 1}"][data-nav-col="rate"]`);
+            }
           } else {
             e.preventDefault();
             focusInput('[data-nav-name="customer"]');
@@ -744,9 +759,9 @@ export function QuotationFormModal({
             options: hasOpt ? it.options : [],
             selected_option_index: selIdx,
             variant_name: chosenVariant,
-            rate: rateVal,
             qty: qtyVal,
-            amount: Math.round(rateVal * qtyVal * 100) / 100,
+            rate: rateVal,
+            amount: Math.round(qtyVal * rateVal * 100) / 100,
             variants: variantsList,
             // Backwards compatibility fields:
             has_two_options: hasOpt && it.options.length === 2,
@@ -818,7 +833,7 @@ export function QuotationFormModal({
                   {isEditMode ? `Edit Quotation #${quotationNo}` : 'Quotation (कोटेशन)'}
                 </h3>
                 <p style={{ margin: 0, fontSize: '0.74rem', color: '#93c5fd', fontWeight: 600 }}>
-                  Faizan Body &bull; Name, Rate, Qty & Amount (नोटपैड अनुसार)
+                  Faizan Body &bull; Name, Qty, Rate & Amount (नोटपैड अनुसार)
                 </p>
               </div>
             </div>
@@ -957,7 +972,7 @@ export function QuotationFormModal({
                   <span style={{ fontSize: '1.3rem' }}>📦</span>
                   <div>
                     <h4 style={{ margin: 0, fontSize: '0.98rem', fontWeight: 800, color: '#0f172a' }}>
-                      Items & Rates (वस्तु, रेट, मात्रा व रकम)
+                      Items & Rates (वस्तु, मात्रा, रेट व रकम)
                     </h4>
                     <p style={{ margin: 0, fontSize: '0.72rem', color: '#64748b' }}>
                       वस्तु जोड़ें, रेट व 2 ऑप्शन बदलें — हर नए कोटेशन में सेव रहेंगी
@@ -994,8 +1009,8 @@ export function QuotationFormModal({
                   <thead>
                     <tr>
                       <th className="col-th-name">Name (वस्तु)</th>
-                      <th className="col-th-rate">Rate (रेट ₹)</th>
                       <th className="col-th-qty">Qty (मात्रा)</th>
+                      <th className="col-th-rate">Rate (रेट ₹)</th>
                       <th className="col-th-amount">Amount (रकम ₹)</th>
                       <th className="col-th-del"></th>
                     </tr>
@@ -1024,7 +1039,23 @@ export function QuotationFormModal({
                           />
                         </td>
 
-                        {/* 2. Rate (Single or Bracket with multiple custom options) */}
+                        {/* 2. Qty */}
+                        <td className="col-td-qty">
+                          <input
+                            type="number"
+                            step="any"
+                            min="0"
+                            className="ledger-input ledger-qty-input font-mono font-bold"
+                            placeholder="10"
+                            value={row.qty}
+                            onChange={(e) => handleRowChange(idx, 'qty', e.target.value)}
+                            data-nav-row={idx}
+                            data-nav-col="qty"
+                            required
+                          />
+                        </td>
+
+                        {/* 3. Rate (Single or Bracket with multiple custom options) */}
                         <td className="col-td-rate">
                           {row.has_options ? (
                             <div className="ledger-brace-wrap">
@@ -1151,22 +1182,6 @@ export function QuotationFormModal({
                               </button>
                             </div>
                           )}
-                        </td>
-
-                        {/* 3. Qty */}
-                        <td className="col-td-qty">
-                          <input
-                            type="number"
-                            step="any"
-                            min="0"
-                            className="ledger-input ledger-qty-input font-mono font-bold"
-                            placeholder="10"
-                            value={row.qty}
-                            onChange={(e) => handleRowChange(idx, 'qty', e.target.value)}
-                            data-nav-row={idx}
-                            data-nav-col="qty"
-                            required
-                          />
                         </td>
 
                         {/* 4. Amount = Rate * Qty */}

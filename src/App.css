@@ -19441,13 +19441,13 @@
   width: 28%;
 }
 
-.quotation-ledger-table thead th.col-th-rate {
-  width: 38%;
+.quotation-ledger-table thead th.col-th-qty {
+  width: 14%;
+  text-align: center;
 }
 
-.quotation-ledger-table thead th.col-th-qty {
-  width: 12%;
-  text-align: center;
+.quotation-ledger-table thead th.col-th-rate {
+  width: 36%;
 }
 
 .quotation-ledger-table thead th.col-th-amount {
