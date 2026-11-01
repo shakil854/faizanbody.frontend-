@@ -25,6 +25,7 @@ export function OrderComboboxInput({
   fieldKey = '',
   fieldLabel = '',
   allowManageOptions = true,
+  onNavigateNext,
 }) {
   // Resolve options using stored custom options if fieldKey is present
   const [localOptions, setLocalOptions] = useState(() => {
@@ -138,35 +139,50 @@ export function OrderComboboxInput({
   };
 
   const handleKeyDown = (e) => {
-    if (readOnly || !hasOptions || safeOptions.length === 0 || isManaging) return;
+    if (readOnly || isManaging) return;
 
-    if (e.key === 'ArrowDown') {
-      e.preventDefault();
-      if (!isOpen) {
-        setIsOpen(true);
-        setHighlightedIndex(0);
-      } else {
-        setHighlightedIndex((prev) => (prev < safeOptions.length - 1 ? prev + 1 : 0));
-      }
-    } else if (e.key === 'ArrowUp') {
-      e.preventDefault();
-      if (!isOpen) {
-        setIsOpen(true);
-        setHighlightedIndex(safeOptions.length - 1);
-      } else {
-        setHighlightedIndex((prev) => (prev > 0 ? prev - 1 : safeOptions.length - 1));
-      }
-    } else if (e.key === 'Enter') {
-      if (isOpen && highlightedIndex >= 0 && highlightedIndex < safeOptions.length) {
+    // Dropdown is OPEN: navigate dropdown items with ArrowUp/ArrowDown, pick with Enter
+    if (isOpen && hasOptions && safeOptions.length > 0) {
+      if (e.key === 'ArrowDown') {
         e.preventDefault();
-        handleSelectOption(safeOptions[highlightedIndex]);
+        setHighlightedIndex((prev) => (prev < safeOptions.length - 1 ? prev + 1 : 0));
+        return;
       }
-    } else if (e.key === 'Escape') {
-      setIsOpen(false);
-      setIsManaging(false);
-      setIsAddingNew(false);
-      setEditingIndex(-1);
+      if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        setHighlightedIndex((prev) => (prev > 0 ? prev - 1 : safeOptions.length - 1));
+        return;
+      }
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        if (highlightedIndex >= 0 && highlightedIndex < safeOptions.length) {
+          handleSelectOption(safeOptions[highlightedIndex]);
+        } else {
+          setIsOpen(false);
+        }
+        if (onNavigateNext) {
+          onNavigateNext();
+        }
+        return;
+      }
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        setIsOpen(false);
+        return;
+      }
     }
+
+    // Dropdown is CLOSED:
+    // Alt + ArrowDown opens the dropdown list on explicit request
+    if (!isOpen && hasOptions && safeOptions.length > 0 && e.altKey && e.key === 'ArrowDown') {
+      e.preventDefault();
+      setIsOpen(true);
+      setHighlightedIndex(0);
+      return;
+    }
+
+    // When dropdown is closed, let ArrowDown, ArrowUp, ArrowLeft, ArrowRight, and Enter
+    // bubble to the parent form's keyboard navigation handler
   };
 
   // Add new option handler
@@ -245,6 +261,8 @@ export function OrderComboboxInput({
       >
         <input
           ref={inputRef}
+          id={id}
+          data-nav-id={id}
           type="text"
           className={`modern-input-ctrl line-input order-combobox-input ${
             hasOptions && !isCustomTyping ? 'cursor-pointer-input' : ''

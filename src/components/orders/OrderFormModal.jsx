@@ -45,11 +45,298 @@ export function OrderFormModal({
     setIsSubmitting(false);
   }, [initialData, isOpen, mode]);
 
+  // =========================================================================
+  // Keyboard Navigation: Enter (Next Field) & Arrow Keys (↑ Upar, ↓ Niche, ← → Side)
+  // =========================================================================
+  const getOrderedNavIds = () => {
+    const ids = [
+      'order-field-status',
+      'order-field-truck_chassis_no',
+      'order-field-owner_name',
+      'order-field-mobile_number',
+      'order-field-order_date',
+      'order-field-entry_date',
+      'order-field-delivery_date',
+      'order-field-shade_no',
+      'order-field-condition_text',
+    ];
+
+    ORDER_SECTIONS.forEach((sec) => {
+      if (sec.isFinishing) {
+        sec.items.forEach((item) => {
+          ids.push(`box-finishing-${item.key}-0`);
+          ids.push(`box-finishing-${item.key}-1`);
+          ids.push(`box-finishing-${item.key}-2`);
+          ids.push(`finishing-${item.key}`);
+        });
+      } else {
+        ids.push(`box-${sec.key}-0`);
+        ids.push(`box-${sec.key}-1`);
+        ids.push(`box-${sec.key}-2`);
+        sec.items.forEach((item) => {
+          ids.push(`${sec.key}-${item.key}`);
+          if (item.extraKey) {
+            ids.push(`${sec.key}-${item.extraKey}`);
+          }
+        });
+      }
+    });
+
+    ids.push('order-field-save_btn');
+    return ids;
+  };
+
+  const buildVerticalNavMap = (orderedIds) => {
+    const map = {
+      'order-field-status': {
+        down: 'order-field-truck_chassis_no',
+      },
+      'order-field-truck_chassis_no': {
+        up: 'order-field-status',
+        down: 'order-field-order_date',
+      },
+      'order-field-owner_name': {
+        up: 'order-field-status',
+        down: 'order-field-entry_date',
+      },
+      'order-field-mobile_number': {
+        up: 'order-field-status',
+        down: 'order-field-delivery_date',
+      },
+      'order-field-order_date': {
+        up: 'order-field-truck_chassis_no',
+        down: 'order-field-shade_no',
+      },
+      'order-field-entry_date': {
+        up: 'order-field-owner_name',
+        down: 'order-field-condition_text',
+      },
+      'order-field-delivery_date': {
+        up: 'order-field-mobile_number',
+        down: 'order-field-condition_text',
+      },
+      'order-field-shade_no': {
+        up: 'order-field-order_date',
+        down: 'box-cabin_work-0',
+      },
+      'order-field-condition_text': {
+        up: 'order-field-entry_date',
+        down: 'box-cabin_work-1',
+      },
+    };
+
+    for (let s = 0; s < ORDER_SECTIONS.length; s++) {
+      const sec = ORDER_SECTIONS[s];
+      const prevSec = s > 0 ? ORDER_SECTIONS[s - 1] : null;
+
+      if (sec.isFinishing) {
+        sec.items.forEach((item, fIdx) => {
+          const prevItem = fIdx > 0 ? sec.items[fIdx - 1] : null;
+          const nextItem = fIdx < sec.items.length - 1 ? sec.items[fIdx + 1] : null;
+
+          const boxesUpTarget = prevItem
+            ? `finishing-${prevItem.key}`
+            : (prevSec ? (prevSec.items[prevSec.items.length - 1].extraKey
+                ? `${prevSec.key}-${prevSec.items[prevSec.items.length - 1].extraKey}`
+                : `${prevSec.key}-${prevSec.items[prevSec.items.length - 1].key}`)
+              : 'order-field-condition_text');
+
+          map[`box-finishing-${item.key}-0`] = {
+            up: boxesUpTarget,
+            down: `finishing-${item.key}`,
+          };
+          map[`box-finishing-${item.key}-1`] = {
+            up: boxesUpTarget,
+            down: `finishing-${item.key}`,
+          };
+          map[`box-finishing-${item.key}-2`] = {
+            up: boxesUpTarget,
+            down: `finishing-${item.key}`,
+          };
+
+          map[`finishing-${item.key}`] = {
+            up: `box-finishing-${item.key}-1`,
+            down: nextItem ? `box-finishing-${nextItem.key}-0` : 'order-field-save_btn',
+          };
+        });
+      } else {
+        const firstItemKey = sec.items[0]?.key;
+        const firstItemId = `${sec.key}-${firstItemKey}`;
+
+        let boxesUpTarget = 'order-field-condition_text';
+        if (prevSec) {
+          if (prevSec.isFinishing) {
+            boxesUpTarget = `finishing-${prevSec.items[prevSec.items.length - 1].key}`;
+          } else {
+            const lastPrevItem = prevSec.items[prevSec.items.length - 1];
+            boxesUpTarget = lastPrevItem.extraKey
+              ? `${prevSec.key}-${lastPrevItem.extraKey}`
+              : `${prevSec.key}-${lastPrevItem.key}`;
+          }
+        }
+
+        map[`box-${sec.key}-0`] = {
+          up: s === 0 ? 'order-field-shade_no' : boxesUpTarget,
+          down: firstItemId,
+        };
+        map[`box-${sec.key}-1`] = {
+          up: boxesUpTarget,
+          down: firstItemId,
+        };
+        map[`box-${sec.key}-2`] = {
+          up: boxesUpTarget,
+          down: firstItemId,
+        };
+
+        map[firstItemId] = {
+          up: `box-${sec.key}-0`,
+        };
+      }
+    }
+
+    map['order-field-save_btn'] = {
+      up: orderedIds[orderedIds.length - 2],
+    };
+
+    return map;
+  };
+
+  const focusNavElement = (navId) => {
+    if (!navId) return false;
+    const el = document.querySelector(`[data-nav-id="${navId}"]`) || document.getElementById(navId);
+    if (el) {
+      el.focus();
+      if (typeof el.scrollIntoView === 'function') {
+        el.scrollIntoView({ block: 'nearest', inline: 'nearest', behavior: 'smooth' });
+      }
+      if (typeof el.select === 'function' && el.tagName === 'INPUT' && el.type !== 'date') {
+        try {
+          el.select();
+        } catch {}
+      }
+      return true;
+    }
+    return false;
+  };
+
+  const focusNextField = (currentNavId) => {
+    const orderedIds = getOrderedNavIds();
+    const currentIdx = orderedIds.indexOf(currentNavId);
+    if (currentIdx !== -1 && currentIdx < orderedIds.length - 1) {
+      focusNavElement(orderedIds[currentIdx + 1]);
+    }
+  };
+
+  const isAtStart = (target) => {
+    try {
+      if (target.tagName === 'SELECT') return true;
+      if (target.type === 'date' || target.type === 'number') return true;
+      if (typeof target.selectionStart === 'number') {
+        return target.selectionStart === 0 && target.selectionEnd === 0;
+      }
+      return true;
+    } catch {
+      return true;
+    }
+  };
+
+  const isAtEnd = (target) => {
+    try {
+      if (target.tagName === 'SELECT') return true;
+      if (target.type === 'date' || target.type === 'number') return true;
+      if (typeof target.selectionStart === 'number') {
+        const len = (target.value || '').length;
+        return target.selectionStart === len && target.selectionEnd === len;
+      }
+      return true;
+    } catch {
+      return true;
+    }
+  };
+
+  const handleKeyDown = (e) => {
+    if (isViewMode) return;
+    const target = e.target;
+    if (!target || !['INPUT', 'SELECT', 'TEXTAREA', 'BUTTON'].includes(target.tagName)) return;
+
+    const key = e.key;
+    if (!['Enter', 'ArrowDown', 'ArrowUp', 'ArrowLeft', 'ArrowRight'].includes(key)) return;
+
+    const navId = target.getAttribute('data-nav-id') || target.id;
+    if (!navId) return;
+
+    const orderedIds = getOrderedNavIds();
+    const currentIdx = orderedIds.indexOf(navId);
+    if (currentIdx === -1) return;
+
+    const verticalMap = buildVerticalNavMap(orderedIds);
+
+    // 1. ENTER KEY: Advance to next field
+    if (key === 'Enter') {
+      if (navId === 'order-field-save_btn') {
+        return; // Allow native form submit on save button
+      }
+      e.preventDefault();
+      if (currentIdx < orderedIds.length - 1) {
+        focusNavElement(orderedIds[currentIdx + 1]);
+      }
+      return;
+    }
+
+    // 2. ARROW DOWN: Move vertically down
+    if (key === 'ArrowDown') {
+      e.preventDefault();
+      const customDown = verticalMap[navId]?.down;
+      if (customDown) {
+        focusNavElement(customDown);
+      } else if (currentIdx < orderedIds.length - 1) {
+        focusNavElement(orderedIds[currentIdx + 1]);
+      }
+      return;
+    }
+
+    // 3. ARROW UP: Move vertically up
+    if (key === 'ArrowUp') {
+      e.preventDefault();
+      const customUp = verticalMap[navId]?.up;
+      if (customUp) {
+        focusNavElement(customUp);
+      } else if (currentIdx > 0) {
+        focusNavElement(orderedIds[currentIdx - 1]);
+      }
+      return;
+    }
+
+    // 4. ARROW RIGHT: Move to next field if cursor is at end
+    if (key === 'ArrowRight' && isAtEnd(target)) {
+      if (navId === 'order-field-save_btn') return;
+      e.preventDefault();
+      if (currentIdx < orderedIds.length - 1) {
+        focusNavElement(orderedIds[currentIdx + 1]);
+      }
+      return;
+    }
+
+    // 5. ARROW LEFT: Move to previous field if cursor is at start
+    if (key === 'ArrowLeft' && isAtStart(target)) {
+      if (currentIdx === 0) return;
+      e.preventDefault();
+      focusNavElement(orderedIds[currentIdx - 1]);
+      return;
+    }
+  };
+
   useEffect(() => {
     if (isOpen) {
       document.body.style.overflow = 'hidden';
       if (scrollRef.current) {
         scrollRef.current.scrollTop = 0;
+      }
+      if (!initialData) {
+        const timer = setTimeout(() => {
+          focusNavElement('order-field-truck_chassis_no');
+        }, 120);
+        return () => clearTimeout(timer);
       }
     } else {
       document.body.style.overflow = '';
@@ -57,7 +344,7 @@ export function OrderFormModal({
     return () => {
       document.body.style.overflow = '';
     };
-  }, [isOpen]);
+  }, [isOpen, initialData]);
 
   if (!isOpen) return null;
 
@@ -284,7 +571,7 @@ export function OrderFormModal({
         {/* ========================================================
             MODAL BODY: EXACT SAME LAYOUT AS ORIGINAL DESIGN
             ======================================================== */}
-        <form onSubmit={handleSubmit} className="modern-modal-form-shell">
+        <form onSubmit={handleSubmit} onKeyDown={handleKeyDown} className="modern-modal-form-shell">
           <div className="modern-modal-body-scroll" ref={scrollRef}>
             {/* VEHICLE & OWNER DETAILS */}
             <div className="modern-section-card basic-info-card">
@@ -315,6 +602,8 @@ export function OrderFormModal({
                 <div className="status-selector-wrap">
                   <label className="status-sel-lbl">Status:</label>
                   <select
+                    id="order-field-status"
+                    data-nav-id="order-field-status"
                     className="modern-select-pill"
                     value={formData.status || 'In Progress'}
                     onChange={(e) => handleBasicChange('status', e.target.value)}
@@ -341,6 +630,8 @@ export function OrderFormModal({
                       <circle cx="17.5" cy="17.5" r="2.5" />
                     </svg>
                     <input
+                      id="order-field-truck_chassis_no"
+                      data-nav-id="order-field-truck_chassis_no"
                       type="text"
                       className="modern-input-ctrl chassis-input-text"
                       placeholder="e.g. GJ-01-AB-1234"
@@ -361,6 +652,8 @@ export function OrderFormModal({
                       <circle cx="12" cy="7" r="4" />
                     </svg>
                     <input
+                      id="order-field-owner_name"
+                      data-nav-id="order-field-owner_name"
                       type="text"
                       className="modern-input-ctrl"
                       placeholder="e.g. Ramesh Patel"
@@ -380,6 +673,8 @@ export function OrderFormModal({
                       <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z" />
                     </svg>
                     <input
+                      id="order-field-mobile_number"
+                      data-nav-id="order-field-mobile_number"
                       type="tel"
                       className="modern-input-ctrl"
                       placeholder="e.g. 9876543210"
@@ -394,6 +689,8 @@ export function OrderFormModal({
                 <div className="modern-form-field">
                   <label className="field-lbl">Order DATE</label>
                   <input
+                    id="order-field-order_date"
+                    data-nav-id="order-field-order_date"
                     type="date"
                     className="modern-input-ctrl"
                     value={formData.order_date || ''}
@@ -407,6 +704,8 @@ export function OrderFormModal({
                 <div className="modern-form-field">
                   <label className="field-lbl">ENTRY DATE</label>
                   <input
+                    id="order-field-entry_date"
+                    data-nav-id="order-field-entry_date"
                     type="date"
                     className="modern-input-ctrl"
                     value={formData.entry_date || ''}
@@ -420,6 +719,8 @@ export function OrderFormModal({
                 <div className="modern-form-field">
                   <label className="field-lbl">DELIVERY DATE</label>
                   <input
+                    id="order-field-delivery_date"
+                    data-nav-id="order-field-delivery_date"
                     type="date"
                     className="modern-input-ctrl"
                     value={formData.delivery_date || ''}
@@ -433,6 +734,8 @@ export function OrderFormModal({
                 <div className="modern-form-field">
                   <label className="field-lbl">Shade No</label>
                   <input
+                    id="order-field-shade_no"
+                    data-nav-id="order-field-shade_no"
                     type="text"
                     className="modern-input-ctrl"
                     placeholder="e.g. Royal Blue / 402"
@@ -446,6 +749,8 @@ export function OrderFormModal({
                 <div className="modern-form-field field-span-full">
                   <label className="field-lbl">Condison</label>
                   <input
+                    id="order-field-condition_text"
+                    data-nav-id="order-field-condition_text"
                     type="text"
                     className="modern-input-ctrl"
                     placeholder="e.g. Cabin and body fabrication specifications..."
@@ -497,6 +802,8 @@ export function OrderFormModal({
                                 {/* 3 Blank Boxes (Exact layout) */}
                                 <div className="three-blank-boxes-group">
                                   <input
+                                    id={`box-finishing-${item.key}-0`}
+                                    data-nav-id={`box-finishing-${item.key}-0`}
                                     type="text"
                                     placeholder="Box 1"
                                     className="box-rect-input"
@@ -505,6 +812,8 @@ export function OrderFormModal({
                                     readOnly={isViewMode}
                                   />
                                   <input
+                                    id={`box-finishing-${item.key}-1`}
+                                    data-nav-id={`box-finishing-${item.key}-1`}
                                     type="text"
                                     placeholder="Box 2"
                                     className="box-rect-input"
@@ -513,6 +822,8 @@ export function OrderFormModal({
                                     readOnly={isViewMode}
                                   />
                                   <input
+                                    id={`box-finishing-${item.key}-2`}
+                                    data-nav-id={`box-finishing-${item.key}-2`}
                                     type="text"
                                     placeholder="Box 3"
                                     className="box-rect-input"
@@ -542,6 +853,7 @@ export function OrderFormModal({
                                 fieldLabel={`${item.label} (${item.subLabel})`}
                                 value={itemData.value || ''}
                                 onChange={(val) => handleFinishingItemChange(item.key, 'value', val)}
+                                onNavigateNext={() => focusNextField(`finishing-${item.key}`)}
                                 options={item.options || []}
                                 placeholder={`यहाँ ${item.label} (${item.subLabel}) लिखें या चुनें...`}
                                 readOnly={isViewMode}
@@ -579,6 +891,8 @@ export function OrderFormModal({
                       <span className="boxes-title-hint">3 Boxes:</span>
                       <div className="three-blank-boxes-group">
                         <input
+                          id={`box-${sec.key}-0`}
+                          data-nav-id={`box-${sec.key}-0`}
                           type="text"
                           placeholder="Box 1"
                           className="box-rect-input"
@@ -587,6 +901,8 @@ export function OrderFormModal({
                           readOnly={isViewMode}
                         />
                         <input
+                          id={`box-${sec.key}-1`}
+                          data-nav-id={`box-${sec.key}-1`}
                           type="text"
                           placeholder="Box 2"
                           className="box-rect-input"
@@ -595,6 +911,8 @@ export function OrderFormModal({
                           readOnly={isViewMode}
                         />
                         <input
+                          id={`box-${sec.key}-2`}
+                          data-nav-id={`box-${sec.key}-2`}
                           type="text"
                           placeholder="Box 3"
                           className="box-rect-input"
@@ -641,6 +959,7 @@ export function OrderFormModal({
                               onChange={(val) =>
                                 handleSectionItemChange(sec.key, item.key, 'value', val)
                               }
+                              onNavigateNext={() => focusNextField(`${sec.key}-${item.key}`)}
                               options={item.options || []}
                               placeholder="यहाँ विवरण लिखें या चुनें..."
                               readOnly={isViewMode}
@@ -664,6 +983,7 @@ export function OrderFormModal({
                                   onChange={(val) =>
                                     handleSectionItemChange(sec.key, item.extraKey, 'value', val)
                                   }
+                                  onNavigateNext={() => focusNextField(`${sec.key}-${item.extraKey}`)}
                                   options={item.extraOptions || []}
                                   placeholder="यहाँ वेल का विवरण लिखें या चुनें..."
                                   readOnly={isViewMode}
@@ -772,6 +1092,8 @@ export function OrderFormModal({
                 ) : null
               ) : (
                 <button
+                  id="order-field-save_btn"
+                  data-nav-id="order-field-save_btn"
                   key="btn-save-submit"
                   type="submit"
                   className="btn-modern-save-submit"
