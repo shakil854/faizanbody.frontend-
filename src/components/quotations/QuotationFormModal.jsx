@@ -17,12 +17,12 @@ const createBlankItem = (id = String(Date.now())) => ({
   ],
   selected_option_index: 0,
   rate: '',
-  qty: '10',
+  qty: '',
   amount: 0,
 });
 
 // Helper to normalize any item format from database, localStorage, or initialData
-const normalizeItem = (raw, fallbackId = String(Date.now())) => {
+const normalizeItem = (raw, fallbackId = String(Date.now()), isNew = false) => {
   let options = [];
 
   if (Array.isArray(raw.variants) && raw.variants.length > 0) {
@@ -59,7 +59,8 @@ const normalizeItem = (raw, fallbackId = String(Date.now())) => {
     ? String(options[selIdx]?.rate || '')
     : String(raw.rate !== undefined && raw.rate !== null ? raw.rate : '');
 
-  const q = parseFloat(raw.qty) || 10;
+  const rawQty = isNew ? '' : (raw.qty !== undefined && raw.qty !== null ? String(raw.qty) : '');
+  const q = parseFloat(rawQty) || 0;
   const r = parseFloat(activeRate) || 0;
   const amount = Math.round(r * q * 100) / 100;
 
@@ -74,7 +75,7 @@ const normalizeItem = (raw, fallbackId = String(Date.now())) => {
     ],
     selected_option_index: selIdx,
     rate: activeRate,
-    qty: String(raw.qty !== undefined ? raw.qty : '10'),
+    qty: rawQty,
     amount,
   };
 };
@@ -105,9 +106,9 @@ export function QuotationFormModal({
   const [items, setItems] = useState(() => [createBlankItem('1')]);
   const [loadingItems, setLoadingItems] = useState(false);
 
-  // Extra and Discount percentage
-  const [extraPercent, setExtraPercent] = useState('0');
-  const [discountPercent, setDiscountPercent] = useState('0');
+  // Extra and Discount percentage (empty boxes by default)
+  const [extraPercent, setExtraPercent] = useState('');
+  const [discountPercent, setDiscountPercent] = useState('');
 
   const [isSaving, setIsSaving] = useState(false);
   const [templateSavedToast, setTemplateSavedToast] = useState(false);
@@ -119,7 +120,7 @@ export function QuotationFormModal({
       if (raw) {
         const parsed = JSON.parse(raw);
         if (Array.isArray(parsed) && parsed.length > 0) {
-          return parsed.map((it, idx) => normalizeItem(it, String(Date.now() + idx)));
+          return parsed.map((it, idx) => normalizeItem(it, String(Date.now() + idx), true));
         }
       }
     } catch {}
@@ -138,16 +139,16 @@ export function QuotationFormModal({
       setTruckChassisNo(initialData.truck_chassis_no || '');
       setStatus(initialData.status || 'Draft');
       setNotes(initialData.notes || '');
-      setExtraPercent(String(initialData.extra_percent ?? '0'));
-      setDiscountPercent(String(initialData.discount_percent ?? '0'));
+      setExtraPercent(initialData.extra_percent ? String(initialData.extra_percent) : '');
+      setDiscountPercent(initialData.discount_percent ? String(initialData.discount_percent) : '');
 
       if (Array.isArray(initialData.items) && initialData.items.length > 0) {
-        setItems(initialData.items.map((it, idx) => normalizeItem(it, String(idx + 1))));
+        setItems(initialData.items.map((it, idx) => normalizeItem(it, String(idx + 1), false)));
       } else {
         setItems([createBlankItem('1')]);
       }
     } else {
-      // New Quotation Defaults
+      // New Quotation Defaults (Clean Empty Boxes)
       const today = new Date().toISOString().split('T')[0];
       setQuotationDate(today);
       setCustomerName('');
@@ -155,8 +156,8 @@ export function QuotationFormModal({
       setTruckChassisNo('');
       setStatus('Draft');
       setNotes('');
-      setExtraPercent('0');
-      setDiscountPercent('0');
+      setExtraPercent('');
+      setDiscountPercent('');
 
       // Generate default quotation no
       const year = new Date().getFullYear();
@@ -164,14 +165,14 @@ export function QuotationFormModal({
       const nextNum = existing.length + 1;
       setQuotationNo(`QT-${year}-${String(nextNum).padStart(3, '0')}`);
 
-      // 1. Fetch saved items from Database Catalog FIRST
+      // 1. Fetch saved items from Database Catalog FIRST (Qty is empty box for new quote)
       setLoadingItems(true);
       quotationService
         .getCatalogItems({ forceRefresh: true })
         .then((res) => {
           const dbList = res?.data;
           if (Array.isArray(dbList) && dbList.length > 0) {
-            const mapped = dbList.map((cat, idx) => normalizeItem(cat, String(cat.id || Date.now() + idx)));
+            const mapped = dbList.map((cat, idx) => normalizeItem(cat, String(cat.id || Date.now() + idx), true));
             setItems(mapped);
             return;
           }
@@ -1039,19 +1040,18 @@ export function QuotationFormModal({
                           />
                         </td>
 
-                        {/* 2. Qty */}
+                        {/* 2. Qty (Clean empty box) */}
                         <td className="col-td-qty">
                           <input
                             type="number"
                             step="any"
                             min="0"
                             className="ledger-input ledger-qty-input font-mono font-bold"
-                            placeholder="10"
+                            placeholder=""
                             value={row.qty}
                             onChange={(e) => handleRowChange(idx, 'qty', e.target.value)}
                             data-nav-row={idx}
                             data-nav-col="qty"
-                            required
                           />
                         </td>
 
@@ -1269,7 +1269,7 @@ export function QuotationFormModal({
                       onChange={(e) => setExtraPercent(e.target.value)}
                       data-nav-group="summary"
                       data-nav-name="extra"
-                      placeholder="0"
+                      placeholder=""
                     />
                     <span className="percent-char" style={{ color: '#2563eb' }}>%</span>
                   </div>
@@ -1294,7 +1294,7 @@ export function QuotationFormModal({
                       onChange={(e) => setDiscountPercent(e.target.value)}
                       data-nav-group="summary"
                       data-nav-name="discount"
-                      placeholder="0"
+                      placeholder=""
                     />
                     <span className="percent-char">%</span>
                   </div>
