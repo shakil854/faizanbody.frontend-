@@ -80,6 +80,7 @@ export function QuotationCatalogModal({ isOpen, onClose, onNotify }) {
     try {
       const payload = {
         id: editingItem?.id,
+        sort_order: editingItem?.sort_order,
         name: itemName.trim(),
         rate: Number(itemRate) || 0,
         unit: itemUnit.trim() || 'Unit',

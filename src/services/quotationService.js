@@ -159,13 +159,28 @@ export const quotationService = {
     const saved = response.data?.data;
     if (saved) {
       if (!cachedCatalogItems) cachedCatalogItems = [];
-      const idx = cachedCatalogItems.findIndex((it) => it.id === saved.id || it.name.toLowerCase() === saved.name.toLowerCase());
-      if (idx !== -1) {
-        cachedCatalogItems[idx] = saved;
+      if (Array.isArray(saved)) {
+        cachedCatalogItems = saved;
       } else {
-        cachedCatalogItems.push(saved);
+        const idx = cachedCatalogItems.findIndex((it) => it.id === saved.id || (saved.name && it.name && it.name.toLowerCase() === saved.name.toLowerCase()));
+        if (idx !== -1) {
+          cachedCatalogItems[idx] = saved;
+        } else {
+          cachedCatalogItems.push(saved);
+        }
       }
-      cachedCatalogItems.sort((a, b) => a.name.localeCompare(b.name));
+      cachedCatalogItems.sort((a, b) => (Number(a.sort_order) || 0) - (Number(b.sort_order) || 0) || (a.id || 0) - (b.id || 0));
+      notifyCatalogListeners();
+    }
+    return response.data;
+  },
+
+  async saveCatalogItemsBatch(itemsList) {
+    const response = await axiosInstance.post(ENDPOINTS.QUOTATION_CATALOG_ITEMS, itemsList);
+    const saved = response.data?.data;
+    if (saved && Array.isArray(saved)) {
+      cachedCatalogItems = saved;
+      cachedCatalogItems.sort((a, b) => (Number(a.sort_order) || 0) - (Number(b.sort_order) || 0) || (a.id || 0) - (b.id || 0));
       notifyCatalogListeners();
     }
     return response.data;

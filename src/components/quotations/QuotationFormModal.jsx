@@ -67,6 +67,7 @@ const normalizeItem = (raw, fallbackId = String(Date.now()), isNew = false) => {
   return {
     id: String(raw.id || fallbackId),
     catalog_id: raw.catalog_id || (raw.id && !isNaN(raw.id) ? raw.id : null),
+    sort_order: raw.sort_order !== undefined && raw.sort_order !== null ? Number(raw.sort_order) : 0,
     name: raw.name || '',
     has_options: hasOptions,
     options: hasOptions ? options : [
@@ -338,9 +339,42 @@ export function QuotationFormModal({
     setItems(updated);
   };
 
-  // Add new item row
+  // Move item row up
+  const handleMoveRowUp = (index) => {
+    if (index <= 0) return;
+    setItems((prev) => {
+      const updated = [...prev];
+      const temp = updated[index];
+      updated[index] = updated[index - 1];
+      updated[index - 1] = temp;
+      return updated;
+    });
+  };
+
+  // Move item row down
+  const handleMoveRowDown = (index) => {
+    if (index >= items.length - 1) return;
+    setItems((prev) => {
+      const updated = [...prev];
+      const temp = updated[index];
+      updated[index] = updated[index + 1];
+      updated[index + 1] = temp;
+      return updated;
+    });
+  };
+
+  // Add new item row at the bottom
   const handleAddRow = () => {
-    setItems([...items, createBlankItem(String(Date.now()))]);
+    const newItem = createBlankItem(String(Date.now()));
+    setItems((prev) => [...prev, newItem]);
+    setTimeout(() => {
+      const newIdx = items.length;
+      const el = document.querySelector(`[data-nav-row="${newIdx}"][data-nav-col="name"]`);
+      if (el) {
+        el.focus();
+        el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      }
+    }, 50);
   };
 
   // Remove row (matching other modules with confirm & trash icon)
@@ -378,7 +412,7 @@ export function QuotationFormModal({
     try {
       localStorage.setItem(DEFAULT_ITEMS_STORAGE_KEY, JSON.stringify(valid));
 
-      for (const it of valid) {
+      const batchPayload = valid.map((it, idx) => {
         const variantsList = it.has_options && Array.isArray(it.options)
           ? it.options.map((opt) => ({
               name: (opt.name || '').trim(),
@@ -386,14 +420,17 @@ export function QuotationFormModal({
             }))
           : [];
 
-        await quotationService.saveCatalogItem({
+        return {
           id: it.catalog_id || undefined,
           name: it.name.trim(),
           rate: parseFloat(it.rate) || 0,
           unit: 'Unit',
           variants: variantsList,
-        }).catch(() => {});
-      }
+          sort_order: idx + 1,
+        };
+      });
+
+      await quotationService.saveCatalogItemsBatch(batchPayload);
 
       setTemplateSavedToast(true);
       setTimeout(() => setTemplateSavedToast(false), 3000);
@@ -755,6 +792,9 @@ export function QuotationFormModal({
             : [];
 
           return {
+            id: it.id,
+            catalog_id: it.catalog_id || null,
+            sort_order: idx + 1,
             name: it.name.trim(),
             has_options: hasOpt,
             options: hasOpt ? it.options : [],
@@ -783,10 +823,10 @@ export function QuotationFormModal({
         status,
       };
 
-      // Auto-save all items to Database Catalog & localStorage so they stay permanently!
+      // Auto-save all items to Database Catalog & localStorage preserving exact line sequence
       try {
         localStorage.setItem(DEFAULT_ITEMS_STORAGE_KEY, JSON.stringify(validItems));
-        for (const it of validItems) {
+        const batchPayload = validItems.map((it, idx) => {
           const variantsList = it.has_options && Array.isArray(it.options)
             ? it.options.map((opt) => ({
                 name: (opt.name || '').trim(),
@@ -794,14 +834,17 @@ export function QuotationFormModal({
               }))
             : [];
 
-          quotationService.saveCatalogItem({
+          return {
             id: it.catalog_id || undefined,
             name: it.name.trim(),
             rate: parseFloat(it.rate) || 0,
             unit: 'Unit',
             variants: variantsList,
-          }).catch(() => {});
-        }
+            sort_order: idx + 1,
+          };
+        });
+
+        quotationService.saveCatalogItemsBatch(batchPayload).catch(() => {});
       } catch {}
 
       await onSave(payload, initialData?.id);
@@ -1189,22 +1232,72 @@ export function QuotationFormModal({
                           ₹{(Number(row.amount) || ((parseFloat(row.rate) || 0) * (parseFloat(row.qty) || 0))).toLocaleString('en-IN', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}
                         </td>
 
-                        {/* 5. Delete Action (Standard Trash Can Icon like Orders) */}
-                        <td className="col-td-del">
-                          <button
-                            type="button"
-                            className="btn-ledger-trash"
-                            onClick={() => handleRemoveRow(idx)}
-                            title={`Delete ${row.name || 'item'}`}
-                            aria-label="Delete item"
-                          >
-                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                              <polyline points="3 6 5 6 21 6" />
-                              <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
-                              <line x1="10" y1="11" x2="10" y2="17" />
-                              <line x1="14" y1="11" x2="14" y2="17" />
-                            </svg>
-                          </button>
+                        {/* 5. Reorder & Delete Actions */}
+                        <td className="col-td-del" style={{ whiteSpace: 'nowrap' }}>
+                          <div style={{ display: 'inline-flex', alignItems: 'center', gap: '3px' }}>
+                            <button
+                              type="button"
+                              onClick={() => handleMoveRowUp(idx)}
+                              disabled={idx === 0}
+                              style={{
+                                border: '1px solid #cbd5e1',
+                                background: idx === 0 ? '#f8fafc' : '#ffffff',
+                                color: idx === 0 ? '#cbd5e1' : '#334155',
+                                borderRadius: '4px',
+                                width: '22px',
+                                height: '22px',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                cursor: idx === 0 ? 'not-allowed' : 'pointer',
+                                fontSize: '10px',
+                                fontWeight: 800,
+                                padding: 0,
+                                transition: 'all 0.15s ease',
+                              }}
+                              title="Move line up (ऊपर करें)"
+                            >
+                              ▲
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleMoveRowDown(idx)}
+                              disabled={idx === items.length - 1}
+                              style={{
+                                border: '1px solid #cbd5e1',
+                                background: idx === items.length - 1 ? '#f8fafc' : '#ffffff',
+                                color: idx === items.length - 1 ? '#cbd5e1' : '#334155',
+                                borderRadius: '4px',
+                                width: '22px',
+                                height: '22px',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                cursor: idx === items.length - 1 ? 'not-allowed' : 'pointer',
+                                fontSize: '10px',
+                                fontWeight: 800,
+                                padding: 0,
+                                transition: 'all 0.15s ease',
+                              }}
+                              title="Move line down (नीचे करें)"
+                            >
+                              ▼
+                            </button>
+                            <button
+                              type="button"
+                              className="btn-ledger-trash"
+                              onClick={() => handleRemoveRow(idx)}
+                              title={`Delete ${row.name || 'item'}`}
+                              aria-label="Delete item"
+                            >
+                              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                                <polyline points="3 6 5 6 21 6" />
+                                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                                <line x1="10" y1="11" x2="10" y2="17" />
+                                <line x1="14" y1="11" x2="14" y2="17" />
+                              </svg>
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     ))}
