@@ -128,6 +128,21 @@ export const QuotationCard = React.memo(function QuotationCard({
         </div>
       )}
 
+      {/* Body Work Badge (if present) */}
+      {quotation.body_calc?.has_data && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', marginBottom: '0.45rem', fontSize: '0.74rem', background: '#eff6ff', padding: '0.2rem 0.5rem', borderRadius: '6px', color: '#1e40af', fontWeight: 600 }}>
+          <span>🚛 બોડી:</span>
+          <strong>
+            {quotation.body_calc.taliyu?.length && quotation.body_calc.taliyu?.width
+              ? `${quotation.body_calc.taliyu.length}' × ${quotation.body_calc.taliyu.width}'`
+              : 'સાઇઝ'}
+          </strong>
+          {Number(quotation.total_weight || quotation.body_calc.total_weight) > 0 && (
+            <span> &bull; {Number(quotation.total_weight || quotation.body_calc.total_weight).toLocaleString('en-IN')} kg</span>
+          )}
+        </div>
+      )}
+
       {/* Mobile Number & Direct Call / WhatsApp Actions */}
       {quotation.mobile_number && (
         <div
