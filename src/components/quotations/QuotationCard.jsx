@@ -130,7 +130,7 @@ export const QuotationCard = React.memo(function QuotationCard({
 
       {/* Body Work Badge (if present) */}
       {quotation.body_calc?.has_data && (
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', marginBottom: '0.45rem', fontSize: '0.74rem', background: '#eff6ff', padding: '0.2rem 0.5rem', borderRadius: '6px', color: '#1e40af', fontWeight: 600 }}>
+        <div className="quotation-body-badge">
           <span>🚛 બોડી:</span>
           <strong>
             {quotation.body_calc.taliyu?.length && quotation.body_calc.taliyu?.width
