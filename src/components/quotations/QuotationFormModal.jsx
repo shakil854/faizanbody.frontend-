@@ -1070,7 +1070,7 @@ export function QuotationFormModal({
     const tWeightPerSqFt = parseFloat(tChosen.weight_per_sqft) || 0;
     const tRate = parseFloat(tChosen.rate) || 0;
     const tWeight = Math.round(tSqFt * tWeightPerSqFt * 100) / 100;
-    const tAmount = Math.round(tSqFt * tRate * 100) / 100;
+    const tAmount = Math.round(tWeight * tRate * 100) / 100;
     const tSelectedName = tChosen.name || '4 mm';
 
     // B. Side (Length from Taliyu or custom, Height, SqFt = L * H * 2)
@@ -1088,7 +1088,7 @@ export function QuotationFormModal({
     const sWeightPerSqFt = parseFloat(sChosen.weight_per_sqft) || 0;
     const sRate = parseFloat(sChosen.rate) || 0;
     const sWeight = Math.round(sSqFt * sWeightPerSqFt * 100) / 100;
-    const sAmount = Math.round(sSqFt * sRate * 100) / 100;
+    const sAmount = Math.round(sWeight * sRate * 100) / 100;
     const sSelectedName = sChosen.name || '12 ગેજ';
 
     // C. Dhoka
@@ -1554,7 +1554,7 @@ export function QuotationFormModal({
                   <div className="body-calc-options-wrap">
                     <div className="body-calc-options-head">
                       <span>ઓપ્શન / જાડાઈ (સિલેક્ટ કરો)</span>
-                      <span>૧ S.F. વજન (kg) &bull; ભાવ (₹)</span>
+                      <span>૧ S.F. વજન (kg) &bull; ભાવ (₹/kg)</span>
                     </div>
 
                     {(bodyCalc.taliyu?.options || []).map((opt, optIdx) => (
@@ -1596,11 +1596,11 @@ export function QuotationFormModal({
                           step="any"
                           min="0"
                           className="body-calc-opt-num"
-                          placeholder="ભાવ ₹"
+                          placeholder="ભાવ ₹/kg"
                           value={opt.rate}
                           onClick={(e) => e.stopPropagation()}
                           onChange={(e) => handleUpdateTaliyuOption(optIdx, 'rate', e.target.value)}
-                          title="૧ ચોરસ ફૂટ નો ભાવ (₹)"
+                          title="૧ kg નો ભાવ (₹)"
                         />
                         {bodyCalc.taliyu?.options?.length > 1 && (
                           <button
@@ -1694,7 +1694,7 @@ export function QuotationFormModal({
                   <div className="body-calc-options-wrap">
                     <div className="body-calc-options-head">
                       <span>ઓપ્શન / ગેજ (સિલેક્ટ કરો)</span>
-                      <span>૧ S.F. વજન (kg) &bull; ભાવ (₹)</span>
+                      <span>૧ S.F. વજન (kg) &bull; ભાવ (₹/kg)</span>
                     </div>
 
                     {(bodyCalc.side?.options || []).map((opt, optIdx) => (
@@ -1736,11 +1736,11 @@ export function QuotationFormModal({
                           step="any"
                           min="0"
                           className="body-calc-opt-num"
-                          placeholder="ભાવ ₹"
+                          placeholder="ભાવ ₹/kg"
                           value={opt.rate}
                           onClick={(e) => e.stopPropagation()}
                           onChange={(e) => handleUpdateSideOption(optIdx, 'rate', e.target.value)}
-                          title="૧ ચોરસ ફૂટ નો ભાવ (₹)"
+                          title="૧ kg નો ભાવ (₹)"
                         />
                         {bodyCalc.side?.options?.length > 1 && (
                           <button

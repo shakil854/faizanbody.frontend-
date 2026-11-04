@@ -28,11 +28,11 @@ export function QuotationPrintModal({ isOpen, onClose, quotation }) {
       lines.push(`*🚛 BODY FABRICATION (ગાડી કાંટલે):*`);
       if (Number(quotation.body_calc.taliyu?.amount) > 0) {
         const t = quotation.body_calc.taliyu;
-        lines.push(`• *તળીયું (${t.selected_label || t.selected_option})*: ${t.length}' × ${t.width}' = ${t.total_sqft} S.F. @ ₹${t.rate}/S.F. = *₹${Number(t.amount).toLocaleString('en-IN')}*`);
+        lines.push(`• *તળીયું (${t.selected_label || t.selected_option})*: ${t.length}' × ${t.width}' = ${t.total_sqft} S.F.${Number(t.total_weight) > 0 ? ` (${t.total_weight} kg)` : ''} @ ₹${t.rate}/kg = *₹${Number(t.amount).toLocaleString('en-IN')}*`);
       }
       if (Number(quotation.body_calc.side?.amount) > 0) {
         const s = quotation.body_calc.side;
-        lines.push(`• *Side (${s.selected_label || s.selected_option})*: ${s.length}' × ${s.height}' × 2 = ${s.total_sqft} S.F. @ ₹${s.rate}/S.F. = *₹${Number(s.amount).toLocaleString('en-IN')}*`);
+        lines.push(`• *Side (${s.selected_label || s.selected_option})*: ${s.length}' × ${s.height}' × 2 = ${s.total_sqft} S.F.${Number(s.total_weight) > 0 ? ` (${s.total_weight} kg)` : ''} @ ₹${s.rate}/kg = *₹${Number(s.amount).toLocaleString('en-IN')}*`);
       }
       if (Number(quotation.body_calc.dhoka?.amount) > 0) {
         const d = quotation.body_calc.dhoka;
@@ -185,10 +185,17 @@ export function QuotationPrintModal({ isOpen, onClose, quotation }) {
                         </span>
                       </td>
                       <td style={{ textAlign: 'center' }} className="font-mono">
-                        {quotation.body_calc.taliyu.total_sqft} Sq.Ft.
+                        {Number(quotation.body_calc.taliyu.total_weight) > 0 ? (
+                          <>
+                            <strong>{quotation.body_calc.taliyu.total_weight} kg</strong>
+                            <span style={{ fontSize: '0.72rem', color: '#64748b', display: 'block' }}>({quotation.body_calc.taliyu.total_sqft} Sq.Ft.)</span>
+                          </>
+                        ) : (
+                          `${quotation.body_calc.taliyu.total_sqft} Sq.Ft.`
+                        )}
                       </td>
                       <td style={{ textAlign: 'right' }} className="font-mono">
-                        ₹{Number(quotation.body_calc.taliyu.rate).toLocaleString('en-IN', { minimumFractionDigits: 2 })} / S.F.
+                        ₹{Number(quotation.body_calc.taliyu.rate).toLocaleString('en-IN', { minimumFractionDigits: 2 })} / kg
                       </td>
                       <td style={{ textAlign: 'right' }} className="font-mono font-semibold">
                         ₹{Number(quotation.body_calc.taliyu.amount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
@@ -209,10 +216,17 @@ export function QuotationPrintModal({ isOpen, onClose, quotation }) {
                         </span>
                       </td>
                       <td style={{ textAlign: 'center' }} className="font-mono">
-                        {quotation.body_calc.side.total_sqft} Sq.Ft.
+                        {Number(quotation.body_calc.side.total_weight) > 0 ? (
+                          <>
+                            <strong>{quotation.body_calc.side.total_weight} kg</strong>
+                            <span style={{ fontSize: '0.72rem', color: '#64748b', display: 'block' }}>({quotation.body_calc.side.total_sqft} Sq.Ft.)</span>
+                          </>
+                        ) : (
+                          `${quotation.body_calc.side.total_sqft} Sq.Ft.`
+                        )}
                       </td>
                       <td style={{ textAlign: 'right' }} className="font-mono">
-                        ₹{Number(quotation.body_calc.side.rate).toLocaleString('en-IN', { minimumFractionDigits: 2 })} / S.F.
+                        ₹{Number(quotation.body_calc.side.rate).toLocaleString('en-IN', { minimumFractionDigits: 2 })} / kg
                       </td>
                       <td style={{ textAlign: 'right' }} className="font-mono font-semibold">
                         ₹{Number(quotation.body_calc.side.amount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
