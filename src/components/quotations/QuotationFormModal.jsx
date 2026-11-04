@@ -2501,19 +2501,6 @@ export function QuotationFormModal({
               >
                 Cancel
               </button>
-
-              {isEditMode && onOpenPrint && (
-                <button
-                  type="button"
-                  className="btn btn-secondary-luxury"
-                  style={{ background: '#eff6ff', color: '#1d4ed8', borderColor: '#bfdbfe', fontWeight: 700 }}
-                  onClick={() => onOpenPrint(initialData)}
-                  disabled={isSaving}
-                  title="Print Quotation Slip / WhatsApp PDF"
-                >
-                  <span>🖨️ Print / PDF</span>
-                </button>
-              )}
             </div>
 
             <div className="footer-right">
