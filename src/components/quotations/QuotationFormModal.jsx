@@ -84,6 +84,10 @@ const createInitialBodyCalc = (savedDefaults = null) => {
       weight_per_foot: d.thambhla?.weight_per_foot ?? '',
       rate: d.thambhla?.rate ?? '',
     },
+    purchuran: {
+      qty: '',
+      rate: d.purchuran?.rate ?? '',
+    },
   };
 };
 
@@ -137,6 +141,10 @@ const normalizeBodyCalcFromData = (raw) => {
       height: raw.thambhla?.height !== undefined && raw.thambhla?.height !== null ? String(raw.thambhla.height) : '',
       weight_per_foot: String(raw.thambhla?.weight_per_foot ?? defaults.thambhla?.weight_per_foot ?? ''),
       rate: String(raw.thambhla?.rate ?? defaults.thambhla?.rate ?? ''),
+    },
+    purchuran: {
+      qty: raw.purchuran?.qty !== undefined && raw.purchuran?.qty !== null ? String(raw.purchuran.qty) : '',
+      rate: String(raw.purchuran?.rate ?? defaults.purchuran?.rate ?? ''),
     },
   };
 };
@@ -736,6 +744,13 @@ export function QuotationFormModal({
     }));
   };
 
+  const handlePurchuranChange = (field, value) => {
+    setBodyCalc((prev) => ({
+      ...prev,
+      purchuran: { ...prev.purchuran, [field]: value },
+    }));
+  };
+
   const handleSaveBodyDefaults = () => {
     try {
       const defaults = {
@@ -754,6 +769,9 @@ export function QuotationFormModal({
         thambhla: {
           weight_per_foot: bodyCalc.thambhla?.weight_per_foot,
           rate: bodyCalc.thambhla?.rate,
+        },
+        purchuran: {
+          rate: bodyCalc.purchuran?.rate,
         },
       };
       localStorage.setItem(DEFAULT_BODY_CALC_STORAGE_KEY, JSON.stringify(defaults));
@@ -1111,8 +1129,13 @@ export function QuotationFormModal({
     const thWeight = Math.round(thTotalFeet * thWeightPerFoot * 100) / 100;
     const thAmount = Math.round(thWeight * thRate * 100) / 100;
 
+    // E. Purchuran (પરચુરણ)
+    const pQty = parseFloat(bodyCalc.purchuran?.qty) || 0;
+    const pRate = parseFloat(bodyCalc.purchuran?.rate) || 0;
+    const pAmount = Math.round(pQty * pRate * 100) / 100;
+
     // Body Totals
-    const bodyTotalAmount = Math.round((tAmount + sAmount + dAmount + thAmount) * 100) / 100;
+    const bodyTotalAmount = Math.round((tAmount + sAmount + dAmount + thAmount + pAmount) * 100) / 100;
     const bodyTotalWeight = Math.round((tWeight + sWeight + dWeight + thWeight) * 100) / 100;
 
     // Grand Subtotal
@@ -1133,6 +1156,7 @@ export function QuotationFormModal({
         side: { sqft: sSqFt, weight: sWeight, amount: sAmount, rate: sRate, weight_per_sqft: sWeightPerSqFt, effectiveLength: sLen, selectedName: sSelectedName, selectedIndex: selSideIdx },
         dhoka: { weight: dWeight, amount: dAmount, qty: dQty },
         thambhla: { feet: thTotalFeet, weight: thWeight, amount: thAmount, effectiveQty: thQty, effectiveHeight: thHeight },
+        purchuran: { qty: pQty, rate: pRate, amount: pAmount },
       },
       bodyTotalAmount,
       bodyTotalWeight,
@@ -1208,6 +1232,11 @@ export function QuotationFormModal({
           total_weight: calculations.bodyCalcDetails.thambhla.weight,
           rate: parseFloat(bodyCalc.thambhla?.rate) || 0,
           amount: calculations.bodyCalcDetails.thambhla.amount,
+        },
+        purchuran: {
+          qty: calculations.bodyCalcDetails.purchuran.qty,
+          rate: calculations.bodyCalcDetails.purchuran.rate,
+          amount: calculations.bodyCalcDetails.purchuran.amount,
         },
         total_weight: calculations.bodyTotalWeight,
         total_amount: calculations.bodyTotalAmount,
@@ -1289,6 +1318,9 @@ export function QuotationFormModal({
           thambhla: {
             weight_per_foot: bodyCalc.thambhla?.weight_per_foot,
             rate: bodyCalc.thambhla?.rate,
+          },
+          purchuran: {
+            rate: bodyCalc.purchuran?.rate,
           },
         };
         localStorage.setItem(DEFAULT_BODY_CALC_STORAGE_KEY, JSON.stringify(bodyDefaults));
@@ -1944,6 +1976,66 @@ export function QuotationFormModal({
                     </div>
                     <div className="body-calc-result-badge-amount">
                       ₹{calculations.bodyCalcDetails.thambhla.amount.toLocaleString('en-IN')}
+                    </div>
+                  </div>
+                </div>
+
+                {/* ----------------------------------------------------
+                    PART 5: પરચુરણ (Purchuran / Misc)
+                    Inputs: Quantity (નંગ / Qty), Rate (ભાવ ₹)
+                    Amount = Qty * Rate
+                    ---------------------------------------------------- */}
+                <div className="body-part-card">
+                  <div className="body-part-top">
+                    <span className="body-part-label">
+                      <span>૫. પરચુરણ (Purchuran)</span>
+                    </span>
+                    <span style={{ fontSize: '0.72rem', color: '#64748b', fontWeight: 600 }}>
+                      રકમ = Quantity × ભાવ (₹)
+                    </span>
+                  </div>
+
+                  {/* Inputs */}
+                  <div className="body-inputs-row" style={{ gridTemplateColumns: 'repeat(2, 1fr)' }}>
+                    <div className="body-input-group">
+                      <label className="body-input-label">Quantity (નંગ / Qty)</label>
+                      <input
+                        type="number"
+                        step="any"
+                        min="0"
+                        className="body-calc-input font-mono"
+                        placeholder="e.g. 1"
+                        value={bodyCalc.purchuran?.qty}
+                        onChange={(e) => handlePurchuranChange('qty', e.target.value)}
+                      />
+                    </div>
+
+                    <div className="body-input-group">
+                      <label className="body-input-label">ભાવ (₹ / Rate)</label>
+                      <input
+                        type="number"
+                        step="any"
+                        min="0"
+                        className="body-calc-input font-mono"
+                        placeholder="e.g. 500"
+                        value={bodyCalc.purchuran?.rate}
+                        onChange={(e) => handlePurchuranChange('rate', e.target.value)}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Live Results Bar */}
+                  <div className="body-calc-result-box">
+                    <div>
+                      <span>ગણતરી: </span>
+                      <strong>
+                        {calculations.bodyCalcDetails.purchuran.qty > 0 && calculations.bodyCalcDetails.purchuran.rate > 0
+                          ? `${calculations.bodyCalcDetails.purchuran.qty} × ₹${calculations.bodyCalcDetails.purchuran.rate}`
+                          : 'Qty × Rate'}
+                      </strong>
+                    </div>
+                    <div className="body-calc-result-badge-amount">
+                      ₹{calculations.bodyCalcDetails.purchuran.amount.toLocaleString('en-IN')}
                     </div>
                   </div>
                 </div>
