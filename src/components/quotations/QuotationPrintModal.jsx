@@ -44,7 +44,7 @@ export function QuotationPrintModal({ isOpen, onClose, quotation }) {
       }
       if (Number(quotation.body_calc.purchuran?.amount) > 0) {
         const p = quotation.body_calc.purchuran;
-        lines.push(`• *પરચુરણ*: ${p.qty} નંગ @ ₹${p.rate} = *₹${Number(p.amount).toLocaleString('en-IN')}*`);
+        lines.push(`• *પરચુરણ*: ${p.weight || p.qty} kg @ ₹${p.rate}/kg = *₹${Number(p.amount).toLocaleString('en-IN')}*`);
       }
       if (Number(quotation.body_calc.total_weight) > 0) {
         lines.push(`  _Total Body Weight: ${Number(quotation.body_calc.total_weight).toLocaleString('en-IN')} kg_`);
@@ -287,10 +287,10 @@ export function QuotationPrintModal({ isOpen, onClose, quotation }) {
                         <div className="print-item-title">પરચુરણ (Purchuran / Misc)</div>
                       </td>
                       <td style={{ textAlign: 'center' }} className="font-mono">
-                        {quotation.body_calc.purchuran.qty}
+                        {quotation.body_calc.purchuran.weight || quotation.body_calc.purchuran.qty} kg
                       </td>
                       <td style={{ textAlign: 'right' }} className="font-mono">
-                        ₹{Number(quotation.body_calc.purchuran.rate).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                        ₹{Number(quotation.body_calc.purchuran.rate).toLocaleString('en-IN', { minimumFractionDigits: 2 })} / kg
                       </td>
                       <td style={{ textAlign: 'right' }} className="font-mono font-semibold">
                         ₹{Number(quotation.body_calc.purchuran.amount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}

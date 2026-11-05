@@ -85,7 +85,7 @@ const createInitialBodyCalc = (savedDefaults = null) => {
       rate: d.thambhla?.rate ?? '',
     },
     purchuran: {
-      qty: '',
+      weight: '',
       rate: d.purchuran?.rate ?? '',
     },
   };
@@ -143,7 +143,9 @@ const normalizeBodyCalcFromData = (raw) => {
       rate: String(raw.thambhla?.rate ?? defaults.thambhla?.rate ?? ''),
     },
     purchuran: {
-      qty: raw.purchuran?.qty !== undefined && raw.purchuran?.qty !== null ? String(raw.purchuran.qty) : '',
+      weight: raw.purchuran?.weight !== undefined && raw.purchuran?.weight !== null
+        ? String(raw.purchuran.weight)
+        : (raw.purchuran?.qty !== undefined && raw.purchuran?.qty !== null ? String(raw.purchuran.qty) : ''),
       rate: String(raw.purchuran?.rate ?? defaults.purchuran?.rate ?? ''),
     },
   };
@@ -1130,13 +1132,13 @@ export function QuotationFormModal({
     const thAmount = Math.round(thWeight * thRate * 100) / 100;
 
     // E. Purchuran (પરચુરણ)
-    const pQty = parseFloat(bodyCalc.purchuran?.qty) || 0;
+    const pWeight = parseFloat(bodyCalc.purchuran?.weight ?? bodyCalc.purchuran?.qty) || 0;
     const pRate = parseFloat(bodyCalc.purchuran?.rate) || 0;
-    const pAmount = Math.round(pQty * pRate * 100) / 100;
+    const pAmount = Math.round(pWeight * pRate * 100) / 100;
 
     // Body Totals
     const bodyTotalAmount = Math.round((tAmount + sAmount + dAmount + thAmount + pAmount) * 100) / 100;
-    const bodyTotalWeight = Math.round((tWeight + sWeight + dWeight + thWeight) * 100) / 100;
+    const bodyTotalWeight = Math.round((tWeight + sWeight + dWeight + thWeight + pWeight) * 100) / 100;
 
     // Grand Subtotal
     const subtotal = Math.round((bodyTotalAmount + lowerItemsSubtotal) * 100) / 100;
@@ -1156,7 +1158,7 @@ export function QuotationFormModal({
         side: { sqft: sSqFt, weight: sWeight, amount: sAmount, rate: sRate, weight_per_sqft: sWeightPerSqFt, effectiveLength: sLen, selectedName: sSelectedName, selectedIndex: selSideIdx },
         dhoka: { weight: dWeight, amount: dAmount, qty: dQty },
         thambhla: { feet: thTotalFeet, weight: thWeight, amount: thAmount, effectiveQty: thQty, effectiveHeight: thHeight },
-        purchuran: { qty: pQty, rate: pRate, amount: pAmount },
+        purchuran: { weight: pWeight, qty: pWeight, rate: pRate, amount: pAmount },
       },
       bodyTotalAmount,
       bodyTotalWeight,
@@ -1234,7 +1236,8 @@ export function QuotationFormModal({
           amount: calculations.bodyCalcDetails.thambhla.amount,
         },
         purchuran: {
-          qty: calculations.bodyCalcDetails.purchuran.qty,
+          weight: calculations.bodyCalcDetails.purchuran.weight,
+          qty: calculations.bodyCalcDetails.purchuran.weight,
           rate: calculations.bodyCalcDetails.purchuran.rate,
           amount: calculations.bodyCalcDetails.purchuran.amount,
         },
@@ -1982,8 +1985,8 @@ export function QuotationFormModal({
 
                 {/* ----------------------------------------------------
                     PART 5: પરચુરણ (Purchuran / Misc)
-                    Inputs: Quantity (નંગ / Qty), Rate (ભાવ ₹)
-                    Amount = Qty * Rate
+                    Inputs: Weight (કુલ વજન kg), Rate (ભાવ ₹/kg)
+                    Amount = Weight * Rate
                     ---------------------------------------------------- */}
                 <div className="body-part-card">
                   <div className="body-part-top">
@@ -1991,33 +1994,33 @@ export function QuotationFormModal({
                       <span>૫. પરચુરણ (Purchuran)</span>
                     </span>
                     <span style={{ fontSize: '0.72rem', color: '#64748b', fontWeight: 600 }}>
-                      રકમ = Quantity × ભાવ (₹)
+                      રકમ = કુલ વજન × ભાવ (₹/kg)
                     </span>
                   </div>
 
                   {/* Inputs */}
                   <div className="body-inputs-row" style={{ gridTemplateColumns: 'repeat(2, 1fr)' }}>
                     <div className="body-input-group">
-                      <label className="body-input-label">Quantity (નંગ / Qty)</label>
+                      <label className="body-input-label">કુલ વજન <span className="sub-hint">(kg)</span></label>
                       <input
                         type="number"
                         step="any"
                         min="0"
                         className="body-calc-input font-mono"
-                        placeholder="e.g. 1"
-                        value={bodyCalc.purchuran?.qty}
-                        onChange={(e) => handlePurchuranChange('qty', e.target.value)}
+                        placeholder="e.g. 25"
+                        value={bodyCalc.purchuran?.weight ?? bodyCalc.purchuran?.qty}
+                        onChange={(e) => handlePurchuranChange('weight', e.target.value)}
                       />
                     </div>
 
                     <div className="body-input-group">
-                      <label className="body-input-label">ભાવ (₹ / Rate)</label>
+                      <label className="body-input-label">ભાવ <span className="sub-hint">(₹/kg)</span></label>
                       <input
                         type="number"
                         step="any"
                         min="0"
                         className="body-calc-input font-mono"
-                        placeholder="e.g. 500"
+                        placeholder="e.g. 80"
                         value={bodyCalc.purchuran?.rate}
                         onChange={(e) => handlePurchuranChange('rate', e.target.value)}
                       />
@@ -2029,9 +2032,9 @@ export function QuotationFormModal({
                     <div>
                       <span>ગણતરી: </span>
                       <strong>
-                        {calculations.bodyCalcDetails.purchuran.qty > 0 && calculations.bodyCalcDetails.purchuran.rate > 0
-                          ? `${calculations.bodyCalcDetails.purchuran.qty} × ₹${calculations.bodyCalcDetails.purchuran.rate}`
-                          : 'Qty × Rate'}
+                        {calculations.bodyCalcDetails.purchuran.weight > 0 && calculations.bodyCalcDetails.purchuran.rate > 0
+                          ? `${calculations.bodyCalcDetails.purchuran.weight} kg × ₹${calculations.bodyCalcDetails.purchuran.rate}`
+                          : 'કુલ વજન (kg) × ભાવ'}
                       </strong>
                     </div>
                     <div className="body-calc-result-badge-amount">
