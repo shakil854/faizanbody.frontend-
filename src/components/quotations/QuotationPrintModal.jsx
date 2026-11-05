@@ -516,20 +516,22 @@ export function QuotationPrintModal({ isOpen, onClose, quotation }) {
                     <tr>
                       <th style={{ width: '10%', textAlign: 'center' }}>Sr.</th>
                       <th style={{ width: '65%' }}>Item Description (વસ્તુ નું નામ / સાઇઝ)</th>
-                      <th style={{ width: '25%', textAlign: 'center' }}>Qty (માત્રા)</th>
+                      <th style={{ width: '25%', textAlign: 'center' }}>Status (સામેલ)</th>
                     </tr>
                   ) : (
                     <tr>
                       <th style={{ width: '8%', textAlign: 'center' }}>Sr.</th>
                       <th style={{ width: '47%' }}>Item Description (वस्तु का नाम)</th>
-                      <th style={{ width: '12%', textAlign: 'center' }}>Qty</th>
+                      <th style={{ width: '12%', textAlign: 'center' }}>Status</th>
                       <th style={{ width: '15%', textAlign: 'right' }}>Rate (₹)</th>
                       <th style={{ width: '18%', textAlign: 'right' }}>Amount (₹)</th>
                     </tr>
                   )}
                 </thead>
                 <tbody>
-                  {quotation.items.map((it, idx) => (
+                  {quotation.items
+                    .filter((it) => it.selected !== false && (it.selected === true || parseFloat(it.qty) > 0 || parseFloat(it.amount) > 0 || !('selected' in it)))
+                    .map((it, idx) => (
                     <tr key={idx}>
                       <td style={{ textAlign: 'center', color: '#64748b' }}>{idx + 1}</td>
                       <td>
@@ -539,7 +541,7 @@ export function QuotationPrintModal({ isOpen, onClose, quotation }) {
                         )}
                       </td>
                       <td style={{ textAlign: 'center' }} className="font-mono">
-                        <strong>{it.qty}</strong>
+                        <strong style={{ color: '#16a34a' }}>✓ સામેલ</strong>
                       </td>
                       {!isWorkerSlip && (
                         <td style={{ textAlign: 'right' }} className="font-mono">
@@ -548,7 +550,7 @@ export function QuotationPrintModal({ isOpen, onClose, quotation }) {
                       )}
                       {!isWorkerSlip && (
                         <td style={{ textAlign: 'right' }} className="font-mono font-semibold">
-                          ₹{Number(it.amount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                          ₹{Number(it.amount || it.rate).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
                         </td>
                       )}
                     </tr>

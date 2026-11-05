@@ -32,10 +32,13 @@ export const QuotationCard = React.memo(function QuotationCard({
     }
   };
 
-  const itemsCount = Array.isArray(quotation.items) ? quotation.items.length : 0;
-  const itemsSummary = Array.isArray(quotation.items)
-    ? quotation.items.map((it) => `${it.name}${it.variant_name ? ` (${it.variant_name})` : ''}`).join(', ')
-    : '';
+  const selectedItems = Array.isArray(quotation.items)
+    ? quotation.items.filter((it) => it.selected !== false && (it.selected === true || parseFloat(it.qty) > 0 || parseFloat(it.amount) > 0 || !('selected' in it)))
+    : [];
+  const itemsCount = selectedItems.length;
+  const itemsSummary = selectedItems
+    .map((it) => `${it.name}${it.variant_name ? ` (${it.variant_name})` : ''}`)
+    .join(', ');
 
   const getInitials = (name) => {
     if (!name) return 'QT';

@@ -198,6 +198,7 @@ const createBlankItem = (id = String(Date.now())) => ({
   id,
   catalog_id: null,
   name: '',
+  selected: false,
   has_options: false,
   options: [
     { id: '1', name: '', rate: '' },
@@ -205,7 +206,7 @@ const createBlankItem = (id = String(Date.now())) => ({
   ],
   selected_option_index: 0,
   rate: '',
-  qty: '',
+  qty: '0',
   amount: 0,
 });
 
@@ -247,16 +248,21 @@ const normalizeItem = (raw, fallbackId = String(Date.now()), isNew = false) => {
     ? String(options[selIdx]?.rate || '')
     : String(raw.rate !== undefined && raw.rate !== null ? raw.rate : '');
 
-  const rawQty = isNew ? '' : (raw.qty !== undefined && raw.qty !== null ? String(raw.qty) : '');
-  const q = parseFloat(rawQty) || 0;
+  // Selection state: in new quotation, start unselected (user ticks what is included)
+  const isSelected = isNew
+    ? false
+    : Boolean(raw.selected ?? (parseFloat(raw.qty) > 0 || parseFloat(raw.amount) > 0));
+
   const r = parseFloat(activeRate) || 0;
-  const amount = Math.round(r * q * 100) / 100;
+  const amount = isSelected ? r : 0;
+  const rawQty = isSelected ? '1' : '0';
 
   return {
     id: String(raw.id || fallbackId),
     catalog_id: raw.catalog_id || (raw.id && !isNaN(raw.id) ? raw.id : null),
     sort_order: raw.sort_order !== undefined && raw.sort_order !== null ? Number(raw.sort_order) : 0,
     name: raw.name || '',
+    selected: isSelected,
     has_options: hasOptions,
     options: hasOptions ? options : [
       { id: '1', name: '', rate: activeRate },
@@ -413,7 +419,19 @@ export function QuotationFormModal({
   // Item Row Handlers
   // =========================================================================
 
-  // Change generic field (name, qty, rate, etc.)
+  // Toggle item selection (Tik / Checkbox - replaces Qty)
+  const handleToggleItemSelect = (index, isChecked) => {
+    const updated = [...items];
+    const row = { ...updated[index] };
+    row.selected = Boolean(isChecked);
+    row.qty = isChecked ? '1' : '0';
+    const r = parseFloat(row.rate) || 0;
+    row.amount = isChecked ? r : 0;
+    updated[index] = row;
+    setItems(updated);
+  };
+
+  // Change generic field (name, rate, etc.)
   const handleRowChange = (index, field, value) => {
     const updated = [...items];
     const row = { ...updated[index], [field]: value };
@@ -431,10 +449,9 @@ export function QuotationFormModal({
       }
     }
 
-    // Recalculate Amount = Rate * Qty
+    // Recalculate Amount = Selected ? Rate : 0
     const r = parseFloat(row.rate) || 0;
-    const q = parseFloat(row.qty) || 0;
-    row.amount = Math.round(r * q * 100) / 100;
+    row.amount = row.selected ? r : 0;
 
     updated[index] = row;
     setItems(updated);
@@ -450,8 +467,7 @@ export function QuotationFormModal({
     row.rate = String(chosen?.rate || '');
 
     const r = parseFloat(row.rate) || 0;
-    const q = parseFloat(row.qty) || 0;
-    row.amount = Math.round(r * q * 100) / 100;
+    row.amount = row.selected ? r : 0;
 
     updated[itemIndex] = row;
     setItems(updated);
@@ -470,8 +486,7 @@ export function QuotationFormModal({
     }
 
     const r = parseFloat(row.rate) || 0;
-    const q = parseFloat(row.qty) || 0;
-    row.amount = Math.round(r * q * 100) / 100;
+    row.amount = row.selected ? r : 0;
 
     updated[itemIndex] = row;
     setItems(updated);
@@ -517,8 +532,7 @@ export function QuotationFormModal({
     }
 
     const r = parseFloat(row.rate) || 0;
-    const q = parseFloat(row.qty) || 0;
-    row.amount = Math.round(r * q * 100) / 100;
+    row.amount = row.selected ? r : 0;
 
     updated[itemIndex] = row;
     setItems(updated);
@@ -543,8 +557,7 @@ export function QuotationFormModal({
     }
 
     const r = parseFloat(row.rate) || 0;
-    const q = parseFloat(row.qty) || 0;
-    row.amount = Math.round(r * q * 100) / 100;
+    row.amount = row.selected ? r : 0;
 
     updated[itemIndex] = row;
     setItems(updated);
@@ -1013,19 +1026,25 @@ export function QuotationFormModal({
       const row = items[rowIdx];
       if (!row) return;
 
-      // 1. ENTER KEY: Forward step-by-step (Name -> Qty -> Rate -> Next row)
+      // 1. ENTER KEY: Forward step-by-step
       if (key === 'Enter') {
         e.preventDefault();
         if (navCol === 'name') {
-          focusInput(`[data-nav-row="${rowIdx}"][data-nav-col="qty"]`);
-        } else if (navCol === 'qty') {
-          if (row.has_options) {
-            const sel = row.selected_option_index || 0;
-            if (!focusInput(`[data-nav-row="${rowIdx}"][data-nav-col="opt_rate"][data-nav-opt="${sel}"]`)) {
-              focusInput(`[data-nav-row="${rowIdx}"][data-nav-col="opt_rate"]`);
+          if (isAdmin) {
+            if (row.has_options) {
+              const sel = row.selected_option_index || 0;
+              if (!focusInput(`[data-nav-row="${rowIdx}"][data-nav-col="opt_rate"][data-nav-opt="${sel}"]`)) {
+                focusInput(`[data-nav-row="${rowIdx}"][data-nav-col="opt_rate"]`);
+              }
+            } else {
+              focusInput(`[data-nav-row="${rowIdx}"][data-nav-col="rate"]`);
             }
           } else {
-            focusInput(`[data-nav-row="${rowIdx}"][data-nav-col="rate"]`);
+            if (rowIdx < items.length - 1) {
+              focusInput(`[data-nav-row="${rowIdx + 1}"][data-nav-col="name"]`);
+            } else {
+              focusInput('[data-nav-name="save-btn"]');
+            }
           }
         } else if (navCol === 'opt_name') {
           const optIdx = target.getAttribute('data-nav-opt');
@@ -1156,12 +1175,13 @@ export function QuotationFormModal({
   // =========================================================================
 
   const calculations = useMemo(() => {
-    // 1. Lower ledger items
+    // 1. Lower ledger items (Selected / Ticked item takes its exact rate)
     let lowerItemsSubtotal = 0;
     items.forEach((it) => {
-      const r = parseFloat(it.rate) || 0;
-      const q = parseFloat(it.qty) || 0;
-      lowerItemsSubtotal += r * q;
+      if (it.selected) {
+        const r = parseFloat(it.rate) || 0;
+        lowerItemsSubtotal += r;
+      }
     });
     lowerItemsSubtotal = Math.round(lowerItemsSubtotal * 100) / 100;
 
@@ -1361,8 +1381,10 @@ export function QuotationFormModal({
             : 0;
           const chosenOpt = hasOpt ? it.options[selIdx] : null;
           const chosenVariant = chosenOpt?.name ? chosenOpt.name.trim() : '';
+          const isSelected = Boolean(it.selected);
           const rateVal = parseFloat(it.rate) || 0;
-          const qtyVal = parseFloat(it.qty) || 0;
+          const qtyVal = isSelected ? 1 : 0;
+          const amtVal = isSelected ? rateVal : 0;
 
           const variantsList = hasOpt
             ? it.options.map((opt) => ({
@@ -1376,13 +1398,14 @@ export function QuotationFormModal({
             catalog_id: it.catalog_id || null,
             sort_order: idx + 1,
             name: it.name.trim(),
+            selected: isSelected,
             has_options: hasOpt,
             options: hasOpt ? it.options : [],
             selected_option_index: selIdx,
             variant_name: chosenVariant,
             qty: qtyVal,
             rate: rateVal,
-            amount: Math.round(qtyVal * rateVal * 100) / 100,
+            amount: amtVal,
             variants: variantsList,
             // Backwards compatibility fields:
             has_two_options: hasOpt && it.options.length === 2,
@@ -2334,8 +2357,10 @@ export function QuotationFormModal({
                 <table className="quotation-ledger-table">
                   <thead>
                     <tr>
-                      <th className="col-th-name" style={!isAdmin ? { width: '70%' } : { minWidth: '200px' }}>Name (वस्तु)</th>
-                      <th className="col-th-qty" style={!isAdmin ? { width: '20%' } : undefined}>Qty (मात्रा)</th>
+                      <th className="col-th-name" style={!isAdmin ? { width: '65%' } : { minWidth: '200px' }}>Name (वस्तु)</th>
+                      <th className="col-th-select" style={{ width: isAdmin ? '10%' : '25%', textAlign: 'center' }}>
+                        Tik (પસંદ ✓)
+                      </th>
                       {isAdmin && <th className="col-th-rate">Rate (रेट ₹)</th>}
                       {isAdmin && <th className="col-th-amount">Amount (रકમ ₹)</th>}
                       <th className="col-th-del" style={!isAdmin ? { width: '10%' } : undefined}></th>
@@ -2350,9 +2375,16 @@ export function QuotationFormModal({
                       </tr>
                     )}
                     {items.map((row, idx) => (
-                      <tr key={row.id || idx} className="quotation-ledger-tr">
+                      <tr
+                        key={row.id || idx}
+                        className={`quotation-ledger-tr ${row.selected ? 'ledger-tr-selected' : ''}`}
+                        style={{
+                          backgroundColor: row.selected ? '#f0fdf4' : undefined,
+                          transition: 'background-color 0.15s ease',
+                        }}
+                      >
                         {/* 1. Name */}
-                        <td className="col-td-name" style={!isAdmin ? { width: '70%' } : { minWidth: '200px' }}>
+                        <td className="col-td-name" style={!isAdmin ? { width: '65%' } : { minWidth: '200px' }}>
                           <input
                             type="text"
                             className="ledger-input ledger-name-input font-bold"
@@ -2366,19 +2398,47 @@ export function QuotationFormModal({
                           />
                         </td>
 
-                        {/* 2. Qty (Clean empty box) */}
-                        <td className="col-td-qty" style={!isAdmin ? { width: '20%' } : undefined}>
-                          <input
-                            type="number"
-                            step="any"
-                            min="0"
-                            className="ledger-input ledger-qty-input font-mono font-bold"
-                            placeholder=""
-                            value={row.qty}
-                            onChange={(e) => handleRowChange(idx, 'qty', e.target.value)}
-                            data-nav-row={idx}
-                            data-nav-col="qty"
-                          />
+                        {/* 2. Select (Tik ✓) Checkbox - Replaces Qty */}
+                        <td className="col-td-select" style={{ width: isAdmin ? '10%' : '25%', textAlign: 'center', verticalAlign: 'middle' }}>
+                          <label
+                            style={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              gap: '0.35rem',
+                              cursor: 'pointer',
+                              padding: '0.35rem 0.6rem',
+                              borderRadius: '8px',
+                              border: `1.5px solid ${row.selected ? '#16a34a' : '#cbd5e1'}`,
+                              backgroundColor: row.selected ? '#dcfce7' : '#ffffff',
+                              transition: 'all 0.15s ease',
+                              userSelect: 'none',
+                              minWidth: '55px',
+                            }}
+                            title={row.selected ? 'Selected (સામેલ છે)' : 'Click to select (સામેલ કરવા ક્લિક કરો)'}
+                          >
+                            <input
+                              type="checkbox"
+                              checked={Boolean(row.selected)}
+                              onChange={(e) => handleToggleItemSelect(idx, e.target.checked)}
+                              style={{
+                                width: '18px',
+                                height: '18px',
+                                cursor: 'pointer',
+                                accentColor: '#16a34a',
+                                margin: 0,
+                              }}
+                            />
+                            <span
+                              style={{
+                                fontSize: '0.82rem',
+                                fontWeight: 800,
+                                color: row.selected ? '#15803d' : '#94a3b8',
+                              }}
+                            >
+                              {row.selected ? '✓' : ''}
+                            </span>
+                          </label>
                         </td>
 
                         {/* 3. Rate (Single or Bracket with multiple custom options) */}
@@ -2512,10 +2572,16 @@ export function QuotationFormModal({
                           </td>
                         )}
 
-                        {/* 4. Amount = Rate * Qty */}
+                        {/* 4. Amount = Rate when selected, 0 when unselected */}
                         {isAdmin && (
-                          <td className="col-td-amount font-mono">
-                            ₹{(Number(row.amount) || ((parseFloat(row.rate) || 0) * (parseFloat(row.qty) || 0))).toLocaleString('en-IN', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}
+                          <td className="col-td-amount font-mono" style={{ color: row.selected ? '#15803d' : '#94a3b8' }}>
+                            {row.selected ? (
+                              <strong>
+                                ₹{(Number(row.amount) || (parseFloat(row.rate) || 0)).toLocaleString('en-IN', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}
+                              </strong>
+                            ) : (
+                              <span style={{ fontSize: '0.82rem', color: '#94a3b8' }}>₹0</span>
+                            )}
                           </td>
                         )}
 
