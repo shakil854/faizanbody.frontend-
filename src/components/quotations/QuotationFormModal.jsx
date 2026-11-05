@@ -1436,29 +1436,31 @@ export function QuotationFormModal({
         } catch { }
       }
 
-      // Auto-save all items to Database Catalog & localStorage preserving exact line sequence
+      // Auto-save all items to Database Catalog & localStorage preserving exact line sequence (Admin only for DB)
       try {
         if (validItems.length > 0) {
           localStorage.setItem(DEFAULT_ITEMS_STORAGE_KEY, JSON.stringify(validItems));
-          const batchPayload = validItems.map((it, idx) => {
-            const variantsList = it.has_options && Array.isArray(it.options)
-              ? it.options.map((opt) => ({
-                name: (opt.name || '').trim(),
-                rate: parseFloat(opt.rate) || 0,
-              }))
-              : [];
+          if (isAdmin) {
+            const batchPayload = validItems.map((it, idx) => {
+              const variantsList = it.has_options && Array.isArray(it.options)
+                ? it.options.map((opt) => ({
+                  name: (opt.name || '').trim(),
+                  rate: parseFloat(opt.rate) || 0,
+                }))
+                : [];
 
-            return {
-              id: it.catalog_id || undefined,
-              name: it.name.trim(),
-              rate: parseFloat(it.rate) || 0,
-              unit: 'Unit',
-              variants: variantsList,
-              sort_order: idx + 1,
-            };
-          });
+              return {
+                id: it.catalog_id || undefined,
+                name: it.name.trim(),
+                rate: parseFloat(it.rate) || 0,
+                unit: 'Unit',
+                variants: variantsList,
+                sort_order: idx + 1,
+              };
+            });
 
-          quotationService.saveCatalogItemsBatch(batchPayload).catch(() => { });
+            quotationService.saveCatalogItemsBatch(batchPayload).catch(() => { });
+          }
         }
       } catch { }
 

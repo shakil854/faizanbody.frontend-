@@ -167,6 +167,11 @@ export const APP_MODULES = [
         label: 'Print & WhatsApp Slip',
         description: 'Print worker job slip or share on WhatsApp',
       },
+      {
+        key: 'quotations:delete',
+        label: 'Delete Quotation',
+        description: 'Permanently remove quotation records from the database',
+      },
     ],
   },
 ];
