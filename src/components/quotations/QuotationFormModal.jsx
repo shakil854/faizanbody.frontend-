@@ -1403,14 +1403,14 @@ export function QuotationFormModal({
   return createPortal(
     <div className="modal-backdrop-luxury luxury-glass-backdrop" onClick={onClose}>
       <div
-        className="modern-order-modal-card"
+        className="modern-order-modal-card quotation-modal-card"
         style={{ maxWidth: '860px', maxHeight: '92vh' }}
         onClick={(e) => e.stopPropagation()}
       >
         {/* ========================================================
             MODAL HEADER: MATCHING USER DRAWING "QUACATION"
             ======================================================== */}
-        <div className="modern-modal-header" style={{ padding: '0.85rem 1.25rem' }}>
+        <div className="modern-modal-header quotation-modal-header">
           <div className="modern-header-left">
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
               <span style={{ fontSize: '1.5rem' }}>📋</span>
@@ -1440,24 +1440,12 @@ export function QuotationFormModal({
             MODAL BODY: FORM SHELL WITH KEYBOARD NAVIGATION
             ======================================================== */}
         <form onSubmit={handleSubmit} onKeyDown={handleKeyDown} className="modern-modal-form-shell">
-          <div className="modern-modal-body-scroll" ref={scrollRef} style={{ padding: '1rem' }}>
+          <div className="modern-modal-body-scroll quotation-modal-body-scroll" ref={scrollRef}>
             {/* Top Customer Info Bar (Customer Name & Date prominent at top like in paper) */}
-            <div
-              style={{
-                background: '#ffffff',
-                border: '1px solid #cbd5e1',
-                borderRadius: '12px',
-                padding: '0.85rem 1rem',
-                marginBottom: '1rem',
-                display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
-                gap: '0.75rem',
-                boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
-              }}
-            >
+            <div className="quotation-header-grid">
               {/* Customer / Party Name */}
-              <div>
-                <label style={{ fontSize: '0.75rem', fontWeight: 800, color: '#334155', display: 'block', marginBottom: '0.2rem' }}>
+              <div className="quotation-header-col-name">
+                <label className="quotation-field-label">
                   Customer / Party Name (ग्राहक का नाम) *
                 </label>
                 <input
@@ -1475,8 +1463,8 @@ export function QuotationFormModal({
               </div>
 
               {/* Date */}
-              <div>
-                <label style={{ fontSize: '0.75rem', fontWeight: 800, color: '#334155', display: 'block', marginBottom: '0.2rem' }}>
+              <div className="quotation-header-col-date">
+                <label className="quotation-field-label">
                   Date (तारीख) *
                 </label>
                 <input
@@ -1492,8 +1480,8 @@ export function QuotationFormModal({
               </div>
 
               {/* Mobile */}
-              <div>
-                <label style={{ fontSize: '0.75rem', fontWeight: 700, color: '#64748b', display: 'block', marginBottom: '0.2rem' }}>
+              <div className="quotation-header-col-mobile">
+                <label className="quotation-field-label quotation-field-label-muted">
                   Mobile (मोबाइल नंबर - ऐच्छिक)
                 </label>
                 <input
@@ -1509,8 +1497,8 @@ export function QuotationFormModal({
               </div>
 
               {/* Truck / Chassis No */}
-              <div>
-                <label style={{ fontSize: '0.75rem', fontWeight: 700, color: '#64748b', display: 'block', marginBottom: '0.2rem' }}>
+              <div className="quotation-header-col-chassis">
+                <label className="quotation-field-label quotation-field-label-muted">
                   Truck / Chassis No (ट्रक नं)
                 </label>
                 <input
@@ -2583,7 +2571,7 @@ export function QuotationFormModal({
           {/* ========================================================
               STICKY BOTTOM ACTION BAR (Save / Print / Cancel)
               ======================================================== */}
-          <div className="modern-modal-sticky-footer no-print" style={{ padding: '0.85rem 1.25rem' }}>
+          <div className="modern-modal-sticky-footer quotation-modal-sticky-footer no-print">
             <div className="footer-left">
               <button
                 type="button"
