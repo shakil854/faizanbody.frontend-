@@ -2252,7 +2252,7 @@ export function QuotationFormModal({
                 <table className="quotation-ledger-table">
                   <thead>
                     <tr>
-                      <th className="col-th-name">Name (वस्तु)</th>
+                      <th className="col-th-name" style={{ minWidth: '200px' }}>Name (वस्तु)</th>
                       <th className="col-th-qty">Qty (मात्रा)</th>
                       <th className="col-th-rate">Rate (रेट ₹)</th>
                       <th className="col-th-amount">Amount (रकम ₹)</th>
@@ -2270,11 +2270,12 @@ export function QuotationFormModal({
                     {items.map((row, idx) => (
                       <tr key={row.id || idx} className="quotation-ledger-tr">
                         {/* 1. Name */}
-                        <td className="col-td-name">
+                        <td className="col-td-name" style={{ minWidth: '200px' }}>
                           <input
                             type="text"
                             className="ledger-input ledger-name-input font-bold"
-                            placeholder="Item name..."
+                            style={{ minWidth: '190px', width: '100%' }}
+                            placeholder="Item name (वस्तु का नाम)..."
                             value={row.name}
                             onChange={(e) => handleRowChange(idx, 'name', e.target.value)}
                             data-nav-row={idx}

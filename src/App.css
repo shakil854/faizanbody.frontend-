@@ -19519,7 +19519,7 @@
 .quotation-items-table {
   width: 100%;
   border-collapse: collapse;
-  min-width: 580px;
+  min-width: 640px;
 }
 
 .quotation-items-table thead th {
@@ -20042,26 +20042,36 @@
   border-bottom: 2px solid #cbd5e1;
 }
 
-.quotation-ledger-table thead th.col-th-name {
-  width: 28%;
+.quotation-ledger-table thead th.col-th-name,
+.quotation-ledger-table tbody td.col-td-name {
+  width: 36%;
+  min-width: 200px;
 }
 
-.quotation-ledger-table thead th.col-th-qty {
-  width: 14%;
+.quotation-ledger-table thead th.col-th-qty,
+.quotation-ledger-table tbody td.col-td-qty {
+  width: 12%;
+  min-width: 75px;
   text-align: center;
 }
 
-.quotation-ledger-table thead th.col-th-rate {
-  width: 36%;
+.quotation-ledger-table thead th.col-th-rate,
+.quotation-ledger-table tbody td.col-td-rate {
+  width: 32%;
+  min-width: 185px;
 }
 
-.quotation-ledger-table thead th.col-th-amount {
-  width: 16%;
+.quotation-ledger-table thead th.col-th-amount,
+.quotation-ledger-table tbody td.col-td-amount {
+  width: 14%;
+  min-width: 90px;
   text-align: right;
 }
 
-.quotation-ledger-table thead th.col-th-del {
+.quotation-ledger-table thead th.col-th-del,
+.quotation-ledger-table tbody td.col-td-del {
   width: 6%;
+  min-width: 75px;
   text-align: center;
 }
 
@@ -20113,8 +20123,10 @@
 }
 
 .ledger-name-input {
-  width: 100%;
+  width: 100% !important;
+  min-width: 190px !important;
   font-weight: 700;
+  box-sizing: border-box;
 }
 
 .ledger-qty-input {
@@ -21471,7 +21483,7 @@
   }
 
   .quotation-ledger-table {
-    min-width: 460px !important;
+    min-width: 620px !important;
   }
 
   .quotation-ledger-table thead th {
