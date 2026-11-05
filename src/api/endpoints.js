@@ -16,6 +16,7 @@ export const ENDPOINTS = {
   ORDER_DROPDOWN_OPTIONS: '/orders/dropdown-options',
   QUOTATIONS: '/quotations',
   QUOTATION_DETAIL: (id) => `/quotations/${id}`,
+  QUOTATION_BODY_DEFAULTS: '/quotations/body-defaults',
   QUOTATION_CATALOG_ITEMS: '/quotations/catalog/items',
   QUOTATION_CATALOG_ITEM_DELETE: (id) => `/quotations/catalog/items/${id}`,
   STOCK_CATEGORIES: '/stock/categories',

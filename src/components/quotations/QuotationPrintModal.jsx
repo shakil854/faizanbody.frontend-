@@ -26,28 +26,28 @@ export function QuotationPrintModal({ isOpen, onClose, quotation }) {
 
     if (quotation.body_calc?.has_data) {
       lines.push(`*🚛 BODY FABRICATION (ગાડી કાંટલે):*`);
-      if (Number(quotation.body_calc.taliyu?.amount) > 0) {
+      if (Number(quotation.body_calc.taliyu?.amount) > 0 || Number(quotation.body_calc.taliyu?.total_weight) > 0 || Number(quotation.body_calc.taliyu?.total_sqft) > 0) {
         const t = quotation.body_calc.taliyu;
-        lines.push(`• *તળીયું (${t.selected_label || t.selected_option})*: ${t.length}' × ${t.width}' = ${t.total_sqft} S.F.${Number(t.total_weight) > 0 ? ` (${t.total_weight} kg)` : ''} @ ₹${t.rate}/kg = *₹${Number(t.amount).toLocaleString('en-IN')}*`);
+        lines.push(`• *૧. તળીયું (${t.selected_label || t.selected_option || 'પ્લેટ'})*: ${t.length}' × ${t.width}' = ${t.total_sqft} S.F.${Number(t.total_weight) > 0 ? ` (${t.total_weight} kg)` : ''} @ ₹${t.rate || 0}/kg = *₹${Number(t.amount || 0).toLocaleString('en-IN')}*`);
       }
-      if (Number(quotation.body_calc.side?.amount) > 0) {
+      if (Number(quotation.body_calc.side?.amount) > 0 || Number(quotation.body_calc.side?.total_weight) > 0 || Number(quotation.body_calc.side?.total_sqft) > 0) {
         const s = quotation.body_calc.side;
-        lines.push(`• *Side (${s.selected_label || s.selected_option})*: ${s.length}' × ${s.height}' × 2 = ${s.total_sqft} S.F.${Number(s.total_weight) > 0 ? ` (${s.total_weight} kg)` : ''} @ ₹${s.rate}/kg = *₹${Number(s.amount).toLocaleString('en-IN')}*`);
+        lines.push(`• *૨. Side (${s.selected_label || s.selected_option || 'ચાદર'})*: ${s.length}' × ${s.height}' × 2 = ${s.total_sqft} S.F.${Number(s.total_weight) > 0 ? ` (${s.total_weight} kg)` : ''} @ ₹${s.rate || 0}/kg = *₹${Number(s.amount || 0).toLocaleString('en-IN')}*`);
       }
-      if (Number(quotation.body_calc.dhoka?.amount) > 0) {
+      if (Number(quotation.body_calc.dhoka?.amount) > 0 || Number(quotation.body_calc.dhoka?.total_weight) > 0 || Number(quotation.body_calc.dhoka?.qty) > 0) {
         const d = quotation.body_calc.dhoka;
-        lines.push(`• *ધોકા*: ${d.qty} નંગ (${d.total_weight} kg) @ ₹${d.rate}/kg = *₹${Number(d.amount).toLocaleString('en-IN')}*`);
+        lines.push(`• *૩. ધોકા*: ${d.qty || 0} નંગ (${d.total_weight || 0} kg) @ ₹${d.rate || 0}/kg = *₹${Number(d.amount || 0).toLocaleString('en-IN')}*`);
       }
-      if (Number(quotation.body_calc.thambhla?.amount) > 0) {
+      if (Number(quotation.body_calc.thambhla?.amount) > 0 || Number(quotation.body_calc.thambhla?.total_weight) > 0 || Number(quotation.body_calc.thambhla?.qty) > 0) {
         const th = quotation.body_calc.thambhla;
-        lines.push(`• *થાંભલા*: ${th.qty} નંગ (${th.total_weight} kg) @ ₹${th.rate}/kg = *₹${Number(th.amount).toLocaleString('en-IN')}*`);
+        lines.push(`• *૪. થાંભલા*: ${th.qty || 0} નંગ (${th.total_weight || 0} kg) @ ₹${th.rate || 0}/kg = *₹${Number(th.amount || 0).toLocaleString('en-IN')}*`);
       }
-      if (Number(quotation.body_calc.purchuran?.amount) > 0) {
+      if (Number(quotation.body_calc.purchuran?.amount) > 0 || Number(quotation.body_calc.purchuran?.weight || quotation.body_calc.purchuran?.qty) > 0) {
         const p = quotation.body_calc.purchuran;
-        lines.push(`• *પરચુરણ*: ${p.weight || p.qty} kg @ ₹${p.rate}/kg = *₹${Number(p.amount).toLocaleString('en-IN')}*`);
+        lines.push(`• *૫. પરચુરણ*: ${p.weight || p.qty || 0} kg @ ₹${p.rate || 0}/kg = *₹${Number(p.amount || 0).toLocaleString('en-IN')}*`);
       }
       if (quotation.body_calc.machado?.enabled && Number(quotation.body_calc.machado?.amount) > 0) {
-        lines.push(`• *માચડો (Machado)*: *₹${Number(quotation.body_calc.machado.amount).toLocaleString('en-IN')}*`);
+        lines.push(`• *૬. માચડો (Machado)*: *₹${Number(quotation.body_calc.machado.amount).toLocaleString('en-IN')}*`);
       }
       if (Number(quotation.body_calc.total_weight) > 0) {
         lines.push(`  _Total Body Weight: ${Number(quotation.body_calc.total_weight).toLocaleString('en-IN')} kg_`);
@@ -179,15 +179,16 @@ export function QuotationPrintModal({ isOpen, onClose, quotation }) {
                   </tr>
                 </thead>
                 <tbody>
-                  {Number(quotation.body_calc.taliyu?.amount) > 0 && (
+                  {(Number(quotation.body_calc.taliyu?.amount) > 0 || Number(quotation.body_calc.taliyu?.total_weight) > 0 || Number(quotation.body_calc.taliyu?.total_sqft) > 0) && (
                     <tr>
                       <td style={{ textAlign: 'center', color: '#64748b' }}>1</td>
                       <td>
                         <div className="print-item-title">
-                          તળીયું (Floor) - {quotation.body_calc.taliyu.selected_label || quotation.body_calc.taliyu.selected_option}
+                          તળીયું (Floor) - {quotation.body_calc.taliyu.selected_label || quotation.body_calc.taliyu.selected_option || 'પ્લેટ'}
                         </div>
                         <span className="print-item-variant">
                           લંબાઈ: {quotation.body_calc.taliyu.length} ft × પહોળાઈ: {quotation.body_calc.taliyu.width} ft
+                          {Number(quotation.body_calc.taliyu.total_sqft) > 0 && ` • ${quotation.body_calc.taliyu.total_sqft} Sq.Ft.`}
                           {Number(quotation.body_calc.taliyu.total_weight) > 0 && ` • વજન: ${quotation.body_calc.taliyu.total_weight} kg`}
                         </span>
                       </td>
@@ -198,27 +199,28 @@ export function QuotationPrintModal({ isOpen, onClose, quotation }) {
                             <span style={{ fontSize: '0.72rem', color: '#64748b', display: 'block' }}>({quotation.body_calc.taliyu.total_sqft} Sq.Ft.)</span>
                           </>
                         ) : (
-                          `${quotation.body_calc.taliyu.total_sqft} Sq.Ft.`
+                          `${quotation.body_calc.taliyu.total_sqft || 0} Sq.Ft.`
                         )}
                       </td>
                       <td style={{ textAlign: 'right' }} className="font-mono">
-                        ₹{Number(quotation.body_calc.taliyu.rate).toLocaleString('en-IN', { minimumFractionDigits: 2 })} / kg
+                        ₹{Number(quotation.body_calc.taliyu.rate || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })} / kg
                       </td>
                       <td style={{ textAlign: 'right' }} className="font-mono font-semibold">
-                        ₹{Number(quotation.body_calc.taliyu.amount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                        ₹{Number(quotation.body_calc.taliyu.amount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
                       </td>
                     </tr>
                   )}
 
-                  {Number(quotation.body_calc.side?.amount) > 0 && (
+                  {(Number(quotation.body_calc.side?.amount) > 0 || Number(quotation.body_calc.side?.total_weight) > 0 || Number(quotation.body_calc.side?.total_sqft) > 0) && (
                     <tr>
                       <td style={{ textAlign: 'center', color: '#64748b' }}>2</td>
                       <td>
                         <div className="print-item-title">
-                          Side (બાજુ) - {quotation.body_calc.side.selected_label || quotation.body_calc.side.selected_option}
+                          Side (બાજુ) - {quotation.body_calc.side.selected_label || quotation.body_calc.side.selected_option || 'ચાદર'}
                         </div>
                         <span className="print-item-variant">
                           લંબાઈ: {quotation.body_calc.side.length} ft × ઉંચાઈ: {quotation.body_calc.side.height} ft × 2 બાજુ
+                          {Number(quotation.body_calc.side.total_sqft) > 0 && ` • ${quotation.body_calc.side.total_sqft} Sq.Ft.`}
                           {Number(quotation.body_calc.side.total_weight) > 0 && ` • વજન: ${quotation.body_calc.side.total_weight} kg`}
                         </span>
                       </td>
@@ -229,83 +231,93 @@ export function QuotationPrintModal({ isOpen, onClose, quotation }) {
                             <span style={{ fontSize: '0.72rem', color: '#64748b', display: 'block' }}>({quotation.body_calc.side.total_sqft} Sq.Ft.)</span>
                           </>
                         ) : (
-                          `${quotation.body_calc.side.total_sqft} Sq.Ft.`
+                          `${quotation.body_calc.side.total_sqft || 0} Sq.Ft.`
                         )}
                       </td>
                       <td style={{ textAlign: 'right' }} className="font-mono">
-                        ₹{Number(quotation.body_calc.side.rate).toLocaleString('en-IN', { minimumFractionDigits: 2 })} / kg
+                        ₹{Number(quotation.body_calc.side.rate || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })} / kg
                       </td>
                       <td style={{ textAlign: 'right' }} className="font-mono font-semibold">
-                        ₹{Number(quotation.body_calc.side.amount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                        ₹{Number(quotation.body_calc.side.amount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
                       </td>
                     </tr>
                   )}
 
-                  {Number(quotation.body_calc.dhoka?.amount) > 0 && (
+                  {(Number(quotation.body_calc.dhoka?.amount) > 0 || Number(quotation.body_calc.dhoka?.total_weight) > 0 || Number(quotation.body_calc.dhoka?.qty) > 0) && (
                     <tr>
                       <td style={{ textAlign: 'center', color: '#64748b' }}>3</td>
                       <td>
                         <div className="print-item-title">ધોકા (Cross Members)</div>
                         <span className="print-item-variant">
-                          {quotation.body_calc.dhoka.qty} નંગ (૧ નંગ નો વજન: {quotation.body_calc.dhoka.weight_per_piece} kg) • કુલ વજન: {quotation.body_calc.dhoka.total_weight} kg
+                          {quotation.body_calc.dhoka.qty} નંગ {quotation.body_calc.dhoka.weight_per_piece ? `(૧ નંગ: ${quotation.body_calc.dhoka.weight_per_piece} kg)` : ''} • કુલ વજન: {quotation.body_calc.dhoka.total_weight} kg
                         </span>
                       </td>
                       <td style={{ textAlign: 'center' }} className="font-mono">
-                        {quotation.body_calc.dhoka.total_weight} kg
+                        <strong>{quotation.body_calc.dhoka.total_weight || 0} kg</strong>
+                        {Number(quotation.body_calc.dhoka.qty) > 0 && (
+                          <span style={{ fontSize: '0.72rem', color: '#64748b', display: 'block' }}>({quotation.body_calc.dhoka.qty} નંગ)</span>
+                        )}
                       </td>
                       <td style={{ textAlign: 'right' }} className="font-mono">
-                        ₹{Number(quotation.body_calc.dhoka.rate).toLocaleString('en-IN', { minimumFractionDigits: 2 })} / kg
+                        ₹{Number(quotation.body_calc.dhoka.rate || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })} / kg
                       </td>
                       <td style={{ textAlign: 'right' }} className="font-mono font-semibold">
-                        ₹{Number(quotation.body_calc.dhoka.amount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                        ₹{Number(quotation.body_calc.dhoka.amount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
                       </td>
                     </tr>
                   )}
 
-                  {Number(quotation.body_calc.thambhla?.amount) > 0 && (
+                  {(Number(quotation.body_calc.thambhla?.amount) > 0 || Number(quotation.body_calc.thambhla?.total_weight) > 0 || Number(quotation.body_calc.thambhla?.qty) > 0) && (
                     <tr>
                       <td style={{ textAlign: 'center', color: '#64748b' }}>4</td>
                       <td>
                         <div className="print-item-title">થાંભલા (Pillars)</div>
                         <span className="print-item-variant">
-                          {quotation.body_calc.thambhla.qty} નંગ × {quotation.body_calc.thambhla.height} ft = {quotation.body_calc.thambhla.total_feet} ft • કુલ વજન: {quotation.body_calc.thambhla.total_weight} kg
+                          {quotation.body_calc.thambhla.qty} નંગ × {quotation.body_calc.thambhla.height} ft = {quotation.body_calc.thambhla.total_feet} ft {quotation.body_calc.thambhla.weight_per_foot ? `(૧ ફૂટ: ${quotation.body_calc.thambhla.weight_per_foot} kg)` : ''} • કુલ વજન: {quotation.body_calc.thambhla.total_weight} kg
                         </span>
                       </td>
                       <td style={{ textAlign: 'center' }} className="font-mono">
-                        {quotation.body_calc.thambhla.total_weight} kg
+                        <strong>{quotation.body_calc.thambhla.total_weight || 0} kg</strong>
+                        {Number(quotation.body_calc.thambhla.total_feet) > 0 && (
+                          <span style={{ fontSize: '0.72rem', color: '#64748b', display: 'block' }}>({quotation.body_calc.thambhla.total_feet} ft)</span>
+                        )}
                       </td>
                       <td style={{ textAlign: 'right' }} className="font-mono">
-                        ₹{Number(quotation.body_calc.thambhla.rate).toLocaleString('en-IN', { minimumFractionDigits: 2 })} / kg
+                        ₹{Number(quotation.body_calc.thambhla.rate || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })} / kg
                       </td>
                       <td style={{ textAlign: 'right' }} className="font-mono font-semibold">
-                        ₹{Number(quotation.body_calc.thambhla.amount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                        ₹{Number(quotation.body_calc.thambhla.amount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
                       </td>
                     </tr>
                   )}
 
-                  {Number(quotation.body_calc.purchuran?.amount) > 0 && (
+                  {(Number(quotation.body_calc.purchuran?.amount) > 0 || Number(quotation.body_calc.purchuran?.weight || quotation.body_calc.purchuran?.qty) > 0) && (
                     <tr>
                       <td style={{ textAlign: 'center', color: '#64748b' }}>5</td>
                       <td>
                         <div className="print-item-title">પરચુરણ (Purchuran / Misc)</div>
+                        <span className="print-item-variant">
+                          સામાન્ય ફિટિંગ અને પરચુરણ સામગ્રી • વજન: {quotation.body_calc.purchuran.weight || quotation.body_calc.purchuran.qty || 0} kg
+                        </span>
                       </td>
                       <td style={{ textAlign: 'center' }} className="font-mono">
-                        {quotation.body_calc.purchuran.weight || quotation.body_calc.purchuran.qty} kg
+                        <strong>{quotation.body_calc.purchuran.weight || quotation.body_calc.purchuran.qty || 0} kg</strong>
                       </td>
                       <td style={{ textAlign: 'right' }} className="font-mono">
-                        ₹{Number(quotation.body_calc.purchuran.rate).toLocaleString('en-IN', { minimumFractionDigits: 2 })} / kg
+                        ₹{Number(quotation.body_calc.purchuran.rate || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })} / kg
                       </td>
                       <td style={{ textAlign: 'right' }} className="font-mono font-semibold">
-                        ₹{Number(quotation.body_calc.purchuran.amount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                        ₹{Number(quotation.body_calc.purchuran.amount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
                       </td>
                     </tr>
                   )}
 
-                  {quotation.body_calc.machado?.enabled && Number(quotation.body_calc.machado?.amount) > 0 && (
+                  {Boolean(quotation.body_calc.machado?.enabled && Number(quotation.body_calc.machado?.amount) > 0) && (
                     <tr>
                       <td style={{ textAlign: 'center', color: '#64748b' }}>6</td>
                       <td>
                         <div className="print-item-title">માચડો (Machado / Carrier)</div>
+                        <span className="print-item-variant">કેરિયર / માચડો ફીટીંગ વર્ક</span>
                       </td>
                       <td style={{ textAlign: 'center' }} className="font-mono">
                         1 Job

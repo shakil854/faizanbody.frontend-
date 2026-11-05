@@ -122,6 +122,25 @@ const normalizeBodyCalcFromData = (raw) => {
     selSideIdx = 1;
   }
 
+  // Ensure selected option has weight and rate if raw object provided them
+  if (taliyuOpts[selTaliyuIdx]) {
+    if (!taliyuOpts[selTaliyuIdx].rate && raw.taliyu?.rate) {
+      taliyuOpts[selTaliyuIdx].rate = String(raw.taliyu.rate);
+    }
+    if (!taliyuOpts[selTaliyuIdx].weight_per_sqft && raw.taliyu?.weight_per_sqft) {
+      taliyuOpts[selTaliyuIdx].weight_per_sqft = String(raw.taliyu.weight_per_sqft);
+    }
+  }
+
+  if (sideOpts[selSideIdx]) {
+    if (!sideOpts[selSideIdx].rate && raw.side?.rate) {
+      sideOpts[selSideIdx].rate = String(raw.side.rate);
+    }
+    if (!sideOpts[selSideIdx].weight_per_sqft && raw.side?.weight_per_sqft) {
+      sideOpts[selSideIdx].weight_per_sqft = String(raw.side.weight_per_sqft);
+    }
+  }
+
   return {
     taliyu: {
       selected_option_index: selTaliyuIdx,
@@ -156,7 +175,9 @@ const normalizeBodyCalcFromData = (raw) => {
       enabled: Boolean(raw.machado?.enabled ?? defaults.machado?.enabled ?? false),
       amount: raw.machado?.amount !== undefined && raw.machado?.amount !== null
         ? String(raw.machado.amount)
-        : String(defaults.machado?.amount ?? ''),
+        : (raw.machado?.raw_amount !== undefined && raw.machado?.raw_amount !== null
+          ? String(raw.machado.raw_amount)
+          : String(defaults.machado?.amount ?? '')),
     },
   };
 };
@@ -321,6 +342,22 @@ export function QuotationFormModal({
       setExtraPercent('');
       setDiscountPercent('');
       setBodyCalc(createInitialBodyCalc(loadSavedBodyDefaults()));
+
+      // Fetch fresh master body defaults (rates & weights) from Database so they persist across all devices
+      quotationService.getBodyDefaults()
+        .then((res) => {
+          if (res?.data) {
+            try {
+              localStorage.setItem(DEFAULT_BODY_CALC_STORAGE_KEY, JSON.stringify(res.data));
+            } catch { }
+            setBodyCalc((prev) => {
+              const hasUserEnteredDims = prev.taliyu?.length || prev.taliyu?.width || prev.side?.height;
+              if (hasUserEnteredDims) return prev;
+              return createInitialBodyCalc(res.data);
+            });
+          }
+        })
+        .catch(() => {});
 
       // Generate default quotation no
       const year = new Date().getFullYear();
@@ -770,7 +807,7 @@ export function QuotationFormModal({
     }));
   };
 
-  const handleSaveBodyDefaults = () => {
+  const handleSaveBodyDefaults = async () => {
     try {
       const defaults = {
         taliyu: {
@@ -793,13 +830,24 @@ export function QuotationFormModal({
           rate: bodyCalc.purchuran?.rate,
         },
         machado: {
+          enabled: Boolean(bodyCalc.machado?.enabled),
           amount: bodyCalc.machado?.amount,
         },
       };
+
+      // 1. Save to local storage for instant offline fallback
       localStorage.setItem(DEFAULT_BODY_CALC_STORAGE_KEY, JSON.stringify(defaults));
+
+      // 2. Save permanently to MySQL Database
+      await quotationService.saveBodyDefaults(defaults);
+
       setBodySavedToast(true);
       setTimeout(() => setBodySavedToast(false), 3000);
-    } catch { }
+    } catch (err) {
+      console.warn('⚠️ [QuotationForm] Failed to save body defaults to DB, saved locally:', err.message);
+      setBodySavedToast(true);
+      setTimeout(() => setBodySavedToast(false), 3000);
+    }
   };
 
   // =========================================================================
@@ -1357,10 +1405,12 @@ export function QuotationFormModal({
             rate: bodyCalc.purchuran?.rate,
           },
           machado: {
+            enabled: Boolean(bodyCalc.machado?.enabled),
             amount: bodyCalc.machado?.amount,
           },
         };
         localStorage.setItem(DEFAULT_BODY_CALC_STORAGE_KEY, JSON.stringify(bodyDefaults));
+        quotationService.saveBodyDefaults(bodyDefaults).catch(() => {});
       } catch { }
 
       // Auto-save all items to Database Catalog & localStorage preserving exact line sequence

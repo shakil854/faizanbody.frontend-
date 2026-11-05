@@ -129,16 +129,19 @@ export const QuotationCard = React.memo(function QuotationCard({
       )}
 
       {/* Body Work Badge (if present) */}
-      {quotation.body_calc?.has_data && (
+      {(quotation.body_calc?.has_data || Number(quotation.total_weight) > 0) && (
         <div className="quotation-body-badge">
           <span>🚛 બોડી:</span>
           <strong>
-            {quotation.body_calc.taliyu?.length && quotation.body_calc.taliyu?.width
+            {quotation.body_calc?.taliyu?.length && quotation.body_calc?.taliyu?.width
               ? `${quotation.body_calc.taliyu.length}' × ${quotation.body_calc.taliyu.width}'`
               : 'સાઇઝ'}
           </strong>
-          {Number(quotation.total_weight || quotation.body_calc.total_weight) > 0 && (
-            <span> &bull; {Number(quotation.total_weight || quotation.body_calc.total_weight).toLocaleString('en-IN')} kg</span>
+          {Number(quotation.total_weight || quotation.body_calc?.total_weight) > 0 && (
+            <span> &bull; ⚖️ {Number(quotation.total_weight || quotation.body_calc?.total_weight).toLocaleString('en-IN')} kg</span>
+          )}
+          {Number(quotation.body_calc?.total_amount) > 0 && (
+            <span> &bull; ₹{Number(quotation.body_calc.total_amount).toLocaleString('en-IN')}</span>
           )}
         </div>
       )}

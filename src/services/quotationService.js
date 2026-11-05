@@ -195,6 +195,25 @@ export const quotationService = {
     }
     return response.data;
   },
+
+  // =========================================================================
+  // Master Body Calculation Defaults (બોડી વજન અને ભાવ કાયમી ડેટાબેઝ સેવિંગ)
+  // =========================================================================
+
+  async getBodyDefaults() {
+    try {
+      const response = await axiosInstance.get(ENDPOINTS.QUOTATION_BODY_DEFAULTS);
+      return response.data;
+    } catch (err) {
+      console.warn('⚠️ [QuotationService] Failed to load body defaults from DB:', err.message);
+      return null;
+    }
+  },
+
+  async saveBodyDefaults(defaults) {
+    const response = await axiosInstance.post(ENDPOINTS.QUOTATION_BODY_DEFAULTS, defaults);
+    return response.data;
+  },
 };
 
 export default quotationService;
