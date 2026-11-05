@@ -11,7 +11,7 @@ const loadSavedBodyDefaults = () => {
   try {
     const raw = localStorage.getItem(DEFAULT_BODY_CALC_STORAGE_KEY);
     if (raw) return JSON.parse(raw);
-  } catch {}
+  } catch { }
   return null;
 };
 
@@ -88,6 +88,10 @@ const createInitialBodyCalc = (savedDefaults = null) => {
       weight: '',
       rate: d.purchuran?.rate ?? '',
     },
+    machado: {
+      enabled: Boolean(d.machado?.enabled ?? false),
+      amount: d.machado?.amount ?? '',
+    },
   };
 };
 
@@ -147,6 +151,12 @@ const normalizeBodyCalcFromData = (raw) => {
         ? String(raw.purchuran.weight)
         : (raw.purchuran?.qty !== undefined && raw.purchuran?.qty !== null ? String(raw.purchuran.qty) : ''),
       rate: String(raw.purchuran?.rate ?? defaults.purchuran?.rate ?? ''),
+    },
+    machado: {
+      enabled: Boolean(raw.machado?.enabled ?? defaults.machado?.enabled ?? false),
+      amount: raw.machado?.amount !== undefined && raw.machado?.amount !== null
+        ? String(raw.machado.amount)
+        : String(defaults.machado?.amount ?? ''),
     },
   };
 };
@@ -274,7 +284,7 @@ export function QuotationFormModal({
           return parsed.map((it, idx) => normalizeItem(it, String(Date.now() + idx), true));
         }
       }
-    } catch {}
+    } catch { }
     return null;
   };
 
@@ -542,7 +552,7 @@ export function QuotationFormModal({
     }
 
     if (row?.catalog_id) {
-      quotationService.deleteCatalogItem(row.catalog_id).catch(() => {});
+      quotationService.deleteCatalogItem(row.catalog_id).catch(() => { });
     }
 
     const updated = items.filter((_, idx) => idx !== index);
@@ -550,7 +560,7 @@ export function QuotationFormModal({
 
     try {
       localStorage.setItem(DEFAULT_ITEMS_STORAGE_KEY, JSON.stringify(updated.filter((it) => it.name && it.name.trim())));
-    } catch {}
+    } catch { }
   };
 
   // Explicit button: Save current items as permanent default template in database & localStorage
@@ -567,9 +577,9 @@ export function QuotationFormModal({
       const batchPayload = valid.map((it, idx) => {
         const variantsList = it.has_options && Array.isArray(it.options)
           ? it.options.map((opt) => ({
-              name: (opt.name || '').trim(),
-              rate: parseFloat(opt.rate) || 0,
-            }))
+            name: (opt.name || '').trim(),
+            rate: parseFloat(opt.rate) || 0,
+          }))
           : [];
 
         return {
@@ -753,6 +763,13 @@ export function QuotationFormModal({
     }));
   };
 
+  const handleMachadoChange = (field, value) => {
+    setBodyCalc((prev) => ({
+      ...prev,
+      machado: { ...prev.machado, [field]: value },
+    }));
+  };
+
   const handleSaveBodyDefaults = () => {
     try {
       const defaults = {
@@ -775,11 +792,14 @@ export function QuotationFormModal({
         purchuran: {
           rate: bodyCalc.purchuran?.rate,
         },
+        machado: {
+          amount: bodyCalc.machado?.amount,
+        },
       };
       localStorage.setItem(DEFAULT_BODY_CALC_STORAGE_KEY, JSON.stringify(defaults));
       setBodySavedToast(true);
       setTimeout(() => setBodySavedToast(false), 3000);
-    } catch {}
+    } catch { }
   };
 
   // =========================================================================
@@ -805,7 +825,7 @@ export function QuotationFormModal({
         if (typeof el.select === 'function' && el.tagName === 'INPUT') {
           try {
             el.select();
-          } catch {}
+          } catch { }
         }
         return true;
       }
@@ -1136,8 +1156,13 @@ export function QuotationFormModal({
     const pRate = parseFloat(bodyCalc.purchuran?.rate) || 0;
     const pAmount = Math.round(pWeight * pRate * 100) / 100;
 
+    // F. Machado (માચડો)
+    const mEnabled = Boolean(bodyCalc.machado?.enabled);
+    const mAmountInput = parseFloat(bodyCalc.machado?.amount) || 0;
+    const mAmount = mEnabled ? Math.round(mAmountInput * 100) / 100 : 0;
+
     // Body Totals
-    const bodyTotalAmount = Math.round((tAmount + sAmount + dAmount + thAmount + pAmount) * 100) / 100;
+    const bodyTotalAmount = Math.round((tAmount + sAmount + dAmount + thAmount + pAmount + mAmount) * 100) / 100;
     const bodyTotalWeight = Math.round((tWeight + sWeight + dWeight + thWeight + pWeight) * 100) / 100;
 
     // Grand Subtotal
@@ -1159,6 +1184,7 @@ export function QuotationFormModal({
         dhoka: { weight: dWeight, amount: dAmount, qty: dQty },
         thambhla: { feet: thTotalFeet, weight: thWeight, amount: thAmount, effectiveQty: thQty, effectiveHeight: thHeight },
         purchuran: { weight: pWeight, qty: pWeight, rate: pRate, amount: pAmount },
+        machado: { enabled: mEnabled, amount: mAmount, rawAmount: mAmountInput },
       },
       bodyTotalAmount,
       bodyTotalWeight,
@@ -1241,6 +1267,11 @@ export function QuotationFormModal({
           rate: calculations.bodyCalcDetails.purchuran.rate,
           amount: calculations.bodyCalcDetails.purchuran.amount,
         },
+        machado: {
+          enabled: calculations.bodyCalcDetails.machado.enabled,
+          amount: calculations.bodyCalcDetails.machado.amount,
+          raw_amount: calculations.bodyCalcDetails.machado.rawAmount,
+        },
         total_weight: calculations.bodyTotalWeight,
         total_amount: calculations.bodyTotalAmount,
         has_data: hasBodyData,
@@ -1266,9 +1297,9 @@ export function QuotationFormModal({
 
           const variantsList = hasOpt
             ? it.options.map((opt) => ({
-                name: (opt.name || '').trim(),
-                rate: parseFloat(opt.rate) || 0,
-              }))
+              name: (opt.name || '').trim(),
+              rate: parseFloat(opt.rate) || 0,
+            }))
             : [];
 
           return {
@@ -1325,9 +1356,12 @@ export function QuotationFormModal({
           purchuran: {
             rate: bodyCalc.purchuran?.rate,
           },
+          machado: {
+            amount: bodyCalc.machado?.amount,
+          },
         };
         localStorage.setItem(DEFAULT_BODY_CALC_STORAGE_KEY, JSON.stringify(bodyDefaults));
-      } catch {}
+      } catch { }
 
       // Auto-save all items to Database Catalog & localStorage preserving exact line sequence
       try {
@@ -1336,9 +1370,9 @@ export function QuotationFormModal({
           const batchPayload = validItems.map((it, idx) => {
             const variantsList = it.has_options && Array.isArray(it.options)
               ? it.options.map((opt) => ({
-                  name: (opt.name || '').trim(),
-                  rate: parseFloat(opt.rate) || 0,
-                }))
+                name: (opt.name || '').trim(),
+                rate: parseFloat(opt.rate) || 0,
+              }))
               : [];
 
             return {
@@ -1351,9 +1385,9 @@ export function QuotationFormModal({
             };
           });
 
-          quotationService.saveCatalogItemsBatch(batchPayload).catch(() => {});
+          quotationService.saveCatalogItemsBatch(batchPayload).catch(() => { });
         }
-      } catch {}
+      } catch { }
 
       await onSave(payload, initialData?.id);
       onClose();
@@ -2042,6 +2076,61 @@ export function QuotationFormModal({
                     </div>
                   </div>
                 </div>
+
+                {/* ----------------------------------------------------
+                    PART 6: માચડો (Machado / Carrier)
+                    Direct Amount (Lump-sum) with Selection Checkbox
+                    Only included in total calculation when checked (right)
+                    ---------------------------------------------------- */}
+                <div className={`body-part-card ${bodyCalc.machado?.enabled ? 'body-part-card-active' : ''}`} style={{ borderColor: bodyCalc.machado?.enabled ? '#2563eb' : undefined }}>
+                  <div className="body-part-top">
+                    <label className="body-part-label" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.45rem', cursor: 'pointer', margin: 0 }}>
+                      <input
+                        type="checkbox"
+                        checked={Boolean(bodyCalc.machado?.enabled)}
+                        onChange={(e) => handleMachadoChange('enabled', e.target.checked)}
+                        style={{ width: '18px', height: '18px', cursor: 'pointer', accentColor: '#2563eb' }}
+                      />
+                      <span style={{ fontWeight: 800 }}>૬. માચડો (Machado)</span>
+                    </label>
+                    <span style={{ fontSize: '0.72rem', color: bodyCalc.machado?.enabled ? '#16a34a' : '#64748b', fontWeight: 700 }}>
+                      {bodyCalc.machado?.enabled ? '✓ સામેલ છે (Included)' : '✗ બાકાત છે (Unchecked)'}
+                    </span>
+                  </div>
+
+                  {/* Input: Direct Amount */}
+                  <div className="body-inputs-row" style={{ gridTemplateColumns: '1fr' }}>
+                    <div className="body-input-group">
+                      <label className="body-input-label">
+                        માચડાની રકમ / ભાવ <span className="sub-hint">(Direct Amount ₹)</span>
+                      </label>
+                      <input
+                        type="number"
+                        step="any"
+                        min="0"
+                        className="body-calc-input font-mono"
+                        placeholder="e.g. 12000 (ડાયરેક્ટ રકમ)"
+                        value={bodyCalc.machado?.amount}
+                        onChange={(e) => handleMachadoChange('amount', e.target.value)}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Live Results Bar */}
+                  <div className="body-calc-result-box" style={{ background: bodyCalc.machado?.enabled ? '#eff6ff' : '#f8fafc' }}>
+                    <div>
+                      <span>સ્ટેટસ: </span>
+                      <strong>
+                        {bodyCalc.machado?.enabled
+                          ? 'કેલ્ક્યુલેશનમાં સામેલ'
+                          : 'અનચેક (ગણતરીમાં નથી)'}
+                      </strong>
+                    </div>
+                    <div className="body-calc-result-badge-amount" style={{ color: bodyCalc.machado?.enabled ? '#1d4ed8' : '#94a3b8' }}>
+                      ₹{calculations.bodyCalcDetails.machado.amount.toLocaleString('en-IN')}
+                    </div>
+                  </div>
+                </div>
               </div>
 
               {/* Bottom Summary Banner */}
@@ -2516,8 +2605,8 @@ export function QuotationFormModal({
                 {isSaving
                   ? 'Saving...'
                   : isEditMode
-                  ? '✓ Update Quotation'
-                  : '✓ Save Quotation (कोटेशन सेव करें)'}
+                    ? '✓ Update Quotation'
+                    : '✓ Save Quotation (कोटेशन सेव करें)'}
               </button>
             </div>
           </div>

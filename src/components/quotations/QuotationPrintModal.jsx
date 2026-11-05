@@ -46,6 +46,9 @@ export function QuotationPrintModal({ isOpen, onClose, quotation }) {
         const p = quotation.body_calc.purchuran;
         lines.push(`• *પરચુરણ*: ${p.weight || p.qty} kg @ ₹${p.rate}/kg = *₹${Number(p.amount).toLocaleString('en-IN')}*`);
       }
+      if (quotation.body_calc.machado?.enabled && Number(quotation.body_calc.machado?.amount) > 0) {
+        lines.push(`• *માચડો (Machado)*: *₹${Number(quotation.body_calc.machado.amount).toLocaleString('en-IN')}*`);
+      }
       if (Number(quotation.body_calc.total_weight) > 0) {
         lines.push(`  _Total Body Weight: ${Number(quotation.body_calc.total_weight).toLocaleString('en-IN')} kg_`);
       }
@@ -294,6 +297,24 @@ export function QuotationPrintModal({ isOpen, onClose, quotation }) {
                       </td>
                       <td style={{ textAlign: 'right' }} className="font-mono font-semibold">
                         ₹{Number(quotation.body_calc.purchuran.amount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                      </td>
+                    </tr>
+                  )}
+
+                  {quotation.body_calc.machado?.enabled && Number(quotation.body_calc.machado?.amount) > 0 && (
+                    <tr>
+                      <td style={{ textAlign: 'center', color: '#64748b' }}>6</td>
+                      <td>
+                        <div className="print-item-title">માચડો (Machado / Carrier)</div>
+                      </td>
+                      <td style={{ textAlign: 'center' }} className="font-mono">
+                        1 Job
+                      </td>
+                      <td style={{ textAlign: 'right' }} className="font-mono">
+                        ₹{Number(quotation.body_calc.machado.amount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                      </td>
+                      <td style={{ textAlign: 'right' }} className="font-mono font-semibold">
+                        ₹{Number(quotation.body_calc.machado.amount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
                       </td>
                     </tr>
                   )}
