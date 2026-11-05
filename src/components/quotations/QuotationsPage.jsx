@@ -7,14 +7,15 @@ import { QuotationPrintModal } from './QuotationPrintModal';
 import { Snackbar } from '../workers/Snackbar';
 
 export function QuotationsPage({ onBackToHome }) {
-  const { isAdmin } = useAuth();
+  const { isAdmin, canAccessModule, hasPermission } = useAuth();
+  const canAccessQuotations = isAdmin || canAccessModule('quotations') || hasPermission('quotations:view');
 
-  // If user is not admin, redirect back to home immediately
+  // If user cannot access quotations, redirect back to home immediately
   useEffect(() => {
-    if (!isAdmin && onBackToHome) {
+    if (!canAccessQuotations && onBackToHome) {
       onBackToHome();
     }
-  }, [isAdmin, onBackToHome]);
+  }, [canAccessQuotations, onBackToHome]);
 
   // SWR State
   const [quotations, setQuotations] = useState(() => quotationService.getCachedQuotations());
@@ -38,7 +39,7 @@ export function QuotationsPage({ onBackToHome }) {
   // Fetch quotations
   const fetchQuotations = useCallback(
     async ({ force = false } = {}) => {
-      if (!isAdmin) return;
+      if (!canAccessQuotations) return;
       if (quotationService.getCachedQuotations().length === 0) {
         setLoading(true);
       }
@@ -54,18 +55,18 @@ export function QuotationsPage({ onBackToHome }) {
         setLoading(false);
       }
     },
-    [isAdmin, showSnackbar]
+    [canAccessQuotations, showSnackbar]
   );
 
   useEffect(() => {
-    if (!isAdmin) return;
+    if (!canAccessQuotations) return;
     const unsubscribe = quotationService.subscribe((updatedList) => {
       setQuotations(updatedList);
       setLoading(false);
     });
     fetchQuotations();
     return () => unsubscribe();
-  }, [isAdmin, fetchQuotations]);
+  }, [canAccessQuotations, fetchQuotations]);
 
   // Save Quotation (Create or Update)
   const handleSaveQuotation = async (formData, id) => {
@@ -129,12 +130,12 @@ export function QuotationsPage({ onBackToHome }) {
   const draftCount = quotations.filter((q) => (q.status || 'Draft') === 'Draft').length;
   const approvedCount = quotations.filter((q) => q.status === 'Approved').length;
 
-  if (!isAdmin) {
+  if (!canAccessQuotations) {
     return (
       <div className="workers-page-shell">
         <main className="android-body" style={{ textAlign: 'center', padding: '3rem 1rem' }}>
-          <h3>Access Denied (केवल एडमिन के लिए)</h3>
-          <p style={{ color: '#64748b' }}>Only administrator accounts can view Quotations.</p>
+          <h3>Access Denied (अनुमति नहीं है)</h3>
+          <p style={{ color: '#64748b' }}>You do not have permission to view Quotations. Please ask Admin.</p>
           <button type="button" className="btn btn-primary btn-empty-cta" onClick={onBackToHome}>
             Back to Home
           </button>
@@ -240,16 +241,18 @@ export function QuotationsPage({ onBackToHome }) {
                   ? `No quotes found matching "${searchQuery}". Try clearing search.`
                   : 'Create your first Quotation / Estimate with items, 2-option rates (4mm/5mm), and instant discounts!'}
               </p>
-              <button
-                type="button"
-                className="btn btn-primary btn-empty-cta"
-                onClick={() => {
-                  setEditingQuotation(null);
-                  setIsFormOpen(true);
-                }}
-              >
-                + Create Quotation (नया कोटेशन)
-              </button>
+              {(isAdmin || hasPermission('quotations:create')) && (
+                <button
+                  type="button"
+                  className="btn btn-primary btn-empty-cta"
+                  onClick={() => {
+                    setEditingQuotation(null);
+                    setIsFormOpen(true);
+                  }}
+                >
+                  + Create Quotation (નવો કોટેશન)
+                </button>
+              )}
             </div>
           ) : (
             <div className="workers-grid">
@@ -274,24 +277,26 @@ export function QuotationsPage({ onBackToHome }) {
       </main>
 
       {/* Floating Action Button (FAB) matching Faizan Body Luxury Standard */}
-      <button
-        type="button"
-        className="android-fab luxury-fab quotation-fab"
-        onClick={() => {
-          setEditingQuotation(null);
-          setIsFormOpen(true);
-        }}
-        title="Create New Quotation"
-        aria-label="Create New Quotation"
-      >
-        <span className="fab-plus-icon">
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round">
-            <line x1="12" y1="5" x2="12" y2="19" />
-            <line x1="5" y1="12" x2="19" y2="12" />
-          </svg>
-        </span>
-        <span className="fab-label">New Quote</span>
-      </button>
+      {(isAdmin || hasPermission('quotations:create')) && (
+        <button
+          type="button"
+          className="android-fab luxury-fab quotation-fab"
+          onClick={() => {
+            setEditingQuotation(null);
+            setIsFormOpen(true);
+          }}
+          title="Create New Quotation"
+          aria-label="Create New Quotation"
+        >
+          <span className="fab-plus-icon">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round">
+              <line x1="12" y1="5" x2="12" y2="19" />
+              <line x1="5" y1="12" x2="19" y2="12" />
+            </svg>
+          </span>
+          <span className="fab-label">New Quote</span>
+        </button>
+      )}
 
       {/* 1. Quotation Form Modal */}
       <QuotationFormModal

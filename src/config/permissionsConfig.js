@@ -140,6 +140,35 @@ export const APP_MODULES = [
       },
     ],
   },
+  {
+    id: 'quotations',
+    name: 'Quotations & Body Estimates',
+    description: 'Truck body specifications, sizes, material items, and quotation slips',
+    icon: 'quotations',
+    color: '#d97706',
+    permissions: [
+      {
+        key: 'quotations:view',
+        label: 'View Quotations (Worker Job View)',
+        description: 'View quotations, body sizes, item quantities, and final total (rates and weights hidden)',
+      },
+      {
+        key: 'quotations:create',
+        label: 'Create Quotation (Add Specs)',
+        description: 'Create new quotations with vehicle sizes and items',
+      },
+      {
+        key: 'quotations:edit',
+        label: 'Edit Quotation Details',
+        description: 'Modify truck body dimensions, items list, and chassis info',
+      },
+      {
+        key: 'quotations:print',
+        label: 'Print & WhatsApp Slip',
+        description: 'Print worker job slip or share on WhatsApp',
+      },
+    ],
+  },
 ];
 
 /**

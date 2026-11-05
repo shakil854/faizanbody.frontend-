@@ -25,7 +25,7 @@ export function HomePage({ onNavigate, onQuickAddWorker }) {
     const unsubStock = stockService.subscribeItems((list) => setStockItems(list));
     let unsubQuotes = () => {};
 
-    if (isAdmin) {
+    if (isAdmin || canAccessModule('quotations')) {
       unsubQuotes = quotationService.subscribe((list) => setQuotations(list));
       quotationService.getQuotations().then((res) => {
         if (res?.data) setQuotations(res.data);
@@ -51,7 +51,7 @@ export function HomePage({ onNavigate, onQuickAddWorker }) {
       unsubQuotes();
       unsubStock();
     };
-  }, [isAdmin]);
+  }, [isAdmin, canAccessModule]);
 
   // Close search dropdown on click outside
   useEffect(() => {

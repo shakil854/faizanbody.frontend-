@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { createPortal } from 'react-dom';
+import { useAuth } from '../../context/AuthContext';
 import { quotationService } from '../../services/quotationService';
 
 // Storage keys so configured items and rates persist across all future quotations
@@ -265,6 +266,7 @@ export function QuotationFormModal({
   onSave,
   onOpenPrint,
 }) {
+  const { isAdmin } = useAuth();
   const isEditMode = Boolean(initialData && initialData.id);
   const scrollRef = useRef(null);
 
@@ -2516,15 +2518,17 @@ export function QuotationFormModal({
                     <span>Add Item (वस्तु जोड़ें)</span>
                   </button>
 
-                  <button
-                    type="button"
-                    className="btn-ledger-save-default"
-                    onClick={handleSaveItemsAsDefault}
-                    title="Save current item rows as permanent template in database for all future quotes"
-                  >
-                    <span>{templateSavedToast ? '✓' : '💾'}</span>
-                    <span>{templateSavedToast ? 'Saved to Database!' : 'Save Items as Default (डिफॉल्ट सेव रखें)'}</span>
-                  </button>
+                  {isAdmin && (
+                    <button
+                      type="button"
+                      className="btn-ledger-save-default"
+                      onClick={handleSaveItemsAsDefault}
+                      title="Save current item rows as permanent template in database for all future quotes"
+                    >
+                      <span>{templateSavedToast ? '✓' : '💾'}</span>
+                      <span>{templateSavedToast ? 'Saved to Database!' : 'Save Items as Default (डिफॉल्ट सेव रखें)'}</span>
+                    </button>
+                  )}
                 </div>
               </div>
             </div>
@@ -2536,7 +2540,7 @@ export function QuotationFormModal({
                 Final price: [   ]
                 ======================================================== */}
             <div className="drawing-summary-card">
-              {calculations.bodyTotalAmount > 0 && (
+              {isAdmin && calculations.bodyTotalAmount > 0 && (
                 <div style={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.5rem', padding: '0.3rem 0', fontSize: '0.82rem', color: '#475569', borderBottom: '1px dashed #cbd5e1', marginBottom: '0.5rem' }}>
                   <span>🚛 ગાડી બોડી કામ: <strong style={{ color: '#1e293b' }}>₹{calculations.bodyTotalAmount.toLocaleString('en-IN')}</strong> ({calculations.bodyTotalWeight} kg)</span>
                   {calculations.lowerItemsSubtotal > 0 && (
@@ -2546,72 +2550,80 @@ export function QuotationFormModal({
               )}
 
               {/* Quotation Total */}
-              <div className="drawing-summary-line total-line">
-                <span className="summary-lbl" style={{ fontWeight: 800 }}>
-                  Quotation Total (કુલ રકમ / Subtotal):
-                </span>
-                <span className="summary-val font-mono">
-                  ₹{calculations.subtotal.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
-                </span>
-              </div>
+              {isAdmin && (
+                <div className="drawing-summary-line total-line">
+                  <span className="summary-lbl" style={{ fontWeight: 800 }}>
+                    Quotation Total (કુલ રકમ / Subtotal):
+                  </span>
+                  <span className="summary-val font-mono">
+                    ₹{calculations.subtotal.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                  </span>
+                </div>
+              )}
 
               {/* Extra % (+) */}
-              <div className="drawing-summary-line extra-line">
-                <div className="discount-input-group">
-                  <span className="summary-lbl" style={{ fontWeight: 700, color: '#2563eb' }}>
-                    + Extra % (मार्जिन / अतिरिक्त % जोड़):
-                  </span>
-                  <div className="discount-box-wrap">
-                    <input
-                      type="number"
-                      step="any"
-                      min="0"
-                      max="100"
-                      className="paper-input extra-percent-box font-mono font-bold"
-                      value={extraPercent}
-                      onChange={(e) => setExtraPercent(e.target.value)}
-                      data-nav-group="summary"
-                      data-nav-name="extra"
-                      placeholder=""
-                    />
-                    <span className="percent-char" style={{ color: '#2563eb' }}>%</span>
+              {isAdmin && (
+                <div className="drawing-summary-line extra-line">
+                  <div className="discount-input-group">
+                    <span className="summary-lbl" style={{ fontWeight: 700, color: '#2563eb' }}>
+                      + Extra % (मार्जिन / अतिरिक्त % जोड़):
+                    </span>
+                    <div className="discount-box-wrap">
+                      <input
+                        type="number"
+                        step="any"
+                        min="0"
+                        max="100"
+                        className="paper-input extra-percent-box font-mono font-bold"
+                        value={extraPercent}
+                        onChange={(e) => setExtraPercent(e.target.value)}
+                        data-nav-group="summary"
+                        data-nav-name="extra"
+                        placeholder=""
+                      />
+                      <span className="percent-char" style={{ color: '#2563eb' }}>%</span>
+                    </div>
                   </div>
+                  <span className="font-mono" style={{ fontWeight: 800, color: '#2563eb' }}>
+                    + ₹{calculations.extraAmt.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                  </span>
                 </div>
-                <span className="font-mono" style={{ fontWeight: 800, color: '#2563eb' }}>
-                  + ₹{calculations.extraAmt.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
-                </span>
-              </div>
+              )}
 
               {/* Discount % */}
-              <div className="drawing-summary-line discount-line">
-                <div className="discount-input-group">
-                  <span className="summary-lbl text-red">Discount % (छूट):</span>
-                  <div className="discount-box-wrap">
-                    <input
-                      type="number"
-                      step="any"
-                      min="0"
-                      max="100"
-                      className="paper-input discount-percent-box font-mono font-bold"
-                      value={discountPercent}
-                      onChange={(e) => setDiscountPercent(e.target.value)}
-                      data-nav-group="summary"
-                      data-nav-name="discount"
-                      placeholder=""
-                    />
-                    <span className="percent-char">%</span>
+              {isAdmin && (
+                <div className="drawing-summary-line discount-line">
+                  <div className="discount-input-group">
+                    <span className="summary-lbl text-red">Discount % (छूट):</span>
+                    <div className="discount-box-wrap">
+                      <input
+                        type="number"
+                        step="any"
+                        min="0"
+                        max="100"
+                        className="paper-input discount-percent-box font-mono font-bold"
+                        value={discountPercent}
+                        onChange={(e) => setDiscountPercent(e.target.value)}
+                        data-nav-group="summary"
+                        data-nav-name="discount"
+                        placeholder=""
+                      />
+                      <span className="percent-char">%</span>
+                    </div>
                   </div>
+                  <span className="discount-amount-val font-mono text-red">
+                    - ₹{calculations.discAmt.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                  </span>
                 </div>
-                <span className="discount-amount-val font-mono text-red">
-                  - ₹{calculations.discAmt.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
-                </span>
-              </div>
+              )}
 
-              <div className="drawing-divider"></div>
+              {isAdmin && <div className="drawing-divider"></div>}
 
-              {/* Final Price (Large highlighted box matching paper) */}
+              {/* Final Price (Large highlighted box matching paper - visible to all, bottom total amount) */}
               <div className="drawing-summary-line final-price-line">
-                <span className="final-price-lbl">Final price (अंतिम कीमत):</span>
+                <span className="final-price-lbl">
+                  {isAdmin ? 'Final price (अंतिम कीमत):' : 'Final Total Amount (કુલ રકમ):'}
+                </span>
                 <div className="final-price-box font-mono">
                   ₹{calculations.finalPrice.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
                 </div>

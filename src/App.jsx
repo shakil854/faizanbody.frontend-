@@ -22,13 +22,13 @@ import { isLeavingSoon } from './utils/dateAlerts';
 import './App.css';
 
 export function App() {
-  const { isAuthenticated, loading: authLoading, isAdmin } = useAuth();
+  const { isAuthenticated, loading: authLoading, isAdmin, canAccessModule } = useAuth();
 
   const [currentPage, setCurrentPage] = useState(() => {
     const hash = window.location.hash;
     if (hash === '#workers') return 'workers';
     if (hash === '#orders') return 'orders';
-    if (hash === '#quotations') return isAdmin ? 'quotations' : 'home';
+    if (hash === '#quotations') return 'quotations';
     if (hash === '#stock') return 'stock';
     if (hash === '#users') return 'users';
     return 'home';
@@ -67,7 +67,7 @@ export function App() {
           setAlertCount(alerts);
         }
       })
-      .catch(() => {});
+      .catch(() => { });
 
     stockService
       .getItems()
@@ -78,7 +78,7 @@ export function App() {
           setLowStockCount(low);
         }
       })
-      .catch(() => {});
+      .catch(() => { });
 
     const unsubStock = stockService.subscribeItems((items) => {
       setStockCount(items.length);
@@ -102,7 +102,7 @@ export function App() {
           setInProgressOrderCount(inProg);
         }
       })
-      .catch(() => {});
+      .catch(() => { });
 
     const unsubOrders = orderService.subscribe((orders) => {
       setOrderCount(orders.length);
@@ -112,7 +112,7 @@ export function App() {
       setInProgressOrderCount(inProg);
     });
 
-    let unsubUsers = () => {};
+    let unsubUsers = () => { };
     if (isAdmin) {
       userService
         .getUsers()
@@ -121,7 +121,7 @@ export function App() {
             setUserCount(res.data.length);
           }
         })
-        .catch(() => {});
+        .catch(() => { });
 
       unsubUsers = userService.subscribeUsers((usersList) => {
         setUserCount(usersList.length);
@@ -141,10 +141,10 @@ export function App() {
       const hash = window.location.hash;
       const targetPage = hash === '#workers' ? 'workers'
         : hash === '#orders' ? 'orders'
-        : hash === '#quotations' ? (isAdmin ? 'quotations' : 'home')
-        : hash === '#stock' ? 'stock'
-        : hash === '#users' ? 'users'
-        : 'home';
+          : hash === '#quotations' ? (isAdmin ? 'quotations' : 'home')
+            : hash === '#stock' ? 'stock'
+              : hash === '#users' ? 'users'
+                : 'home';
 
       setCurrentPage((prev) => {
         if (prev !== targetPage) {
@@ -229,14 +229,14 @@ export function App() {
       .then((handle) => {
         backListener = handle;
       })
-      .catch(() => {});
+      .catch(() => { });
 
     import('@capacitor/status-bar')
       .then(({ StatusBar, Style }) => {
-        StatusBar.setStyle({ style: Style.Dark }).catch(() => {});
-        StatusBar.setBackgroundColor({ color: '#090e1a' }).catch(() => {});
+        StatusBar.setStyle({ style: Style.Dark }).catch(() => { });
+        StatusBar.setBackgroundColor({ color: '#090e1a' }).catch(() => { });
       })
-      .catch(() => {});
+      .catch(() => { });
 
     return () => {
       if (backListener && backListener.remove) backListener.remove();
@@ -328,7 +328,7 @@ export function App() {
           />
         )}
 
-        {currentPage === 'quotations' && isAdmin && (
+        {currentPage === 'quotations' && (isAdmin || canAccessModule('quotations')) && (
           <QuotationsPage
             onBackToHome={() => navigateTo('home')}
           />

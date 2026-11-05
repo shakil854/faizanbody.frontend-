@@ -1,4 +1,5 @@
 import React from 'react';
+import { useAuth } from '../../context/AuthContext';
 
 export const QuotationCard = React.memo(function QuotationCard({
   quotation,
@@ -6,6 +7,7 @@ export const QuotationCard = React.memo(function QuotationCard({
   onOpenPrint,
   onDelete,
 }) {
+  const { isAdmin } = useAuth();
   const cleanPhone = quotation.mobile_number ? quotation.mobile_number.replace(/[^0-9]/g, '') : '';
   const waPhone = cleanPhone.length === 10 ? `91${cleanPhone}` : cleanPhone;
 
@@ -83,20 +85,22 @@ export const QuotationCard = React.memo(function QuotationCard({
                 <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
               </svg>
             </button>
-            <button
-              type="button"
-              className="action-btn delete-btn"
-              onClick={(e) => {
-                e.stopPropagation();
-                onDelete(quotation);
-              }}
-              title="Delete Quotation"
-            >
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                <polyline points="3 6 5 6 21 6" />
-                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
-              </svg>
-            </button>
+            {isAdmin && (
+              <button
+                type="button"
+                className="action-btn delete-btn"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onDelete(quotation);
+                }}
+                title="Delete Quotation"
+              >
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                  <polyline points="3 6 5 6 21 6" />
+                  <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                </svg>
+              </button>
+            )}
           </div>
         </div>
       </div>
@@ -131,16 +135,16 @@ export const QuotationCard = React.memo(function QuotationCard({
       {/* Body Work Badge (if present) */}
       {(quotation.body_calc?.has_data || Number(quotation.total_weight) > 0) && (
         <div className="quotation-body-badge">
-          <span>🚛 બોડી:</span>
+          <span>🚛 બોડી સાઇઝ:</span>
           <strong>
             {quotation.body_calc?.taliyu?.length && quotation.body_calc?.taliyu?.width
               ? `${quotation.body_calc.taliyu.length}' × ${quotation.body_calc.taliyu.width}'`
-              : 'સાઇઝ'}
+              : 'સાઇઝ ઉપલબ્ધ'}
           </strong>
-          {Number(quotation.total_weight || quotation.body_calc?.total_weight) > 0 && (
+          {isAdmin && Number(quotation.total_weight || quotation.body_calc?.total_weight) > 0 && (
             <span> &bull; ⚖️ {Number(quotation.total_weight || quotation.body_calc?.total_weight).toLocaleString('en-IN')} kg</span>
           )}
-          {Number(quotation.body_calc?.total_amount) > 0 && (
+          {isAdmin && Number(quotation.body_calc?.total_amount) > 0 && (
             <span> &bull; ₹{Number(quotation.body_calc.total_amount).toLocaleString('en-IN')}</span>
           )}
         </div>
@@ -198,13 +202,17 @@ export const QuotationCard = React.memo(function QuotationCard({
       {/* Price Breakdown & Final Price */}
       <div className="quotation-price-strip">
         <div className="quotation-price-left">
-          <span className="subtotal-label">
-            Subtotal: ₹{Number(quotation.subtotal).toLocaleString('en-IN')}
-          </span>
-          {Number(quotation.discount_percent) > 0 && (
-            <span className="discount-tag">
-              -{quotation.discount_percent}% Disc (₹{Number(quotation.discount_amount).toLocaleString('en-IN')})
-            </span>
+          {isAdmin && (
+            <>
+              <span className="subtotal-label">
+                Subtotal: ₹{Number(quotation.subtotal).toLocaleString('en-IN')}
+              </span>
+              {Number(quotation.discount_percent) > 0 && (
+                <span className="discount-tag">
+                  -{quotation.discount_percent}% Disc (₹{Number(quotation.discount_amount).toLocaleString('en-IN')})
+                </span>
+              )}
+            </>
           )}
         </div>
 
