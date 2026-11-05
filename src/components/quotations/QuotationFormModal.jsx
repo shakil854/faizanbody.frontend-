@@ -11,9 +11,17 @@ const DEFAULT_BODY_CALC_STORAGE_KEY = 'faizanbody_quotation_default_body_calc';
 const loadSavedBodyDefaults = () => {
   try {
     const raw = localStorage.getItem(DEFAULT_BODY_CALC_STORAGE_KEY);
-    if (raw) return JSON.parse(raw);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (parsed && typeof parsed === 'object') {
+        if (!parsed.machado || !parsed.machado.amount) {
+          parsed.machado = { ...(parsed.machado || {}), amount: '12000' };
+        }
+        return parsed;
+      }
+    }
   } catch { }
-  return null;
+  return { machado: { amount: '12000' } };
 };
 
 // Helper to convert options from array, object, or fallback defaults
@@ -91,7 +99,9 @@ const createInitialBodyCalc = (savedDefaults = null) => {
     },
     machado: {
       enabled: Boolean(d.machado?.enabled ?? false),
-      amount: d.machado?.amount ?? '',
+      amount: (d.machado?.amount !== undefined && d.machado?.amount !== null && String(d.machado.amount).trim() !== '')
+        ? String(d.machado.amount)
+        : '12000',
     },
   };
 };
@@ -174,11 +184,11 @@ const normalizeBodyCalcFromData = (raw) => {
     },
     machado: {
       enabled: Boolean(raw.machado?.enabled ?? defaults.machado?.enabled ?? false),
-      amount: raw.machado?.amount !== undefined && raw.machado?.amount !== null
+      amount: (raw.machado?.amount !== undefined && raw.machado?.amount !== null && String(raw.machado.amount).trim() !== '')
         ? String(raw.machado.amount)
-        : (raw.machado?.raw_amount !== undefined && raw.machado?.raw_amount !== null
+        : ((raw.machado?.raw_amount !== undefined && raw.machado?.raw_amount !== null && String(raw.machado.raw_amount).trim() !== '')
           ? String(raw.machado.raw_amount)
-          : String(defaults.machado?.amount ?? '')),
+          : String(defaults.machado?.amount || '12000')),
     },
   };
 };
@@ -359,7 +369,7 @@ export function QuotationFormModal({
             });
           }
         })
-        .catch(() => {});
+        .catch(() => { });
 
       // Generate default quotation no
       const year = new Date().getFullYear();
@@ -803,10 +813,19 @@ export function QuotationFormModal({
   };
 
   const handleMachadoChange = (field, value) => {
-    setBodyCalc((prev) => ({
-      ...prev,
-      machado: { ...prev.machado, [field]: value },
-    }));
+    setBodyCalc((prev) => {
+      let machadoAmt = prev.machado?.amount;
+      if (field === 'enabled' && value) {
+        if (!machadoAmt || parseFloat(machadoAmt) === 0) {
+          const defaults = loadSavedBodyDefaults();
+          machadoAmt = String(defaults?.machado?.amount || '12000');
+        }
+      }
+      return {
+        ...prev,
+        machado: { ...prev.machado, [field]: value, amount: machadoAmt },
+      };
+    });
   };
 
   const handleSaveBodyDefaults = async () => {
@@ -1208,7 +1227,7 @@ export function QuotationFormModal({
 
     // F. Machado (માચડો)
     const mEnabled = Boolean(bodyCalc.machado?.enabled);
-    const mAmountInput = parseFloat(bodyCalc.machado?.amount) || 0;
+    const mAmountInput = parseFloat(bodyCalc.machado?.amount) || parseFloat(loadSavedBodyDefaults()?.machado?.amount) || 12000;
     const mAmount = mEnabled ? Math.round(mAmountInput * 100) / 100 : 0;
 
     // Body Totals
@@ -1384,36 +1403,38 @@ export function QuotationFormModal({
         status,
       };
 
-      // Auto-save default body rates/weights
-      try {
-        const bodyDefaults = {
-          taliyu: {
-            selected_option_index: selTaliyuIdx,
-            options: tOpts,
-          },
-          side: {
-            selected_option_index: selSideIdx,
-            options: sOpts,
-          },
-          dhoka: {
-            weight_per_piece: bodyCalc.dhoka?.weight_per_piece,
-            rate: bodyCalc.dhoka?.rate,
-          },
-          thambhla: {
-            weight_per_foot: bodyCalc.thambhla?.weight_per_foot,
-            rate: bodyCalc.thambhla?.rate,
-          },
-          purchuran: {
-            rate: bodyCalc.purchuran?.rate,
-          },
-          machado: {
-            enabled: Boolean(bodyCalc.machado?.enabled),
-            amount: bodyCalc.machado?.amount,
-          },
-        };
-        localStorage.setItem(DEFAULT_BODY_CALC_STORAGE_KEY, JSON.stringify(bodyDefaults));
-        quotationService.saveBodyDefaults(bodyDefaults).catch(() => {});
-      } catch { }
+      // Auto-save default body rates/weights (Admin only)
+      if (isAdmin) {
+        try {
+          const bodyDefaults = {
+            taliyu: {
+              selected_option_index: selTaliyuIdx,
+              options: tOpts,
+            },
+            side: {
+              selected_option_index: selSideIdx,
+              options: sOpts,
+            },
+            dhoka: {
+              weight_per_piece: bodyCalc.dhoka?.weight_per_piece,
+              rate: bodyCalc.dhoka?.rate,
+            },
+            thambhla: {
+              weight_per_foot: bodyCalc.thambhla?.weight_per_foot,
+              rate: bodyCalc.thambhla?.rate,
+            },
+            purchuran: {
+              rate: bodyCalc.purchuran?.rate,
+            },
+            machado: {
+              enabled: Boolean(bodyCalc.machado?.enabled),
+              amount: bodyCalc.machado?.amount || loadSavedBodyDefaults()?.machado?.amount || '12000',
+            },
+          };
+          localStorage.setItem(DEFAULT_BODY_CALC_STORAGE_KEY, JSON.stringify(bodyDefaults));
+          quotationService.saveBodyDefaults(bodyDefaults).catch(() => { });
+        } catch { }
+      }
 
       // Auto-save all items to Database Catalog & localStorage preserving exact line sequence
       try {
@@ -1586,28 +1607,30 @@ export function QuotationFormModal({
                 </div>
 
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                  <button
-                    type="button"
-                    onClick={handleSaveBodyDefaults}
-                    style={{
-                      background: bodySavedToast ? '#16a34a' : '#f1f5f9',
-                      color: bodySavedToast ? '#ffffff' : '#0f172a',
-                      border: '1px solid #cbd5e1',
-                      borderRadius: '6px',
-                      padding: '0.35rem 0.65rem',
-                      fontSize: '0.74rem',
-                      fontWeight: 700,
-                      cursor: 'pointer',
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      gap: '0.3rem',
-                      transition: 'all 0.2s',
-                    }}
-                    title="આ ભાવ અને વજન ને આવતા બધા નવા કોટેશન માટે ડિફોલ્ટ સેવ રાખો"
-                  >
-                    <span>{bodySavedToast ? '✓' : '💾'}</span>
-                    <span>{bodySavedToast ? 'ભાવ સેવ થઈ ગયા!' : 'Save Default Rates (ભાવ સેવ રાખો)'}</span>
-                  </button>
+                  {isAdmin && (
+                    <button
+                      type="button"
+                      onClick={handleSaveBodyDefaults}
+                      style={{
+                        background: bodySavedToast ? '#16a34a' : '#f1f5f9',
+                        color: bodySavedToast ? '#ffffff' : '#0f172a',
+                        border: '1px solid #cbd5e1',
+                        borderRadius: '6px',
+                        padding: '0.35rem 0.65rem',
+                        fontSize: '0.74rem',
+                        fontWeight: 700,
+                        cursor: 'pointer',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '0.3rem',
+                        transition: 'all 0.2s',
+                      }}
+                      title="આ ભાવ અને વજન ને આવતા બધા નવા કોટેશન માટે ડિફોલ્ટ સેવ રાખો"
+                    >
+                      <span>{bodySavedToast ? '✓' : '💾'}</span>
+                      <span>{bodySavedToast ? 'ભાવ સેવ થઈ ગયા!' : 'Save Default Rates (ભાવ સેવ રાખો)'}</span>
+                    </button>
+                  )}
                 </div>
               </div>
 
@@ -1663,7 +1686,7 @@ export function QuotationFormModal({
                   <div className="body-calc-options-wrap">
                     <div className="body-calc-options-head">
                       <span>ઓપ્શન / જાડાઈ (સિલેક્ટ કરો)</span>
-                      <span>૧ S.F. વજન (kg) &bull; ભાવ (₹/kg)</span>
+                      {isAdmin && <span>૧ S.F. વજન (kg) &bull; ભાવ (₹/kg)</span>}
                     </div>
 
                     {(bodyCalc.taliyu?.options || []).map((opt, optIdx) => (
@@ -1688,52 +1711,58 @@ export function QuotationFormModal({
                           onClick={(e) => e.stopPropagation()}
                           onChange={(e) => handleUpdateTaliyuOption(optIdx, 'name', e.target.value)}
                         />
-                        <input
-                          type="number"
-                          step="any"
-                          min="0"
-                          className="body-calc-opt-num"
-                          placeholder="વજન kg"
-                          value={opt.weight_per_sqft}
-                          onClick={(e) => e.stopPropagation()}
-                          onChange={(e) => handleUpdateTaliyuOption(optIdx, 'weight_per_sqft', e.target.value)}
-                          title="૧ ચોરસ ફૂટ નો વજન (kg)"
-                        />
-                        <span style={{ fontSize: '0.74rem', fontWeight: 700, color: '#64748b' }}>₹</span>
-                        <input
-                          type="number"
-                          step="any"
-                          min="0"
-                          className="body-calc-opt-num"
-                          placeholder="ભાવ ₹/kg"
-                          value={opt.rate}
-                          onClick={(e) => e.stopPropagation()}
-                          onChange={(e) => handleUpdateTaliyuOption(optIdx, 'rate', e.target.value)}
-                          title="૧ kg નો ભાવ (₹)"
-                        />
-                        {bodyCalc.taliyu?.options?.length > 1 && (
-                          <button
-                            type="button"
-                            className="btn-del-body-opt"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleRemoveTaliyuOption(optIdx);
-                            }}
-                            title="Remove option"
-                          >
-                            ✕
-                          </button>
+                        {isAdmin && (
+                          <>
+                            <input
+                              type="number"
+                              step="any"
+                              min="0"
+                              className="body-calc-opt-num"
+                              placeholder="વજન kg"
+                              value={opt.weight_per_sqft}
+                              onClick={(e) => e.stopPropagation()}
+                              onChange={(e) => handleUpdateTaliyuOption(optIdx, 'weight_per_sqft', e.target.value)}
+                              title="૧ ચોરસ ફૂટ નો વજન (kg)"
+                            />
+                            <span style={{ fontSize: '0.74rem', fontWeight: 700, color: '#64748b' }}>₹</span>
+                            <input
+                              type="number"
+                              step="any"
+                              min="0"
+                              className="body-calc-opt-num"
+                              placeholder="ભાવ ₹/kg"
+                              value={opt.rate}
+                              onClick={(e) => e.stopPropagation()}
+                              onChange={(e) => handleUpdateTaliyuOption(optIdx, 'rate', e.target.value)}
+                              title="૧ kg નો ભાવ (₹)"
+                            />
+                            {bodyCalc.taliyu?.options?.length > 1 && (
+                              <button
+                                type="button"
+                                className="btn-del-body-opt"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleRemoveTaliyuOption(optIdx);
+                                }}
+                                title="Remove option"
+                              >
+                                ✕
+                              </button>
+                            )}
+                          </>
                         )}
                       </div>
                     ))}
 
-                    <button
-                      type="button"
-                      className="btn-add-body-opt"
-                      onClick={handleAddTaliyuOption}
-                    >
-                      ＋ Add Option (નવો ઓપ્શન ઉમેરો)
-                    </button>
+                    {isAdmin && (
+                      <button
+                        type="button"
+                        className="btn-add-body-opt"
+                        onClick={handleAddTaliyuOption}
+                      >
+                        ＋ Add Option (નવો ઓપ્શન ઉમેરો)
+                      </button>
+                    )}
                   </div>
 
                   {/* Live Results Bar */}
@@ -1741,13 +1770,15 @@ export function QuotationFormModal({
                     <div>
                       <span>સિલેક્ટ: <strong>{calculations.bodyCalcDetails.taliyu.selectedName}</strong> &bull; Total S.F.: </span>
                       <strong>{calculations.bodyCalcDetails.taliyu.sqft}</strong>
-                      {calculations.bodyCalcDetails.taliyu.weight > 0 && (
+                      {isAdmin && calculations.bodyCalcDetails.taliyu.weight > 0 && (
                         <span> &bull; વજન: <strong>{calculations.bodyCalcDetails.taliyu.weight} kg</strong></span>
                       )}
                     </div>
-                    <div className="body-calc-result-badge-amount">
-                      ₹{calculations.bodyCalcDetails.taliyu.amount.toLocaleString('en-IN')}
-                    </div>
+                    {isAdmin && (
+                      <div className="body-calc-result-badge-amount">
+                        ₹{calculations.bodyCalcDetails.taliyu.amount.toLocaleString('en-IN')}
+                      </div>
+                    )}
                   </div>
                 </div>
 
@@ -1803,7 +1834,7 @@ export function QuotationFormModal({
                   <div className="body-calc-options-wrap">
                     <div className="body-calc-options-head">
                       <span>ઓપ્શન / ગેજ (સિલેક્ટ કરો)</span>
-                      <span>૧ S.F. વજન (kg) &bull; ભાવ (₹/kg)</span>
+                      {isAdmin && <span>૧ S.F. વજન (kg) &bull; ભાવ (₹/kg)</span>}
                     </div>
 
                     {(bodyCalc.side?.options || []).map((opt, optIdx) => (
@@ -1828,52 +1859,58 @@ export function QuotationFormModal({
                           onClick={(e) => e.stopPropagation()}
                           onChange={(e) => handleUpdateSideOption(optIdx, 'name', e.target.value)}
                         />
-                        <input
-                          type="number"
-                          step="any"
-                          min="0"
-                          className="body-calc-opt-num"
-                          placeholder="વજન kg"
-                          value={opt.weight_per_sqft}
-                          onClick={(e) => e.stopPropagation()}
-                          onChange={(e) => handleUpdateSideOption(optIdx, 'weight_per_sqft', e.target.value)}
-                          title="૧ ચોરસ ફૂટ નો વજન (kg)"
-                        />
-                        <span style={{ fontSize: '0.74rem', fontWeight: 700, color: '#64748b' }}>₹</span>
-                        <input
-                          type="number"
-                          step="any"
-                          min="0"
-                          className="body-calc-opt-num"
-                          placeholder="ભાવ ₹/kg"
-                          value={opt.rate}
-                          onClick={(e) => e.stopPropagation()}
-                          onChange={(e) => handleUpdateSideOption(optIdx, 'rate', e.target.value)}
-                          title="૧ kg નો ભાવ (₹)"
-                        />
-                        {bodyCalc.side?.options?.length > 1 && (
-                          <button
-                            type="button"
-                            className="btn-del-body-opt"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleRemoveSideOption(optIdx);
-                            }}
-                            title="Remove option"
-                          >
-                            ✕
-                          </button>
+                        {isAdmin && (
+                          <>
+                            <input
+                              type="number"
+                              step="any"
+                              min="0"
+                              className="body-calc-opt-num"
+                              placeholder="વજન kg"
+                              value={opt.weight_per_sqft}
+                              onClick={(e) => e.stopPropagation()}
+                              onChange={(e) => handleUpdateSideOption(optIdx, 'weight_per_sqft', e.target.value)}
+                              title="૧ ચોરસ ફૂટ નો વજન (kg)"
+                            />
+                            <span style={{ fontSize: '0.74rem', fontWeight: 700, color: '#64748b' }}>₹</span>
+                            <input
+                              type="number"
+                              step="any"
+                              min="0"
+                              className="body-calc-opt-num"
+                              placeholder="ભાવ ₹/kg"
+                              value={opt.rate}
+                              onClick={(e) => e.stopPropagation()}
+                              onChange={(e) => handleUpdateSideOption(optIdx, 'rate', e.target.value)}
+                              title="૧ kg નો ભાવ (₹)"
+                            />
+                            {bodyCalc.side?.options?.length > 1 && (
+                              <button
+                                type="button"
+                                className="btn-del-body-opt"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleRemoveSideOption(optIdx);
+                                }}
+                                title="Remove option"
+                              >
+                                ✕
+                              </button>
+                            )}
+                          </>
                         )}
                       </div>
                     ))}
 
-                    <button
-                      type="button"
-                      className="btn-add-body-opt"
-                      onClick={handleAddSideOption}
-                    >
-                      ＋ Add Option (નવો ઓપ્શન ઉમેરો)
-                    </button>
+                    {isAdmin && (
+                      <button
+                        type="button"
+                        className="btn-add-body-opt"
+                        onClick={handleAddSideOption}
+                      >
+                        ＋ Add Option (નવો ઓપ્શન ઉમેરો)
+                      </button>
+                    )}
                   </div>
 
                   {/* Live Results Bar */}
@@ -1881,13 +1918,15 @@ export function QuotationFormModal({
                     <div>
                       <span>સિલેક્ટ: <strong>{calculations.bodyCalcDetails.side.selectedName}</strong> &bull; Total S.F. (×2): </span>
                       <strong>{calculations.bodyCalcDetails.side.sqft}</strong>
-                      {calculations.bodyCalcDetails.side.weight > 0 && (
+                      {isAdmin && calculations.bodyCalcDetails.side.weight > 0 && (
                         <span> &bull; વજન: <strong>{calculations.bodyCalcDetails.side.weight} kg</strong></span>
                       )}
                     </div>
-                    <div className="body-calc-result-badge-amount">
-                      ₹{calculations.bodyCalcDetails.side.amount.toLocaleString('en-IN')}
-                    </div>
+                    {isAdmin && (
+                      <div className="body-calc-result-badge-amount">
+                        ₹{calculations.bodyCalcDetails.side.amount.toLocaleString('en-IN')}
+                      </div>
+                    )}
                   </div>
                 </div>
 
@@ -1902,13 +1941,15 @@ export function QuotationFormModal({
                     <span className="body-part-label">
                       <span>૩. ધોકા (Cross Members)</span>
                     </span>
-                    <span style={{ fontSize: '0.72rem', color: '#64748b', fontWeight: 600 }}>
-                      રકમ = કુલ વજન × ભાવ (₹/kg)
-                    </span>
+                    {isAdmin && (
+                      <span style={{ fontSize: '0.72rem', color: '#64748b', fontWeight: 600 }}>
+                        રકમ = કુલ વજન × ભાવ (₹/kg)
+                      </span>
+                    )}
                   </div>
 
                   {/* Inputs */}
-                  <div className="body-inputs-row" style={{ gridTemplateColumns: 'repeat(3, 1fr)' }}>
+                  <div className="body-inputs-row" style={{ gridTemplateColumns: isAdmin ? 'repeat(3, 1fr)' : '1fr' }}>
                     <div className="body-input-group">
                       <label className="body-input-label">Quantity (નંગ)</label>
                       <input
@@ -1922,46 +1963,61 @@ export function QuotationFormModal({
                       />
                     </div>
 
-                    <div className="body-input-group">
-                      <label className="body-input-label">
-                        ૧ નંગ નો વજન <span className="sub-hint">(kg)</span>
-                      </label>
-                      <input
-                        type="number"
-                        step="any"
-                        min="0"
-                        className="body-calc-input font-mono"
-                        placeholder="e.g. 25"
-                        value={bodyCalc.dhoka?.weight_per_piece}
-                        onChange={(e) => handleDhokaChange('weight_per_piece', e.target.value)}
-                      />
-                    </div>
+                    {isAdmin && (
+                      <>
+                        <div className="body-input-group">
+                          <label className="body-input-label">
+                            ૧ નંગ નો વજન <span className="sub-hint">(kg)</span>
+                          </label>
+                          <input
+                            type="number"
+                            step="any"
+                            min="0"
+                            className="body-calc-input font-mono"
+                            placeholder="e.g. 25"
+                            value={bodyCalc.dhoka?.weight_per_piece}
+                            onChange={(e) => handleDhokaChange('weight_per_piece', e.target.value)}
+                          />
+                        </div>
 
-                    <div className="body-input-group">
-                      <label className="body-input-label">
-                        ભાવ <span className="sub-hint">(₹/kg)</span>
-                      </label>
-                      <input
-                        type="number"
-                        step="any"
-                        min="0"
-                        className="body-calc-input font-mono"
-                        placeholder="e.g. 80"
-                        value={bodyCalc.dhoka?.rate}
-                        onChange={(e) => handleDhokaChange('rate', e.target.value)}
-                      />
-                    </div>
+                        <div className="body-input-group">
+                          <label className="body-input-label">
+                            ભાવ <span className="sub-hint">(₹/kg)</span>
+                          </label>
+                          <input
+                            type="number"
+                            step="any"
+                            min="0"
+                            className="body-calc-input font-mono"
+                            placeholder="e.g. 80"
+                            value={bodyCalc.dhoka?.rate}
+                            onChange={(e) => handleDhokaChange('rate', e.target.value)}
+                          />
+                        </div>
+                      </>
+                    )}
                   </div>
 
                   {/* Live Results Bar */}
                   <div className="body-calc-result-box">
                     <div>
-                      <span>કુલ વજન: </span>
-                      <strong>{calculations.bodyCalcDetails.dhoka.weight} kg</strong>
+                      {isAdmin ? (
+                        <>
+                          <span>કુલ વજન: </span>
+                          <strong>{calculations.bodyCalcDetails.dhoka.weight} kg</strong>
+                        </>
+                      ) : (
+                        <>
+                          <span>કુલ માત્રા: </span>
+                          <strong>{bodyCalc.dhoka?.qty || 0} નંગ</strong>
+                        </>
+                      )}
                     </div>
-                    <div className="body-calc-result-badge-amount">
-                      ₹{calculations.bodyCalcDetails.dhoka.amount.toLocaleString('en-IN')}
-                    </div>
+                    {isAdmin && (
+                      <div className="body-calc-result-badge-amount">
+                        ₹{calculations.bodyCalcDetails.dhoka.amount.toLocaleString('en-IN')}
+                      </div>
+                    )}
                   </div>
                 </div>
 
@@ -1977,13 +2033,15 @@ export function QuotationFormModal({
                     <span className="body-part-label">
                       <span>૪. થાંભલા (Pillars)</span>
                     </span>
-                    <span style={{ fontSize: '0.72rem', color: '#64748b', fontWeight: 600 }}>
-                      રકમ = કુલ વજન × ભાવ (₹/kg)
-                    </span>
+                    {isAdmin && (
+                      <span style={{ fontSize: '0.72rem', color: '#64748b', fontWeight: 600 }}>
+                        રકમ = કુલ વજન × ભાવ (₹/kg)
+                      </span>
+                    )}
                   </div>
 
                   {/* Inputs */}
-                  <div className="body-inputs-row">
+                  <div className="body-inputs-row" style={{ gridTemplateColumns: isAdmin ? 'repeat(4, 1fr)' : 'repeat(2, 1fr)' }}>
                     <div className="body-input-group">
                       <label className="body-input-label">
                         નંગ <span className="sub-hint">{bodyCalc.thambhla?.qty === '' ? '(ધોકા × 2)' : ''}</span>
@@ -2014,46 +2072,54 @@ export function QuotationFormModal({
                       />
                     </div>
 
-                    <div className="body-input-group">
-                      <label className="body-input-label">
-                        ૧ ફૂટ વજન <span className="sub-hint">(kg)</span>
-                      </label>
-                      <input
-                        type="number"
-                        step="any"
-                        min="0"
-                        className="body-calc-input font-mono"
-                        placeholder="e.g. 2.5"
-                        value={bodyCalc.thambhla?.weight_per_foot}
-                        onChange={(e) => handleThambhlaChange('weight_per_foot', e.target.value)}
-                      />
-                    </div>
+                    {isAdmin && (
+                      <>
+                        <div className="body-input-group">
+                          <label className="body-input-label">
+                            ૧ ફૂટ વજન <span className="sub-hint">(kg)</span>
+                          </label>
+                          <input
+                            type="number"
+                            step="any"
+                            min="0"
+                            className="body-calc-input font-mono"
+                            placeholder="e.g. 2.5"
+                            value={bodyCalc.thambhla?.weight_per_foot}
+                            onChange={(e) => handleThambhlaChange('weight_per_foot', e.target.value)}
+                          />
+                        </div>
 
-                    <div className="body-input-group">
-                      <label className="body-input-label">
-                        ભાવ <span className="sub-hint">(₹/kg)</span>
-                      </label>
-                      <input
-                        type="number"
-                        step="any"
-                        min="0"
-                        className="body-calc-input font-mono"
-                        placeholder="e.g. 80"
-                        value={bodyCalc.thambhla?.rate}
-                        onChange={(e) => handleThambhlaChange('rate', e.target.value)}
-                      />
-                    </div>
+                        <div className="body-input-group">
+                          <label className="body-input-label">
+                            ભાવ <span className="sub-hint">(₹/kg)</span>
+                          </label>
+                          <input
+                            type="number"
+                            step="any"
+                            min="0"
+                            className="body-calc-input font-mono"
+                            placeholder="e.g. 80"
+                            value={bodyCalc.thambhla?.rate}
+                            onChange={(e) => handleThambhlaChange('rate', e.target.value)}
+                          />
+                        </div>
+                      </>
+                    )}
                   </div>
 
                   {/* Live Results Bar */}
                   <div className="body-calc-result-box">
                     <div>
-                      <span>કુલ ફૂટ: <strong>{calculations.bodyCalcDetails.thambhla.feet} ft</strong> &bull; વજન: </span>
-                      <strong>{calculations.bodyCalcDetails.thambhla.weight} kg</strong>
+                      <span>કુલ ફૂટ: <strong>{calculations.bodyCalcDetails.thambhla.feet} ft</strong></span>
+                      {isAdmin && (
+                        <span> &bull; વજન: <strong>{calculations.bodyCalcDetails.thambhla.weight} kg</strong></span>
+                      )}
                     </div>
-                    <div className="body-calc-result-badge-amount">
-                      ₹{calculations.bodyCalcDetails.thambhla.amount.toLocaleString('en-IN')}
-                    </div>
+                    {isAdmin && (
+                      <div className="body-calc-result-badge-amount">
+                        ₹{calculations.bodyCalcDetails.thambhla.amount.toLocaleString('en-IN')}
+                      </div>
+                    )}
                   </div>
                 </div>
 
@@ -2067,13 +2133,15 @@ export function QuotationFormModal({
                     <span className="body-part-label">
                       <span>૫. પરચુરણ (Purchuran)</span>
                     </span>
-                    <span style={{ fontSize: '0.72rem', color: '#64748b', fontWeight: 600 }}>
-                      રકમ = કુલ વજન × ભાવ (₹/kg)
-                    </span>
+                    {isAdmin && (
+                      <span style={{ fontSize: '0.72rem', color: '#64748b', fontWeight: 600 }}>
+                        રકમ = કુલ વજન × ભાવ (₹/kg)
+                      </span>
+                    )}
                   </div>
 
                   {/* Inputs */}
-                  <div className="body-inputs-row" style={{ gridTemplateColumns: 'repeat(2, 1fr)' }}>
+                  <div className="body-inputs-row" style={{ gridTemplateColumns: isAdmin ? 'repeat(2, 1fr)' : '1fr' }}>
                     <div className="body-input-group">
                       <label className="body-input-label">કુલ વજન <span className="sub-hint">(kg)</span></label>
                       <input
@@ -2087,34 +2155,38 @@ export function QuotationFormModal({
                       />
                     </div>
 
-                    <div className="body-input-group">
-                      <label className="body-input-label">ભાવ <span className="sub-hint">(₹/kg)</span></label>
-                      <input
-                        type="number"
-                        step="any"
-                        min="0"
-                        className="body-calc-input font-mono"
-                        placeholder="e.g. 80"
-                        value={bodyCalc.purchuran?.rate}
-                        onChange={(e) => handlePurchuranChange('rate', e.target.value)}
-                      />
-                    </div>
+                    {isAdmin && (
+                      <div className="body-input-group">
+                        <label className="body-input-label">ભાવ <span className="sub-hint">(₹/kg)</span></label>
+                        <input
+                          type="number"
+                          step="any"
+                          min="0"
+                          className="body-calc-input font-mono"
+                          placeholder="e.g. 80"
+                          value={bodyCalc.purchuran?.rate}
+                          onChange={(e) => handlePurchuranChange('rate', e.target.value)}
+                        />
+                      </div>
+                    )}
                   </div>
 
                   {/* Live Results Bar */}
-                  <div className="body-calc-result-box">
-                    <div>
-                      <span>ગણતરી: </span>
-                      <strong>
-                        {calculations.bodyCalcDetails.purchuran.weight > 0 && calculations.bodyCalcDetails.purchuran.rate > 0
-                          ? `${calculations.bodyCalcDetails.purchuran.weight} kg × ₹${calculations.bodyCalcDetails.purchuran.rate}`
-                          : 'કુલ વજન (kg) × ભાવ'}
-                      </strong>
+                  {isAdmin && (
+                    <div className="body-calc-result-box">
+                      <div>
+                        <span>ગણતરી: </span>
+                        <strong>
+                          {calculations.bodyCalcDetails.purchuran.weight > 0 && calculations.bodyCalcDetails.purchuran.rate > 0
+                            ? `${calculations.bodyCalcDetails.purchuran.weight} kg × ₹${calculations.bodyCalcDetails.purchuran.rate}`
+                            : 'કુલ વજન (kg) × ભાવ'}
+                        </strong>
+                      </div>
+                      <div className="body-calc-result-badge-amount">
+                        ₹{calculations.bodyCalcDetails.purchuran.amount.toLocaleString('en-IN')}
+                      </div>
                     </div>
-                    <div className="body-calc-result-badge-amount">
-                      ₹{calculations.bodyCalcDetails.purchuran.amount.toLocaleString('en-IN')}
-                    </div>
-                  </div>
+                  )}
                 </div>
 
                 {/* ----------------------------------------------------
@@ -2139,22 +2211,24 @@ export function QuotationFormModal({
                   </div>
 
                   {/* Input: Direct Amount */}
-                  <div className="body-inputs-row" style={{ gridTemplateColumns: '1fr' }}>
-                    <div className="body-input-group">
-                      <label className="body-input-label">
-                        માચડાની રકમ / ભાવ <span className="sub-hint">(Direct Amount ₹)</span>
-                      </label>
-                      <input
-                        type="number"
-                        step="any"
-                        min="0"
-                        className="body-calc-input font-mono"
-                        placeholder="e.g. 12000 (ડાયરેક્ટ રકમ)"
-                        value={bodyCalc.machado?.amount}
-                        onChange={(e) => handleMachadoChange('amount', e.target.value)}
-                      />
+                  {isAdmin && (
+                    <div className="body-inputs-row" style={{ gridTemplateColumns: '1fr' }}>
+                      <div className="body-input-group">
+                        <label className="body-input-label">
+                          માચડાની રકમ / ભાવ <span className="sub-hint">(Direct Amount ₹)</span>
+                        </label>
+                        <input
+                          type="number"
+                          step="any"
+                          min="0"
+                          className="body-calc-input font-mono"
+                          placeholder="e.g. 12000 (ડાયરેક્ટ રકમ)"
+                          value={bodyCalc.machado?.amount}
+                          onChange={(e) => handleMachadoChange('amount', e.target.value)}
+                        />
+                      </div>
                     </div>
-                  </div>
+                  )}
 
                   {/* Live Results Bar */}
                   <div className="body-calc-result-box" style={{ background: bodyCalc.machado?.enabled ? '#eff6ff' : '#f8fafc' }}>
@@ -2166,24 +2240,28 @@ export function QuotationFormModal({
                           : 'અનચેક (ગણતરીમાં નથી)'}
                       </strong>
                     </div>
-                    <div className="body-calc-result-badge-amount" style={{ color: bodyCalc.machado?.enabled ? '#1d4ed8' : '#94a3b8' }}>
-                      ₹{calculations.bodyCalcDetails.machado.amount.toLocaleString('en-IN')}
-                    </div>
+                    {isAdmin && (
+                      <div className="body-calc-result-badge-amount" style={{ color: bodyCalc.machado?.enabled ? '#1d4ed8' : '#94a3b8' }}>
+                        ₹{calculations.bodyCalcDetails.machado.amount.toLocaleString('en-IN')}
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
 
               {/* Bottom Summary Banner */}
-              <div className="body-summary-banner">
-                <div className="body-summary-col">
-                  <span className="body-summary-col-label">કુલ બોડી વજન (Est. Total Weight)</span>
-                  <span className="body-summary-col-val">{calculations.bodyTotalWeight.toLocaleString('en-IN')} kg</span>
+              {isAdmin && (
+                <div className="body-summary-banner">
+                  <div className="body-summary-col">
+                    <span className="body-summary-col-label">કુલ બોડી વજન (Est. Total Weight)</span>
+                    <span className="body-summary-col-val">{calculations.bodyTotalWeight.toLocaleString('en-IN')} kg</span>
+                  </div>
+                  <div className="body-summary-col" style={{ textAlign: 'right' }}>
+                    <span className="body-summary-col-label">ગાડી બોડી રકમ (Body Total Amount)</span>
+                    <span className="body-summary-col-val amount-accent">₹{calculations.bodyTotalAmount.toLocaleString('en-IN')}</span>
+                  </div>
                 </div>
-                <div className="body-summary-col" style={{ textAlign: 'right' }}>
-                  <span className="body-summary-col-label">ગાડી બોડી રકમ (Body Total Amount)</span>
-                  <span className="body-summary-col-val amount-accent">₹{calculations.bodyTotalAmount.toLocaleString('en-IN')}</span>
-                </div>
-              </div>
+              )}
             </div>
 
             {/* ========================================================
@@ -2254,17 +2332,17 @@ export function QuotationFormModal({
                 <table className="quotation-ledger-table">
                   <thead>
                     <tr>
-                      <th className="col-th-name" style={{ minWidth: '200px' }}>Name (वस्तु)</th>
-                      <th className="col-th-qty">Qty (मात्रा)</th>
-                      <th className="col-th-rate">Rate (रेट ₹)</th>
-                      <th className="col-th-amount">Amount (रकम ₹)</th>
-                      <th className="col-th-del"></th>
+                      <th className="col-th-name" style={!isAdmin ? { width: '70%' } : { minWidth: '200px' }}>Name (वस्तु)</th>
+                      <th className="col-th-qty" style={!isAdmin ? { width: '20%' } : undefined}>Qty (मात्रा)</th>
+                      {isAdmin && <th className="col-th-rate">Rate (रेट ₹)</th>}
+                      {isAdmin && <th className="col-th-amount">Amount (रકમ ₹)</th>}
+                      <th className="col-th-del" style={!isAdmin ? { width: '10%' } : undefined}></th>
                     </tr>
                   </thead>
                   <tbody>
                     {loadingItems && items.length === 0 && (
                       <tr>
-                        <td colSpan={5} style={{ textAlign: 'center', padding: '1.25rem', color: '#64748b' }}>
+                        <td colSpan={isAdmin ? 5 : 3} style={{ textAlign: 'center', padding: '1.25rem', color: '#64748b' }}>
                           ⏳ Loading saved items from database...
                         </td>
                       </tr>
@@ -2272,7 +2350,7 @@ export function QuotationFormModal({
                     {items.map((row, idx) => (
                       <tr key={row.id || idx} className="quotation-ledger-tr">
                         {/* 1. Name */}
-                        <td className="col-td-name" style={{ minWidth: '200px' }}>
+                        <td className="col-td-name" style={!isAdmin ? { width: '70%' } : { minWidth: '200px' }}>
                           <input
                             type="text"
                             className="ledger-input ledger-name-input font-bold"
@@ -2287,7 +2365,7 @@ export function QuotationFormModal({
                         </td>
 
                         {/* 2. Qty (Clean empty box) */}
-                        <td className="col-td-qty">
+                        <td className="col-td-qty" style={!isAdmin ? { width: '20%' } : undefined}>
                           <input
                             type="number"
                             step="any"
@@ -2302,141 +2380,145 @@ export function QuotationFormModal({
                         </td>
 
                         {/* 3. Rate (Single or Bracket with multiple custom options) */}
-                        <td className="col-td-rate">
-                          {row.has_options ? (
-                            <div className="ledger-brace-wrap">
-                              {/* Literal Curly Brace Symbol dynamically fitting options count */}
-                              <div className="ledger-brace-svg" title="Options / Rates Bracket">
-                                <svg
-                                  viewBox="0 0 10 100"
-                                  preserveAspectRatio="none"
-                                  style={{
-                                    width: '8px',
-                                    height: `${Math.max(48, (row.options?.length || 2) * 32)}px`,
-                                    minHeight: '44px',
-                                  }}
-                                >
-                                  <path
-                                    d="M 9,2 C 4,2 1,12 1,35 C 1,46 0,50 0,50 C 0,50 1,54 1,65 C 1,88 4,98 9,98"
-                                    stroke="#2563eb"
-                                    strokeWidth="2.4"
-                                    strokeLinecap="round"
-                                    fill="none"
-                                    vectorEffect="non-scaling-stroke"
-                                  />
-                                </svg>
-                              </div>
-
-                              {/* Options Stack */}
-                              <div className="ledger-options-stack">
-                                {(row.options || []).map((opt, optIdx) => (
-                                  <div
-                                    key={opt.id || optIdx}
-                                    className={`ledger-opt-line ${row.selected_option_index === optIdx ? 'opt-active' : ''}`}
-                                    onClick={() => handleSelectOption(idx, optIdx)}
-                                    title="Click to select this option"
+                        {isAdmin && (
+                          <td className="col-td-rate">
+                            {row.has_options ? (
+                              <div className="ledger-brace-wrap">
+                                {/* Literal Curly Brace Symbol dynamically fitting options count */}
+                                <div className="ledger-brace-svg" title="Options / Rates Bracket">
+                                  <svg
+                                    viewBox="0 0 10 100"
+                                    preserveAspectRatio="none"
+                                    style={{
+                                      width: '8px',
+                                      height: `${Math.max(48, (row.options?.length || 2) * 32)}px`,
+                                      minHeight: '44px',
+                                    }}
                                   >
-                                    <input
-                                      type="radio"
-                                      name={`ledger-opt-${row.id || idx}`}
-                                      checked={row.selected_option_index === optIdx}
-                                      onChange={() => handleSelectOption(idx, optIdx)}
-                                      className="ledger-radio"
+                                    <path
+                                      d="M 9,2 C 4,2 1,12 1,35 C 1,46 0,50 0,50 C 0,50 1,54 1,65 C 1,88 4,98 9,98"
+                                      stroke="#2563eb"
+                                      strokeWidth="2.4"
+                                      strokeLinecap="round"
+                                      fill="none"
+                                      vectorEffect="non-scaling-stroke"
                                     />
-                                    <input
-                                      type="text"
-                                      className="ledger-opt-size-input font-bold"
-                                      value={opt.name}
-                                      onClick={(e) => e.stopPropagation()}
-                                      onChange={(e) => handleUpdateOption(idx, optIdx, 'name', e.target.value)}
-                                      data-nav-row={idx}
-                                      data-nav-col="opt_name"
-                                      data-nav-opt={optIdx}
-                                      placeholder="Option"
-                                    />
-                                    <span className="ledger-currency">₹</span>
-                                    <input
-                                      type="number"
-                                      step="any"
-                                      className="ledger-opt-rate-input font-mono"
-                                      value={opt.rate}
-                                      onClick={(e) => e.stopPropagation()}
-                                      onChange={(e) => handleUpdateOption(idx, optIdx, 'rate', e.target.value)}
-                                      data-nav-row={idx}
-                                      data-nav-col="opt_rate"
-                                      data-nav-opt={optIdx}
-                                      placeholder="0"
-                                    />
-                                    {row.options && row.options.length > 1 && (
-                                      <button
-                                        type="button"
-                                        className="btn-opt-del"
-                                        onClick={(e) => {
-                                          e.stopPropagation();
-                                          handleRemoveOption(idx, optIdx);
-                                        }}
-                                        title="Remove option"
-                                      >
-                                        ✕
-                                      </button>
-                                    )}
+                                  </svg>
+                                </div>
+
+                                {/* Options Stack */}
+                                <div className="ledger-options-stack">
+                                  {(row.options || []).map((opt, optIdx) => (
+                                    <div
+                                      key={opt.id || optIdx}
+                                      className={`ledger-opt-line ${row.selected_option_index === optIdx ? 'opt-active' : ''}`}
+                                      onClick={() => handleSelectOption(idx, optIdx)}
+                                      title="Click to select this option"
+                                    >
+                                      <input
+                                        type="radio"
+                                        name={`ledger-opt-${row.id || idx}`}
+                                        checked={row.selected_option_index === optIdx}
+                                        onChange={() => handleSelectOption(idx, optIdx)}
+                                        className="ledger-radio"
+                                      />
+                                      <input
+                                        type="text"
+                                        className="ledger-opt-size-input font-bold"
+                                        value={opt.name}
+                                        onClick={(e) => e.stopPropagation()}
+                                        onChange={(e) => handleUpdateOption(idx, optIdx, 'name', e.target.value)}
+                                        data-nav-row={idx}
+                                        data-nav-col="opt_name"
+                                        data-nav-opt={optIdx}
+                                        placeholder="Option"
+                                      />
+                                      <span className="ledger-currency">₹</span>
+                                      <input
+                                        type="number"
+                                        step="any"
+                                        className="ledger-opt-rate-input font-mono"
+                                        value={opt.rate}
+                                        onClick={(e) => e.stopPropagation()}
+                                        onChange={(e) => handleUpdateOption(idx, optIdx, 'rate', e.target.value)}
+                                        data-nav-row={idx}
+                                        data-nav-col="opt_rate"
+                                        data-nav-opt={optIdx}
+                                        placeholder="0"
+                                      />
+                                      {row.options && row.options.length > 1 && (
+                                        <button
+                                          type="button"
+                                          className="btn-opt-del"
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            handleRemoveOption(idx, optIdx);
+                                          }}
+                                          title="Remove option"
+                                        >
+                                          ✕
+                                        </button>
+                                      )}
+                                    </div>
+                                  ))}
+
+                                  {/* Actions row inside options cell: + Option & 1 Rate */}
+                                  <div className="ledger-options-cell-actions">
+                                    <button
+                                      type="button"
+                                      className="btn-ledger-add-sub-opt"
+                                      onClick={() => handleAddOption(idx)}
+                                      title="Add another option (3rd, 4th, etc.)"
+                                    >
+                                      ＋ Option
+                                    </button>
+                                    <button
+                                      type="button"
+                                      className="btn-ledger-toggle-mode"
+                                      onClick={() => handleToggleOptions(idx)}
+                                      title="Revert to single rate"
+                                    >
+                                      1 Rate
+                                    </button>
                                   </div>
-                                ))}
-
-                                {/* Actions row inside options cell: + Option & 1 Rate */}
-                                <div className="ledger-options-cell-actions">
-                                  <button
-                                    type="button"
-                                    className="btn-ledger-add-sub-opt"
-                                    onClick={() => handleAddOption(idx)}
-                                    title="Add another option (3rd, 4th, etc.)"
-                                  >
-                                    ＋ Option
-                                  </button>
-                                  <button
-                                    type="button"
-                                    className="btn-ledger-toggle-mode"
-                                    onClick={() => handleToggleOptions(idx)}
-                                    title="Revert to single rate"
-                                  >
-                                    1 Rate
-                                  </button>
                                 </div>
                               </div>
-                            </div>
-                          ) : (
-                            <div className="ledger-single-rate-wrap">
-                              <span className="ledger-currency">₹</span>
-                              <input
-                                type="number"
-                                step="any"
-                                className="ledger-input ledger-rate-input font-mono"
-                                placeholder="0"
-                                value={row.rate}
-                                onChange={(e) => handleRowChange(idx, 'rate', e.target.value)}
-                                data-nav-row={idx}
-                                data-nav-col="rate"
-                                required
-                              />
-                              <button
-                                type="button"
-                                className="btn-ledger-add-option"
-                                onClick={() => handleToggleOptions(idx)}
-                                title="Add multiple rate options (2, 3 or more rates)"
-                              >
-                                + Options
-                              </button>
-                            </div>
-                          )}
-                        </td>
+                            ) : (
+                              <div className="ledger-single-rate-wrap">
+                                <span className="ledger-currency">₹</span>
+                                <input
+                                  type="number"
+                                  step="any"
+                                  className="ledger-input ledger-rate-input font-mono"
+                                  placeholder="0"
+                                  value={row.rate}
+                                  onChange={(e) => handleRowChange(idx, 'rate', e.target.value)}
+                                  data-nav-row={idx}
+                                  data-nav-col="rate"
+                                  required
+                                />
+                                <button
+                                  type="button"
+                                  className="btn-ledger-add-option"
+                                  onClick={() => handleToggleOptions(idx)}
+                                  title="Add multiple rate options (2, 3 or more rates)"
+                                >
+                                  + Options
+                                </button>
+                              </div>
+                            )}
+                          </td>
+                        )}
 
                         {/* 4. Amount = Rate * Qty */}
-                        <td className="col-td-amount font-mono">
-                          ₹{(Number(row.amount) || ((parseFloat(row.rate) || 0) * (parseFloat(row.qty) || 0))).toLocaleString('en-IN', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}
-                        </td>
+                        {isAdmin && (
+                          <td className="col-td-amount font-mono">
+                            ₹{(Number(row.amount) || ((parseFloat(row.rate) || 0) * (parseFloat(row.qty) || 0))).toLocaleString('en-IN', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}
+                          </td>
+                        )}
 
                         {/* 5. Reorder & Delete Actions */}
-                        <td className="col-td-del" style={{ whiteSpace: 'nowrap' }}>
+                        <td className="col-td-del" style={!isAdmin ? { width: '10%', whiteSpace: 'nowrap' } : { whiteSpace: 'nowrap' }}>
                           <div style={{ display: 'inline-flex', alignItems: 'center', gap: '3px' }}>
                             <button
                               type="button"

@@ -51,7 +51,7 @@ export function QuotationPrintModal({ isOpen, onClose, quotation }) {
         }
         const p = quotation.body_calc.purchuran;
         if (p && (Number(p.amount) > 0 || Number(p.weight || p.qty) > 0)) {
-          lines.push(`• *૫. પરચુરણ*: સામાન્ય ફિટિંગ અને પરચુરણ સામગ્રી`);
+          lines.push(`• *૫. પરચુરણ*: ${p.weight || p.qty ? `${p.weight || p.qty} kg (પરચુરણ સામગ્રી)` : 'સામાન્ય ફિટિંગ અને પરચુરણ સામગ્રી'}`);
         }
         if (quotation.body_calc.machado?.enabled) {
           lines.push(`• *૬. માચડો (Machado)*: કેરિયર / માચડો ફીટીંગ વર્ક`);
@@ -455,7 +455,7 @@ export function QuotationPrintModal({ isOpen, onClose, quotation }) {
                       </td>
                       <td style={{ textAlign: 'center' }} className="font-mono">
                         {isWorkerSlip ? (
-                          <strong>1 Job</strong>
+                          <strong>{quotation.body_calc.purchuran.weight || quotation.body_calc.purchuran.qty ? `${quotation.body_calc.purchuran.weight || quotation.body_calc.purchuran.qty} kg` : '1 Job'}</strong>
                         ) : (
                           <strong>{quotation.body_calc.purchuran.weight || quotation.body_calc.purchuran.qty || 0} kg</strong>
                         )}
