@@ -4,7 +4,8 @@ import { useAuth } from '../../context/AuthContext';
 export const QuotationCard = React.memo(function QuotationCard({
   quotation,
   onOpenEdit,
-  onOpenPrint,
+  onDirectWhatsAppShare,
+  isSharing = false,
   onDelete,
 }) {
   const { isAdmin } = useAuth();
@@ -178,16 +179,29 @@ export const QuotationCard = React.memo(function QuotationCard({
             >
               Call
             </button>
-            {cleanPhone && (
-              <button
-                type="button"
-                className="quick-contact-btn quick-whatsapp-btn"
-                title={`WhatsApp ${quotation.customer_name}`}
-                onClick={handleWhatsApp}
-              >
-                WhatsApp
-              </button>
-            )}
+            <button
+              type="button"
+              className="quick-contact-btn quick-whatsapp-btn"
+              title="Share Quotation PDF directly via WhatsApp"
+              onClick={(e) => {
+                e.stopPropagation();
+                onDirectWhatsAppShare?.(quotation);
+              }}
+              disabled={isSharing}
+              style={{
+                background: '#16a34a',
+                color: '#ffffff',
+                fontWeight: 800,
+                fontSize: '0.78rem',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '0.35rem',
+                boxShadow: '0 2px 6px rgba(22, 163, 74, 0.25)',
+              }}
+            >
+              <span>{isSharing ? '⏳' : '💬'}</span>
+              <span>{isSharing ? 'PDF શેર થાય છે...' : 'WhatsApp Share'}</span>
+            </button>
           </div>
         </div>
       )}

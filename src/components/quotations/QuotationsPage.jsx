@@ -4,6 +4,8 @@ import { quotationService } from '../../services/quotationService';
 import { QuotationCard } from './QuotationCard';
 import { QuotationFormModal } from './QuotationFormModal';
 import { QuotationPrintModal } from './QuotationPrintModal';
+import { QuotationPrintContent } from './QuotationPrintContent';
+import { sharePdfFile } from '../../utils/pdfGenerator';
 import { Snackbar } from '../workers/Snackbar';
 
 export function QuotationsPage({ onBackToHome }) {
@@ -30,11 +32,53 @@ export function QuotationsPage({ onBackToHome }) {
   const [printingQuotation, setPrintingQuotation] = useState(null);
   const [deletingQuotation, setDeletingQuotation] = useState(null);
 
-  // Toast
-  const [snackbar, setSnackbar] = useState({ message: '', type: 'info' });
-  const showSnackbar = useCallback((message, type = 'info') => {
-    setSnackbar({ message, type });
-  }, []);
+  // Direct WhatsApp Share (1-tap, NO modal opened)
+  const [sharingQuote, setSharingQuote] = useState(null);
+  const [sharingQuoteId, setSharingQuoteId] = useState(null);
+
+  const handleDirectWhatsAppShare = useCallback(async (quote) => {
+    if (!quote || sharingQuoteId) return;
+    try {
+      setSharingQuoteId(quote.id);
+      setSharingQuote(quote);
+      showSnackbar('⏳ Generating Quotation PDF...', 'info');
+
+      // Allow DOM to update offscreen container
+      await new Promise((r) => setTimeout(r, 140));
+
+      const cleanCustomer = (quote.customer_name || 'Customer').replace(/[^a-zA-Z0-9_-]/g, '_');
+      const cleanNo = (quote.quotation_no || 'Quote').replace(/[^a-zA-Z0-9_-]/g, '_');
+      const fileName = `FaizanBody_Quotation_${cleanNo}_${cleanCustomer}.pdf`;
+
+      const res = await sharePdfFile({
+        elementId: 'quotation-direct-share-element',
+        fileName,
+      });
+
+      if (res?.success) {
+        showSnackbar('✓ Quotation PDF shared!', 'success');
+      }
+    } catch (err) {
+      console.error('Direct WhatsApp PDF share failed:', err);
+      // Fallback: direct WhatsApp URL
+      const cleanPhone = quote.mobile_number ? quote.mobile_number.replace(/[^0-9]/g, '') : '';
+      const waPhone = cleanPhone.length === 10 ? `91${cleanPhone}` : cleanPhone;
+      const summaryText = encodeURIComponent(
+        `*📋 QUOTATION - FAIZAN BODY*\n` +
+        `Quote No: ${quote.quotation_no}\n` +
+        `Date: ${quote.quotation_date}\n` +
+        `Customer: ${quote.customer_name}\n` +
+        (quote.truck_chassis_no ? `Truck: ${quote.truck_chassis_no}\n` : '') +
+        `*TOTAL AMOUNT: ₹${Number(quote.final_price).toLocaleString('en-IN')}*\n` +
+        `_Faizan Body Workshop_`
+      );
+      const url = waPhone ? `https://wa.me/${waPhone}?text=${summaryText}` : `https://wa.me/?text=${summaryText}`;
+      window.open(url, '_blank');
+    } finally {
+      setSharingQuoteId(null);
+      setSharingQuote(null);
+    }
+  }, [sharingQuoteId, showSnackbar]);
 
   // Fetch quotations
   const fetchQuotations = useCallback(
@@ -264,10 +308,8 @@ export function QuotationsPage({ onBackToHome }) {
                     setEditingQuotation(q);
                     setIsFormOpen(true);
                   }}
-                  onOpenPrint={(q) => {
-                    setPrintingQuotation(q);
-                    setIsPrintOpen(true);
-                  }}
+                  onDirectWhatsAppShare={handleDirectWhatsAppShare}
+                  isSharing={sharingQuoteId === quote.id}
                   onDelete={(q) => setDeletingQuotation(q)}
                 />
               ))}
@@ -351,6 +393,25 @@ export function QuotationsPage({ onBackToHome }) {
           </div>
         </div>
       )}
+
+      {/* Hidden off-screen render container for 1-tap direct WhatsApp PDF sharing */}
+      <div
+        style={{
+          position: 'fixed',
+          top: '-99999px',
+          left: '-99999px',
+          width: '720px',
+          visibility: 'hidden',
+          pointerEvents: 'none',
+          zIndex: -9999,
+        }}
+      >
+        {sharingQuote && (
+          <div id="quotation-direct-share-element" className="quotation-print-paper printable-slip">
+            <QuotationPrintContent quotation={sharingQuote} isCustomerView={true} />
+          </div>
+        )}
+      </div>
 
       {/* Snackbar Toast */}
       <Snackbar
