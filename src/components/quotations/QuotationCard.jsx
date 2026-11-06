@@ -34,7 +34,7 @@ export const QuotationCard = React.memo(function QuotationCard({
   };
 
   const selectedItems = Array.isArray(quotation.items)
-    ? quotation.items.filter((it) => it.selected !== false && (it.selected === true || parseFloat(it.qty) > 0 || parseFloat(it.amount) > 0 || !('selected' in it)))
+    ? quotation.items.filter((it) => it.selected === true)
     : [];
   const itemsCount = selectedItems.length;
   const itemsSummary = selectedItems

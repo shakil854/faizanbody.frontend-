@@ -17,11 +17,14 @@ const loadSavedBodyDefaults = () => {
         if (!parsed.machado || !parsed.machado.amount) {
           parsed.machado = { ...(parsed.machado || {}), amount: '12000' };
         }
+        if (!parsed.monofo || !parsed.monofo.amount) {
+          parsed.monofo = { ...(parsed.monofo || {}), amount: '10000' };
+        }
         return parsed;
       }
     }
   } catch { }
-  return { machado: { amount: '12000' } };
+  return { machado: { amount: '12000' }, monofo: { amount: '10000' } };
 };
 
 // Helper to convert options from array, object, or fallback defaults
@@ -63,11 +66,16 @@ const DEFAULT_SIDE_OPTIONS = [
   { id: '2', name: '14 ગેજ', weight_per_sqft: '', rate: '' },
 ];
 
+const DEFAULT_PURCHURAN_OPTIONS = [
+  { id: '1', name: '', rate: '' },
+];
+
 // Helper to create initial blank/default body calculation structure
 const createInitialBodyCalc = (savedDefaults = null) => {
   const d = savedDefaults || {};
   const taliyuOpts = normalizeBodyOptionsList(d.taliyu?.options, DEFAULT_TALIYU_OPTIONS);
   const sideOpts = normalizeBodyOptionsList(d.side?.options, DEFAULT_SIDE_OPTIONS);
+  const purchuranOpts = normalizeBodyOptionsList(d.purchuran?.options, DEFAULT_PURCHURAN_OPTIONS);
 
   return {
     taliyu: {
@@ -95,17 +103,23 @@ const createInitialBodyCalc = (savedDefaults = null) => {
     },
     purchuran: {
       enabled: Boolean(d.purchuran?.enabled ?? false),
-      amount: (d.purchuran?.amount !== undefined && d.purchuran?.amount !== null && String(d.purchuran.amount).trim() !== '')
-        ? String(d.purchuran.amount)
-        : ((d.purchuran?.rate !== undefined && d.purchuran?.rate !== null && String(d.purchuran.rate).trim() !== '')
-          ? String(d.purchuran.rate)
-          : ''),
+      selected_option_index: typeof d.purchuran?.selected_option_index === 'number' ? d.purchuran.selected_option_index : 0,
+      options: purchuranOpts,
+      weight: d.purchuran?.weight !== undefined && d.purchuran?.weight !== null ? String(d.purchuran.weight) : '',
+      rate: d.purchuran?.rate !== undefined && d.purchuran?.rate !== null ? String(d.purchuran.rate) : '',
+      amount: d.purchuran?.amount !== undefined && d.purchuran?.amount !== null ? String(d.purchuran.amount) : '',
     },
     machado: {
       enabled: Boolean(d.machado?.enabled ?? false),
       amount: (d.machado?.amount !== undefined && d.machado?.amount !== null && String(d.machado.amount).trim() !== '')
         ? String(d.machado.amount)
         : '12000',
+    },
+    monofo: {
+      enabled: Boolean(d.monofo?.enabled ?? false),
+      amount: (d.monofo?.amount !== undefined && d.monofo?.amount !== null && String(d.monofo.amount).trim() !== '')
+        ? String(d.monofo.amount)
+        : '10000',
     },
   };
 };
@@ -121,6 +135,10 @@ const normalizeBodyCalcFromData = (raw) => {
   const sideOpts = normalizeBodyOptionsList(
     raw.side?.options || defaults.side?.options,
     DEFAULT_SIDE_OPTIONS
+  );
+  const purchuranOpts = normalizeBodyOptionsList(
+    raw.purchuran?.options || defaults.purchuran?.options,
+    DEFAULT_PURCHURAN_OPTIONS
   );
 
   let selTaliyuIdx = 0;
@@ -187,6 +205,12 @@ const normalizeBodyCalcFromData = (raw) => {
         defaults.purchuran?.enabled ??
         false
       ),
+      selected_option_index: typeof raw.purchuran?.selected_option_index === 'number'
+        ? raw.purchuran.selected_option_index
+        : (typeof defaults.purchuran?.selected_option_index === 'number' ? defaults.purchuran.selected_option_index : 0),
+      options: purchuranOpts,
+      weight: raw.purchuran?.weight !== undefined && raw.purchuran?.weight !== null ? String(raw.purchuran.weight) : '',
+      rate: raw.purchuran?.rate !== undefined && raw.purchuran?.rate !== null ? String(raw.purchuran.rate) : '',
       amount: (raw.purchuran?.amount !== undefined && raw.purchuran?.amount !== null && String(raw.purchuran.amount).trim() !== '')
         ? String(raw.purchuran.amount)
         : ((raw.purchuran?.rate !== undefined && raw.purchuran?.rate !== null && String(raw.purchuran.rate).trim() !== '')
@@ -202,6 +226,14 @@ const normalizeBodyCalcFromData = (raw) => {
         : ((raw.machado?.raw_amount !== undefined && raw.machado?.raw_amount !== null && String(raw.machado.raw_amount).trim() !== '')
           ? String(raw.machado.raw_amount)
           : String(defaults.machado?.amount || '12000')),
+    },
+    monofo: {
+      enabled: Boolean(raw.monofo?.enabled ?? defaults.monofo?.enabled ?? false),
+      amount: (raw.monofo?.amount !== undefined && raw.monofo?.amount !== null && String(raw.monofo.amount).trim() !== '')
+        ? String(raw.monofo.amount)
+        : ((raw.monofo?.raw_amount !== undefined && raw.monofo?.raw_amount !== null && String(raw.monofo.raw_amount).trim() !== '')
+          ? String(raw.monofo.raw_amount)
+          : String(defaults.monofo?.amount || '10000')),
     },
   };
 };
@@ -831,23 +863,58 @@ export function QuotationFormModal({
     }));
   };
 
+  const handleSelectPurchuranOption = (optIdx) => {
+    setBodyCalc((prev) => ({
+      ...prev,
+      purchuran: { ...prev.purchuran, selected_option_index: optIdx },
+    }));
+  };
+
+  const handleUpdatePurchuranOption = (optIdx, field, value) => {
+    setBodyCalc((prev) => {
+      const opts = Array.isArray(prev.purchuran?.options) ? [...prev.purchuran.options] : [];
+      opts[optIdx] = { ...opts[optIdx], [field]: value };
+      return {
+        ...prev,
+        purchuran: { ...prev.purchuran, options: opts },
+      };
+    });
+  };
+
+  const handleAddPurchuranOption = () => {
+    setBodyCalc((prev) => {
+      const opts = Array.isArray(prev.purchuran?.options) ? [...prev.purchuran.options] : [];
+      opts.push({
+        id: String(Date.now()),
+        name: '',
+        rate: '',
+      });
+      return {
+        ...prev,
+        purchuran: { ...prev.purchuran, options: opts },
+      };
+    });
+  };
+
+  const handleRemovePurchuranOption = (optIdx) => {
+    setBodyCalc((prev) => {
+      let opts = Array.isArray(prev.purchuran?.options) ? [...prev.purchuran.options] : [];
+      opts = opts.filter((_, i) => i !== optIdx);
+      if (opts.length === 0) {
+        opts = [{ id: '1', name: '', rate: '' }];
+      }
+      let selIdx = prev.purchuran?.selected_option_index || 0;
+      if (selIdx >= opts.length) selIdx = Math.max(0, opts.length - 1);
+      return {
+        ...prev,
+        purchuran: { ...prev.purchuran, options: opts, selected_option_index: selIdx },
+      };
+    });
+  };
+
   const handlePurchuranChange = (field, value) => {
     setBodyCalc((prev) => {
       const nextPurchuran = { ...prev.purchuran, [field]: value };
-      if (field === 'enabled' && value) {
-        if (!nextPurchuran.amount || parseFloat(nextPurchuran.amount) === 0) {
-          const defaults = loadSavedBodyDefaults();
-          nextPurchuran.amount = String(defaults?.purchuran?.amount ?? defaults?.purchuran?.rate ?? '');
-        }
-      }
-      if (field === 'amount') {
-        nextPurchuran.rate = value;
-        try {
-          const defaults = loadSavedBodyDefaults();
-          defaults.purchuran = { ...(defaults.purchuran || {}), amount: value, rate: value };
-          localStorage.setItem(DEFAULT_BODY_CALC_STORAGE_KEY, JSON.stringify(defaults));
-        } catch { }
-      }
       return {
         ...prev,
         purchuran: nextPurchuran,
@@ -878,6 +945,29 @@ export function QuotationFormModal({
     });
   };
 
+  const handleMonofoChange = (field, value) => {
+    setBodyCalc((prev) => {
+      const nextMonofo = { ...prev.monofo, [field]: value };
+      if (field === 'enabled' && value) {
+        if (!nextMonofo.amount || parseFloat(nextMonofo.amount) === 0) {
+          const defaults = loadSavedBodyDefaults();
+          nextMonofo.amount = String(defaults?.monofo?.amount || '10000');
+        }
+      }
+      if (field === 'amount') {
+        try {
+          const defaults = loadSavedBodyDefaults();
+          defaults.monofo = { ...(defaults.monofo || {}), amount: value };
+          localStorage.setItem(DEFAULT_BODY_CALC_STORAGE_KEY, JSON.stringify(defaults));
+        } catch { }
+      }
+      return {
+        ...prev,
+        monofo: nextMonofo,
+      };
+    });
+  };
+
   const handleSaveBodyDefaults = async () => {
     try {
       const defaults = {
@@ -899,12 +989,19 @@ export function QuotationFormModal({
         },
         purchuran: {
           enabled: Boolean(bodyCalc.purchuran?.enabled),
-          amount: bodyCalc.purchuran?.amount,
-          rate: bodyCalc.purchuran?.amount,
+          selected_option_index: bodyCalc.purchuran?.selected_option_index || 0,
+          options: bodyCalc.purchuran?.options || [],
+          weight: bodyCalc.purchuran?.weight || '',
+          rate: bodyCalc.purchuran?.rate || '',
+          amount: bodyCalc.purchuran?.amount || '',
         },
         machado: {
           enabled: Boolean(bodyCalc.machado?.enabled),
           amount: bodyCalc.machado?.amount,
+        },
+        monofo: {
+          enabled: Boolean(bodyCalc.monofo?.enabled),
+          amount: bodyCalc.monofo?.amount,
         },
       };
 
@@ -1279,19 +1376,34 @@ export function QuotationFormModal({
     const thWeight = Math.round(thTotalFeet * thWeightPerFoot * 100) / 100;
     const thAmount = Math.round(thWeight * thRate * 100) / 100;
 
-    // E. Purchuran (પરચુરણ) - Like Machado
+    // E. Purchuran (પરચુરણ) - Multi-option (kg × ₹/kg) or direct amount fallback
     const pEnabled = Boolean(bodyCalc.purchuran?.enabled);
-    const pAmountInput = parseFloat(bodyCalc.purchuran?.amount ?? bodyCalc.purchuran?.rate) || parseFloat(loadSavedBodyDefaults()?.purchuran?.amount ?? loadSavedBodyDefaults()?.purchuran?.rate) || 0;
-    const pAmount = pEnabled ? Math.round(pAmountInput * 100) / 100 : 0;
+    const pOpts = Array.isArray(bodyCalc.purchuran?.options) ? bodyCalc.purchuran.options : [];
+    const selPIdx = (typeof bodyCalc.purchuran?.selected_option_index === 'number' && bodyCalc.purchuran.selected_option_index >= 0 && bodyCalc.purchuran.selected_option_index < pOpts.length)
+      ? bodyCalc.purchuran.selected_option_index
+      : 0;
+    const pChosen = pOpts[selPIdx] || pOpts[0] || {};
+    const pRate = parseFloat(pChosen.rate) || 0;
+    const pWeight = parseFloat(bodyCalc.purchuran?.weight) || 0;
+    const pCalcAmount = Math.round(pWeight * pRate * 100) / 100;
+    const pDirectAmount = parseFloat(bodyCalc.purchuran?.amount) || 0;
+    const pFinalAmount = pCalcAmount > 0 ? pCalcAmount : (pDirectAmount > 0 ? pDirectAmount : 0);
+    const pAmount = pEnabled ? pFinalAmount : 0;
+    const pSelectedName = pChosen.name || '';
 
     // F. Machado (માચડો)
     const mEnabled = Boolean(bodyCalc.machado?.enabled);
     const mAmountInput = parseFloat(bodyCalc.machado?.amount) || parseFloat(loadSavedBodyDefaults()?.machado?.amount) || 12000;
     const mAmount = mEnabled ? Math.round(mAmountInput * 100) / 100 : 0;
 
+    // G. Mpnfo
+    const monoEnabled = Boolean(bodyCalc.monofo?.enabled);
+    const monoAmountInput = parseFloat(bodyCalc.monofo?.amount) || parseFloat(loadSavedBodyDefaults()?.monofo?.amount) || 10000;
+    const monoAmount = monoEnabled ? Math.round(monoAmountInput * 100) / 100 : 0;
+
     // Body Totals
-    const bodyTotalAmount = Math.round((tAmount + sAmount + dAmount + thAmount + pAmount + mAmount) * 100) / 100;
-    const bodyTotalWeight = Math.round((tWeight + sWeight + dWeight + thWeight) * 100) / 100;
+    const bodyTotalAmount = Math.round((tAmount + sAmount + dAmount + thAmount + pAmount + mAmount + monoAmount) * 100) / 100;
+    const bodyTotalWeight = Math.round((tWeight + sWeight + dWeight + thWeight + (pEnabled ? pWeight : 0)) * 100) / 100;
 
     // Grand Subtotal
     const subtotal = Math.round((bodyTotalAmount + lowerItemsSubtotal) * 100) / 100;
@@ -1311,8 +1423,9 @@ export function QuotationFormModal({
         side: { sqft: sSqFt, weight: sWeight, amount: sAmount, rate: sRate, weight_per_sqft: sWeightPerSqFt, effectiveLength: sLen, selectedName: sSelectedName, selectedIndex: selSideIdx },
         dhoka: { weight: dWeight, amount: dAmount, qty: dQty },
         thambhla: { feet: thTotalFeet, weight: thWeight, amount: thAmount, effectiveQty: thQty, effectiveHeight: thHeight },
-        purchuran: { enabled: pEnabled, amount: pAmount, rawAmount: pAmountInput, rate: pAmountInput, weight: 0, qty: 0 },
+        purchuran: { enabled: pEnabled, amount: pAmount, rawAmount: pFinalAmount, rate: pRate, weight: pWeight, selectedName: pSelectedName, selectedIndex: selPIdx },
         machado: { enabled: mEnabled, amount: mAmount, rawAmount: mAmountInput },
+        monofo: { enabled: monoEnabled, amount: monoAmount, rawAmount: monoAmountInput },
       },
       bodyTotalAmount,
       bodyTotalWeight,
@@ -1391,16 +1504,24 @@ export function QuotationFormModal({
         },
         purchuran: {
           enabled: calculations.bodyCalcDetails.purchuran.enabled,
-          amount: calculations.bodyCalcDetails.purchuran.amount,
+          selected_option_index: calculations.bodyCalcDetails.purchuran.selectedIndex,
+          selected_label: calculations.bodyCalcDetails.purchuran.selectedName,
+          options: Array.isArray(bodyCalc.purchuran?.options) ? bodyCalc.purchuran.options : [],
+          weight: calculations.bodyCalcDetails.purchuran.weight,
           rate: calculations.bodyCalcDetails.purchuran.rate,
+          amount: calculations.bodyCalcDetails.purchuran.amount,
           raw_amount: calculations.bodyCalcDetails.purchuran.rawAmount,
-          weight: 0,
           qty: 0,
         },
         machado: {
           enabled: calculations.bodyCalcDetails.machado.enabled,
           amount: calculations.bodyCalcDetails.machado.amount,
           raw_amount: calculations.bodyCalcDetails.machado.rawAmount,
+        },
+        monofo: {
+          enabled: calculations.bodyCalcDetails.monofo.enabled,
+          amount: calculations.bodyCalcDetails.monofo.amount,
+          raw_amount: calculations.bodyCalcDetails.monofo.rawAmount,
         },
         total_weight: calculations.bodyTotalWeight,
         total_amount: calculations.bodyTotalAmount,
@@ -1489,12 +1610,19 @@ export function QuotationFormModal({
             },
             purchuran: {
               enabled: Boolean(bodyCalc.purchuran?.enabled),
-              amount: bodyCalc.purchuran?.amount || loadSavedBodyDefaults()?.purchuran?.amount || '',
-              rate: bodyCalc.purchuran?.amount || loadSavedBodyDefaults()?.purchuran?.amount || '',
+              selected_option_index: bodyCalc.purchuran?.selected_option_index || 0,
+              options: bodyCalc.purchuran?.options || [],
+              weight: bodyCalc.purchuran?.weight || '',
+              rate: bodyCalc.purchuran?.rate || '',
+              amount: bodyCalc.purchuran?.amount || '',
             },
             machado: {
               enabled: Boolean(bodyCalc.machado?.enabled),
               amount: bodyCalc.machado?.amount || loadSavedBodyDefaults()?.machado?.amount || '12000',
+            },
+            monofo: {
+              enabled: Boolean(bodyCalc.monofo?.enabled),
+              amount: bodyCalc.monofo?.amount || loadSavedBodyDefaults()?.monofo?.amount || '10000',
             },
           };
           localStorage.setItem(DEFAULT_BODY_CALC_STORAGE_KEY, JSON.stringify(bodyDefaults));
@@ -2193,8 +2321,8 @@ export function QuotationFormModal({
 
                 {/* ----------------------------------------------------
                     PART 5: પરચુરણ (Purchuran / Misc)
-                    Direct Amount (Lump-sum) with Selection Checkbox (Matching Machado)
-                    Only included in total calculation when checked (right)
+                    Options like Taliyu + Weight (kg)
+                    Amount = Weight × Rate (₹/kg)
                     ---------------------------------------------------- */}
                 <div className={`body-part-card ${bodyCalc.purchuran?.enabled ? 'body-part-card-active' : ''}`} style={{ borderColor: bodyCalc.purchuran?.enabled ? '#2563eb' : undefined }}>
                   <div className="body-part-top">
@@ -2212,25 +2340,95 @@ export function QuotationFormModal({
                     </span>
                   </div>
 
-                  {/* Input: Direct Amount / Rate (Admin Only) */}
-                  {isAdmin && (
-                    <div className="body-inputs-row" style={{ gridTemplateColumns: '1fr' }}>
-                      <div className="body-input-group">
-                        <label className="body-input-label">
-                          પરચુરણ રકમ / ભાવ <span className="sub-hint">(Direct Amount ₹)</span>
-                        </label>
-                        <input
-                          type="number"
-                          step="any"
-                          min="0"
-                          className="body-calc-input font-mono"
-                          placeholder="e.g. 5000 (ડાયરેક્ટ રકમ / ભાવ)"
-                          value={bodyCalc.purchuran?.amount}
-                          onChange={(e) => handlePurchuranChange('amount', e.target.value)}
-                        />
-                      </div>
+                  {/* Weight Input (kg) */}
+                  <div className="body-inputs-row" style={{ gridTemplateColumns: '1fr' }}>
+                    <div className="body-input-group">
+                      <label className="body-input-label">
+                        કુલ વજન <span className="sub-hint">(kg માં જથ્થો)</span>
+                      </label>
+                      <input
+                        type="number"
+                        step="any"
+                        min="0"
+                        className="body-calc-input font-mono"
+                        placeholder="e.g. 150 (કુલ વજન kg)"
+                        value={bodyCalc.purchuran?.weight}
+                        onChange={(e) => handlePurchuranChange('weight', e.target.value)}
+                      />
                     </div>
-                  )}
+                  </div>
+
+                  {/* Dynamic Options List with Rate (₹/kg) */}
+                  <div className="body-calc-options-wrap">
+                    <div className="body-calc-options-head">
+                      <span>ઓપ્શન / વિગત (સિલેક્ટ કરો)</span>
+                      {isAdmin && <span>ભાવ (₹/kg)</span>}
+                    </div>
+
+                    {(bodyCalc.purchuran?.options || []).map((opt, optIdx) => (
+                      <div
+                        key={opt.id || optIdx}
+                        className={`body-calc-opt-row ${bodyCalc.purchuran?.selected_option_index === optIdx ? 'opt-active' : ''}`}
+                        onClick={() => handleSelectPurchuranOption(optIdx)}
+                        title="Click to select this option for calculation"
+                      >
+                        <input
+                          type="radio"
+                          name="purchuran-option-radio"
+                          checked={bodyCalc.purchuran?.selected_option_index === optIdx}
+                          onChange={() => handleSelectPurchuranOption(optIdx)}
+                          className="body-calc-opt-radio"
+                        />
+                        <input
+                          type="text"
+                          className="body-calc-opt-name"
+                          placeholder="ઓપ્શન નામ લખો..."
+                          value={opt.name}
+                          onClick={(e) => e.stopPropagation()}
+                          onChange={(e) => handleUpdatePurchuranOption(optIdx, 'name', e.target.value)}
+                        />
+                        {isAdmin && (
+                          <>
+                            <span style={{ fontSize: '0.74rem', fontWeight: 700, color: '#64748b' }}>₹</span>
+                            <input
+                              type="number"
+                              step="any"
+                              min="0"
+                              className="body-calc-opt-num"
+                              placeholder="ભાવ ₹/kg"
+                              value={opt.rate}
+                              onClick={(e) => e.stopPropagation()}
+                              onChange={(e) => handleUpdatePurchuranOption(optIdx, 'rate', e.target.value)}
+                              title="૧ kg નો ભાવ (₹)"
+                            />
+                            {bodyCalc.purchuran?.options?.length > 1 && (
+                              <button
+                                type="button"
+                                className="btn-del-body-opt"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleRemovePurchuranOption(optIdx);
+                                }}
+                                title="Remove option"
+                              >
+                                ✕
+                              </button>
+                            )}
+                          </>
+                        )}
+                      </div>
+                    ))}
+
+                    {isAdmin && (
+                      <button
+                        type="button"
+                        className="btn-add-body-opt"
+                        onClick={handleAddPurchuranOption}
+                      >
+                        ＋ Add Option (નવો ઓપ્શન ઉમેરો)
+                      </button>
+                    )}
+                  </div>
 
                   {/* Live Results Bar */}
                   <div className="body-calc-result-box" style={{ background: bodyCalc.purchuran?.enabled ? '#eff6ff' : '#f8fafc' }}>
@@ -2238,9 +2436,14 @@ export function QuotationFormModal({
                       <span>સ્ટેટસ: </span>
                       <strong>
                         {bodyCalc.purchuran?.enabled
-                          ? 'કેલ્ક્યુલેશનમાં સામેલ'
+                          ? (calculations.bodyCalcDetails.purchuran.selectedName
+                              ? `સામેલ (${calculations.bodyCalcDetails.purchuran.selectedName})`
+                              : 'સામેલ છે')
                           : 'અનચેક (ગણતરીમાં નથી)'}
                       </strong>
+                      {isAdmin && bodyCalc.purchuran?.enabled && calculations.bodyCalcDetails.purchuran.weight > 0 && (
+                        <span> &bull; વજન: <strong>{calculations.bodyCalcDetails.purchuran.weight} kg</strong></span>
+                      )}
                     </div>
                     {isAdmin && (
                       <div className="body-calc-result-badge-amount" style={{ color: bodyCalc.purchuran?.enabled ? '#1d4ed8' : '#94a3b8' }}>
@@ -2304,6 +2507,65 @@ export function QuotationFormModal({
                     {isAdmin && (
                       <div className="body-calc-result-badge-amount" style={{ color: bodyCalc.machado?.enabled ? '#1d4ed8' : '#94a3b8' }}>
                         ₹{calculations.bodyCalcDetails.machado.amount.toLocaleString('en-IN')}
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* ----------------------------------------------------
+                    PART 7: Mpnfo
+                    Direct Amount (Lump-sum) with Selection Checkbox (Matching Machado)
+                    Only included in total calculation when checked (right)
+                    ---------------------------------------------------- */}
+                <div className={`body-part-card ${bodyCalc.monofo?.enabled ? 'body-part-card-active' : ''}`} style={{ borderColor: bodyCalc.monofo?.enabled ? '#2563eb' : undefined }}>
+                  <div className="body-part-top">
+                    <label className="body-part-label" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.45rem', cursor: 'pointer', margin: 0 }}>
+                      <input
+                        type="checkbox"
+                        checked={Boolean(bodyCalc.monofo?.enabled)}
+                        onChange={(e) => handleMonofoChange('enabled', e.target.checked)}
+                        style={{ width: '18px', height: '18px', cursor: 'pointer', accentColor: '#2563eb' }}
+                      />
+                      <span style={{ fontWeight: 800 }}>7. Mpnfo</span>
+                    </label>
+                    <span style={{ fontSize: '0.72rem', color: bodyCalc.monofo?.enabled ? '#16a34a' : '#64748b', fontWeight: 700 }}>
+                      {bodyCalc.monofo?.enabled ? '✓ સામેલ છે (Included)' : '✗ બાકાત છે (Unchecked)'}
+                    </span>
+                  </div>
+
+                  {/* Input: Direct Amount */}
+                  {isAdmin && (
+                    <div className="body-inputs-row" style={{ gridTemplateColumns: '1fr' }}>
+                      <div className="body-input-group">
+                        <label className="body-input-label">
+                          Mpnfo રકમ / ભાવ <span className="sub-hint">(Direct Amount ₹)</span>
+                        </label>
+                        <input
+                          type="number"
+                          step="any"
+                          min="0"
+                          className="body-calc-input font-mono"
+                          placeholder="e.g. 10000 (ડાયરેક્ટ રકમ)"
+                          value={bodyCalc.monofo?.amount}
+                          onChange={(e) => handleMonofoChange('amount', e.target.value)}
+                        />
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Live Results Bar */}
+                  <div className="body-calc-result-box" style={{ background: bodyCalc.monofo?.enabled ? '#eff6ff' : '#f8fafc' }}>
+                    <div>
+                      <span>સ્ટેટસ: </span>
+                      <strong>
+                        {bodyCalc.monofo?.enabled
+                          ? 'કેલ્ક્યુલેશનમાં સામેલ'
+                          : 'અનચેક (ગણતરીમાં નથી)'}
+                      </strong>
+                    </div>
+                    {isAdmin && (
+                      <div className="body-calc-result-badge-amount" style={{ color: bodyCalc.monofo?.enabled ? '#1d4ed8' : '#94a3b8' }}>
+                        ₹{calculations.bodyCalcDetails.monofo.amount.toLocaleString('en-IN')}
                       </div>
                     )}
                   </div>
