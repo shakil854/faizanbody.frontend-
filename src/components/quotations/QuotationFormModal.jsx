@@ -94,8 +94,12 @@ const createInitialBodyCalc = (savedDefaults = null) => {
       rate: d.thambhla?.rate ?? '',
     },
     purchuran: {
-      weight: '',
-      rate: d.purchuran?.rate ?? '',
+      enabled: Boolean(d.purchuran?.enabled ?? false),
+      amount: (d.purchuran?.amount !== undefined && d.purchuran?.amount !== null && String(d.purchuran.amount).trim() !== '')
+        ? String(d.purchuran.amount)
+        : ((d.purchuran?.rate !== undefined && d.purchuran?.rate !== null && String(d.purchuran.rate).trim() !== '')
+          ? String(d.purchuran.rate)
+          : ''),
     },
     machado: {
       enabled: Boolean(d.machado?.enabled ?? false),
@@ -177,10 +181,19 @@ const normalizeBodyCalcFromData = (raw) => {
       rate: String(raw.thambhla?.rate ?? defaults.thambhla?.rate ?? ''),
     },
     purchuran: {
-      weight: raw.purchuran?.weight !== undefined && raw.purchuran?.weight !== null
-        ? String(raw.purchuran.weight)
-        : (raw.purchuran?.qty !== undefined && raw.purchuran?.qty !== null ? String(raw.purchuran.qty) : ''),
-      rate: String(raw.purchuran?.rate ?? defaults.purchuran?.rate ?? ''),
+      enabled: Boolean(
+        raw.purchuran?.enabled ??
+        (Number(raw.purchuran?.amount) > 0 || (Number(raw.purchuran?.weight) > 0 && Number(raw.purchuran?.rate) > 0)) ??
+        defaults.purchuran?.enabled ??
+        false
+      ),
+      amount: (raw.purchuran?.amount !== undefined && raw.purchuran?.amount !== null && String(raw.purchuran.amount).trim() !== '')
+        ? String(raw.purchuran.amount)
+        : ((raw.purchuran?.rate !== undefined && raw.purchuran?.rate !== null && String(raw.purchuran.rate).trim() !== '')
+          ? String(raw.purchuran.rate)
+          : ((defaults.purchuran?.amount !== undefined && defaults.purchuran?.amount !== null && String(defaults.purchuran.amount).trim() !== '')
+            ? String(defaults.purchuran.amount)
+            : String(defaults.purchuran?.rate ?? ''))),
     },
     machado: {
       enabled: Boolean(raw.machado?.enabled ?? defaults.machado?.enabled ?? false),
@@ -819,10 +832,19 @@ export function QuotationFormModal({
   };
 
   const handlePurchuranChange = (field, value) => {
-    setBodyCalc((prev) => ({
-      ...prev,
-      purchuran: { ...prev.purchuran, [field]: value },
-    }));
+    setBodyCalc((prev) => {
+      let purchuranAmt = prev.purchuran?.amount;
+      if (field === 'enabled' && value) {
+        if (!purchuranAmt || parseFloat(purchuranAmt) === 0) {
+          const defaults = loadSavedBodyDefaults();
+          purchuranAmt = String(defaults?.purchuran?.amount ?? defaults?.purchuran?.rate ?? '');
+        }
+      }
+      return {
+        ...prev,
+        purchuran: { ...prev.purchuran, [field]: value, amount: purchuranAmt },
+      };
+    });
   };
 
   const handleMachadoChange = (field, value) => {
@@ -861,7 +883,9 @@ export function QuotationFormModal({
           rate: bodyCalc.thambhla?.rate,
         },
         purchuran: {
-          rate: bodyCalc.purchuran?.rate,
+          enabled: Boolean(bodyCalc.purchuran?.enabled),
+          amount: bodyCalc.purchuran?.amount,
+          rate: bodyCalc.purchuran?.amount,
         },
         machado: {
           enabled: Boolean(bodyCalc.machado?.enabled),
@@ -1240,10 +1264,10 @@ export function QuotationFormModal({
     const thWeight = Math.round(thTotalFeet * thWeightPerFoot * 100) / 100;
     const thAmount = Math.round(thWeight * thRate * 100) / 100;
 
-    // E. Purchuran (પરચુરણ)
-    const pWeight = parseFloat(bodyCalc.purchuran?.weight ?? bodyCalc.purchuran?.qty) || 0;
-    const pRate = parseFloat(bodyCalc.purchuran?.rate) || 0;
-    const pAmount = Math.round(pWeight * pRate * 100) / 100;
+    // E. Purchuran (પરચુરણ) - Like Machado
+    const pEnabled = Boolean(bodyCalc.purchuran?.enabled);
+    const pAmountInput = parseFloat(bodyCalc.purchuran?.amount ?? bodyCalc.purchuran?.rate) || parseFloat(loadSavedBodyDefaults()?.purchuran?.amount ?? loadSavedBodyDefaults()?.purchuran?.rate) || 0;
+    const pAmount = pEnabled ? Math.round(pAmountInput * 100) / 100 : 0;
 
     // F. Machado (માચડો)
     const mEnabled = Boolean(bodyCalc.machado?.enabled);
@@ -1252,7 +1276,7 @@ export function QuotationFormModal({
 
     // Body Totals
     const bodyTotalAmount = Math.round((tAmount + sAmount + dAmount + thAmount + pAmount + mAmount) * 100) / 100;
-    const bodyTotalWeight = Math.round((tWeight + sWeight + dWeight + thWeight + pWeight) * 100) / 100;
+    const bodyTotalWeight = Math.round((tWeight + sWeight + dWeight + thWeight) * 100) / 100;
 
     // Grand Subtotal
     const subtotal = Math.round((bodyTotalAmount + lowerItemsSubtotal) * 100) / 100;
@@ -1272,7 +1296,7 @@ export function QuotationFormModal({
         side: { sqft: sSqFt, weight: sWeight, amount: sAmount, rate: sRate, weight_per_sqft: sWeightPerSqFt, effectiveLength: sLen, selectedName: sSelectedName, selectedIndex: selSideIdx },
         dhoka: { weight: dWeight, amount: dAmount, qty: dQty },
         thambhla: { feet: thTotalFeet, weight: thWeight, amount: thAmount, effectiveQty: thQty, effectiveHeight: thHeight },
-        purchuran: { weight: pWeight, qty: pWeight, rate: pRate, amount: pAmount },
+        purchuran: { enabled: pEnabled, amount: pAmount, rawAmount: pAmountInput, rate: pAmountInput, weight: 0, qty: 0 },
         machado: { enabled: mEnabled, amount: mAmount, rawAmount: mAmountInput },
       },
       bodyTotalAmount,
@@ -1351,10 +1375,12 @@ export function QuotationFormModal({
           amount: calculations.bodyCalcDetails.thambhla.amount,
         },
         purchuran: {
-          weight: calculations.bodyCalcDetails.purchuran.weight,
-          qty: calculations.bodyCalcDetails.purchuran.weight,
-          rate: calculations.bodyCalcDetails.purchuran.rate,
+          enabled: calculations.bodyCalcDetails.purchuran.enabled,
           amount: calculations.bodyCalcDetails.purchuran.amount,
+          rate: calculations.bodyCalcDetails.purchuran.rate,
+          raw_amount: calculations.bodyCalcDetails.purchuran.rawAmount,
+          weight: 0,
+          qty: 0,
         },
         machado: {
           enabled: calculations.bodyCalcDetails.machado.enabled,
@@ -1447,7 +1473,9 @@ export function QuotationFormModal({
               rate: bodyCalc.thambhla?.rate,
             },
             purchuran: {
-              rate: bodyCalc.purchuran?.rate,
+              enabled: Boolean(bodyCalc.purchuran?.enabled),
+              amount: bodyCalc.purchuran?.amount || loadSavedBodyDefaults()?.purchuran?.amount || '',
+              rate: bodyCalc.purchuran?.amount || loadSavedBodyDefaults()?.purchuran?.amount || '',
             },
             machado: {
               enabled: Boolean(bodyCalc.machado?.enabled),
@@ -2150,68 +2178,61 @@ export function QuotationFormModal({
 
                 {/* ----------------------------------------------------
                     PART 5: પરચુરણ (Purchuran / Misc)
-                    Inputs: Weight (કુલ વજન kg), Rate (ભાવ ₹/kg)
-                    Amount = Weight * Rate
+                    Direct Amount (Lump-sum) with Selection Checkbox (Matching Machado)
+                    Only included in total calculation when checked (right)
                     ---------------------------------------------------- */}
-                <div className="body-part-card">
+                <div className={`body-part-card ${bodyCalc.purchuran?.enabled ? 'body-part-card-active' : ''}`} style={{ borderColor: bodyCalc.purchuran?.enabled ? '#2563eb' : undefined }}>
                   <div className="body-part-top">
-                    <span className="body-part-label">
-                      <span>૫. પરચુરણ (Purchuran)</span>
+                    <label className="body-part-label" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.45rem', cursor: 'pointer', margin: 0 }}>
+                      <input
+                        type="checkbox"
+                        checked={Boolean(bodyCalc.purchuran?.enabled)}
+                        onChange={(e) => handlePurchuranChange('enabled', e.target.checked)}
+                        style={{ width: '18px', height: '18px', cursor: 'pointer', accentColor: '#2563eb' }}
+                      />
+                      <span style={{ fontWeight: 800 }}>૫. પરચુરણ (Purchuran)</span>
+                    </label>
+                    <span style={{ fontSize: '0.72rem', color: bodyCalc.purchuran?.enabled ? '#16a34a' : '#64748b', fontWeight: 700 }}>
+                      {bodyCalc.purchuran?.enabled ? '✓ સામેલ છે (Included)' : '✗ બાકાત છે (Unchecked)'}
                     </span>
-                    {isAdmin && (
-                      <span style={{ fontSize: '0.72rem', color: '#64748b', fontWeight: 600 }}>
-                        રકમ = કુલ વજન × ભાવ (₹/kg)
-                      </span>
-                    )}
                   </div>
 
-                  {/* Inputs */}
-                  <div className="body-inputs-row" style={{ gridTemplateColumns: isAdmin ? 'repeat(2, 1fr)' : '1fr' }}>
-                    <div className="body-input-group">
-                      <label className="body-input-label">કુલ વજન <span className="sub-hint">(kg)</span></label>
-                      <input
-                        type="number"
-                        step="any"
-                        min="0"
-                        className="body-calc-input font-mono"
-                        placeholder="e.g. 25"
-                        value={bodyCalc.purchuran?.weight ?? bodyCalc.purchuran?.qty}
-                        onChange={(e) => handlePurchuranChange('weight', e.target.value)}
-                      />
-                    </div>
-
-                    {isAdmin && (
+                  {/* Input: Direct Amount / Rate (Admin Only) */}
+                  {isAdmin && (
+                    <div className="body-inputs-row" style={{ gridTemplateColumns: '1fr' }}>
                       <div className="body-input-group">
-                        <label className="body-input-label">ભાવ <span className="sub-hint">(₹/kg)</span></label>
+                        <label className="body-input-label">
+                          પરચુરણ રકમ / ભાવ <span className="sub-hint">(Direct Amount ₹)</span>
+                        </label>
                         <input
                           type="number"
                           step="any"
                           min="0"
                           className="body-calc-input font-mono"
-                          placeholder="e.g. 80"
-                          value={bodyCalc.purchuran?.rate}
-                          onChange={(e) => handlePurchuranChange('rate', e.target.value)}
+                          placeholder="e.g. 5000 (ડાયરેક્ટ રકમ / ભાવ)"
+                          value={bodyCalc.purchuran?.amount}
+                          onChange={(e) => handlePurchuranChange('amount', e.target.value)}
                         />
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Live Results Bar */}
-                  {isAdmin && (
-                    <div className="body-calc-result-box">
-                      <div>
-                        <span>ગણતરી: </span>
-                        <strong>
-                          {calculations.bodyCalcDetails.purchuran.weight > 0 && calculations.bodyCalcDetails.purchuran.rate > 0
-                            ? `${calculations.bodyCalcDetails.purchuran.weight} kg × ₹${calculations.bodyCalcDetails.purchuran.rate}`
-                            : 'કુલ વજન (kg) × ભાવ'}
-                        </strong>
-                      </div>
-                      <div className="body-calc-result-badge-amount">
-                        ₹{calculations.bodyCalcDetails.purchuran.amount.toLocaleString('en-IN')}
                       </div>
                     </div>
                   )}
+
+                  {/* Live Results Bar */}
+                  <div className="body-calc-result-box" style={{ background: bodyCalc.purchuran?.enabled ? '#eff6ff' : '#f8fafc' }}>
+                    <div>
+                      <span>સ્ટેટસ: </span>
+                      <strong>
+                        {bodyCalc.purchuran?.enabled
+                          ? 'કેલ્ક્યુલેશનમાં સામેલ'
+                          : 'અનચેક (ગણતરીમાં નથી)'}
+                      </strong>
+                    </div>
+                    {isAdmin && (
+                      <div className="body-calc-result-badge-amount" style={{ color: bodyCalc.purchuran?.enabled ? '#1d4ed8' : '#94a3b8' }}>
+                        ₹{calculations.bodyCalcDetails.purchuran.amount.toLocaleString('en-IN')}
+                      </div>
+                    )}
+                  </div>
                 </div>
 
                 {/* ----------------------------------------------------

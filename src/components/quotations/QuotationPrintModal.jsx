@@ -50,8 +50,8 @@ export function QuotationPrintModal({ isOpen, onClose, quotation }) {
           lines.push(`• *૪. થાંભલા*: ${th.qty || 0} નંગ × ${th.height || 0} ft = ${th.total_feet || 0} ft`);
         }
         const p = quotation.body_calc.purchuran;
-        if (p && (Number(p.amount) > 0 || Number(p.weight || p.qty) > 0)) {
-          lines.push(`• *૫. પરચુરણ*: ${p.weight || p.qty ? `${p.weight || p.qty} kg (પરચુરણ સામગ્રી)` : 'સામાન્ય ફિટિંગ અને પરચુરણ સામગ્રી'}`);
+        if (p && (p.enabled || Number(p.amount) > 0 || Number(p.rate) > 0)) {
+          lines.push(`• *૫. પરચુરણ (Purchuran)*: સામાન્ય ફિટિંગ અને પરચુરણ સામગ્રી`);
         }
         if (quotation.body_calc.machado?.enabled) {
           lines.push(`• *૬. માચડો (Machado)*: કેરિયર / માચડો ફીટીંગ વર્ક`);
@@ -104,9 +104,10 @@ export function QuotationPrintModal({ isOpen, onClose, quotation }) {
           const th = quotation.body_calc.thambhla;
           lines.push(`• *૪. થાંભલા*: ${th.qty || 0} નંગ (${th.total_weight || 0} kg) @ ₹${th.rate || 0}/kg = *₹${Number(th.amount || 0).toLocaleString('en-IN')}*`);
         }
-        if (Number(quotation.body_calc.purchuran?.amount) > 0 || Number(quotation.body_calc.purchuran?.weight || quotation.body_calc.purchuran?.qty) > 0) {
+        if (Number(quotation.body_calc.purchuran?.amount) > 0 || Number(quotation.body_calc.purchuran?.rate) > 0 || quotation.body_calc.purchuran?.enabled) {
           const p = quotation.body_calc.purchuran;
-          lines.push(`• *૫. પરચુરણ*: ${p.weight || p.qty || 0} kg @ ₹${p.rate || 0}/kg = *₹${Number(p.amount || 0).toLocaleString('en-IN')}*`);
+          const pAmt = Number(p.amount || p.rate || 0);
+          lines.push(`• *૫. પરચુરણ (Purchuran)*: સામાન્ય ફિટિંગ અને પરચુરણ સામગ્રી = *₹${pAmt.toLocaleString('en-IN')}*`);
         }
         if (quotation.body_calc.machado?.enabled && Number(quotation.body_calc.machado?.amount) > 0) {
           lines.push(`• *૬. માચડો (Machado)*: *₹${Number(quotation.body_calc.machado.amount).toLocaleString('en-IN')}*`);
@@ -443,31 +444,27 @@ export function QuotationPrintModal({ isOpen, onClose, quotation }) {
                     </tr>
                   )}
 
-                  {(Number(quotation.body_calc.purchuran?.amount) > 0 || Number(quotation.body_calc.purchuran?.weight || quotation.body_calc.purchuran?.qty) > 0) && (
+                  {Boolean(
+                    (quotation.body_calc.purchuran?.enabled ?? (Number(quotation.body_calc.purchuran?.amount) > 0 || Number(quotation.body_calc.purchuran?.rate) > 0)) &&
+                    (Number(quotation.body_calc.purchuran?.amount || quotation.body_calc.purchuran?.rate) > 0 || isWorkerSlip)
+                  ) && (
                     <tr>
                       <td style={{ textAlign: 'center', color: '#64748b' }}>5</td>
                       <td>
                         <div className="print-item-title">પરચુરણ (Purchuran / Misc)</div>
-                        <span className="print-item-variant">
-                          સામાન્ય ફિટિંગ અને પરચુરણ સામગ્રી
-                          {!isWorkerSlip && ` • વજન: ${quotation.body_calc.purchuran.weight || quotation.body_calc.purchuran.qty || 0} kg`}
-                        </span>
+                        <span className="print-item-variant">સામાન્ય ફિટિંગ અને પરચુરણ સામગ્રી</span>
                       </td>
                       <td style={{ textAlign: 'center' }} className="font-mono">
-                        {isWorkerSlip ? (
-                          <strong>{quotation.body_calc.purchuran.weight || quotation.body_calc.purchuran.qty ? `${quotation.body_calc.purchuran.weight || quotation.body_calc.purchuran.qty} kg` : '1 Job'}</strong>
-                        ) : (
-                          <strong>{quotation.body_calc.purchuran.weight || quotation.body_calc.purchuran.qty || 0} kg</strong>
-                        )}
+                        <strong>1 Job</strong>
                       </td>
                       {!isWorkerSlip && (
                         <td style={{ textAlign: 'right' }} className="font-mono">
-                          ₹{Number(quotation.body_calc.purchuran.rate || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })} / kg
+                          ₹{Number(quotation.body_calc.purchuran.amount || quotation.body_calc.purchuran.rate || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
                         </td>
                       )}
                       {!isWorkerSlip && (
                         <td style={{ textAlign: 'right' }} className="font-mono font-semibold">
-                          ₹{Number(quotation.body_calc.purchuran.amount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                          ₹{Number(quotation.body_calc.purchuran.amount || quotation.body_calc.purchuran.rate || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
                         </td>
                       )}
                     </tr>
