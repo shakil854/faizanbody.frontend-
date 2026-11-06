@@ -833,32 +833,47 @@ export function QuotationFormModal({
 
   const handlePurchuranChange = (field, value) => {
     setBodyCalc((prev) => {
-      let purchuranAmt = prev.purchuran?.amount;
+      const nextPurchuran = { ...prev.purchuran, [field]: value };
       if (field === 'enabled' && value) {
-        if (!purchuranAmt || parseFloat(purchuranAmt) === 0) {
+        if (!nextPurchuran.amount || parseFloat(nextPurchuran.amount) === 0) {
           const defaults = loadSavedBodyDefaults();
-          purchuranAmt = String(defaults?.purchuran?.amount ?? defaults?.purchuran?.rate ?? '');
+          nextPurchuran.amount = String(defaults?.purchuran?.amount ?? defaults?.purchuran?.rate ?? '');
         }
+      }
+      if (field === 'amount') {
+        nextPurchuran.rate = value;
+        try {
+          const defaults = loadSavedBodyDefaults();
+          defaults.purchuran = { ...(defaults.purchuran || {}), amount: value, rate: value };
+          localStorage.setItem(DEFAULT_BODY_CALC_STORAGE_KEY, JSON.stringify(defaults));
+        } catch { }
       }
       return {
         ...prev,
-        purchuran: { ...prev.purchuran, [field]: value, amount: purchuranAmt },
+        purchuran: nextPurchuran,
       };
     });
   };
 
   const handleMachadoChange = (field, value) => {
     setBodyCalc((prev) => {
-      let machadoAmt = prev.machado?.amount;
+      const nextMachado = { ...prev.machado, [field]: value };
       if (field === 'enabled' && value) {
-        if (!machadoAmt || parseFloat(machadoAmt) === 0) {
+        if (!nextMachado.amount || parseFloat(nextMachado.amount) === 0) {
           const defaults = loadSavedBodyDefaults();
-          machadoAmt = String(defaults?.machado?.amount || '12000');
+          nextMachado.amount = String(defaults?.machado?.amount || '12000');
         }
+      }
+      if (field === 'amount') {
+        try {
+          const defaults = loadSavedBodyDefaults();
+          defaults.machado = { ...(defaults.machado || {}), amount: value };
+          localStorage.setItem(DEFAULT_BODY_CALC_STORAGE_KEY, JSON.stringify(defaults));
+        } catch { }
       }
       return {
         ...prev,
-        machado: { ...prev.machado, [field]: value, amount: machadoAmt },
+        machado: nextMachado,
       };
     });
   };
