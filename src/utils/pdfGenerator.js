@@ -121,7 +121,7 @@ export async function generatePdfBlob(element, customFileName = 'Order_Slip.pdf'
     sbox.style.backgroundColor = '#ffffff';
     sbox.style.zIndex = '-9999';
     sbox.style.visibility = 'visible';
-    sbox.style.opacity = '0.01';
+    sbox.style.opacity = '1';
     sbox.style.overflow = 'hidden';
     sbox.style.pointerEvents = 'none';
 
@@ -334,21 +334,25 @@ export async function sharePdfFile({
     try {
       const base64Data = await blobToBase64(pdfBlob);
       if (base64Data) {
-        await Filesystem.writeFile({
+        const writeRes = await Filesystem.writeFile({
           path: safeFileName,
           data: base64Data,
           directory: Directory.Cache,
           recursive: true,
         });
 
-        const uriResult = await Filesystem.getUri({
-          path: safeFileName,
-          directory: Directory.Cache,
-        });
+        let targetUri = writeRes?.uri;
+        if (!targetUri) {
+          const uriResult = await Filesystem.getUri({
+            path: safeFileName,
+            directory: Directory.Cache,
+          });
+          targetUri = uriResult?.uri;
+        }
 
-        if (uriResult && uriResult.uri) {
+        if (targetUri) {
           await Share.share({
-            files: [uriResult.uri],
+            files: [targetUri],
             dialogTitle: 'Share PDF via WhatsApp',
           });
           return { success: true, method: 'capacitor_share' };
