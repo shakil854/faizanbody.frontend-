@@ -119,10 +119,10 @@ export async function generatePdfBlob(element, customFileName = 'Order_Slip.pdf'
     sbox.style.left = '0px';
     sbox.style.width = '720px';
     sbox.style.backgroundColor = '#ffffff';
-    sbox.style.zIndex = '999999';
+    sbox.style.zIndex = '-9999';
     sbox.style.visibility = 'visible';
-    sbox.style.opacity = '1';
-    sbox.style.overflow = 'visible';
+    sbox.style.opacity = '0.01';
+    sbox.style.overflow = 'hidden';
     sbox.style.pointerEvents = 'none';
 
     const clone = domElem.cloneNode(true);
@@ -180,32 +180,37 @@ export async function generatePdfBlob(element, customFileName = 'Order_Slip.pdf'
       }
     });
 
-    sbox.appendChild(clone);
-    document.body.appendChild(sbox);
+    try {
+      sbox.appendChild(clone);
+      document.body.appendChild(sbox);
 
-    // Wait for DOM layout calculation and paint
-    await new Promise((r) => setTimeout(r, 120));
+      // Wait for DOM layout calculation and paint
+      await new Promise((r) => setTimeout(r, 120));
 
-    const targetHeight = Math.max(clone.scrollHeight, clone.offsetHeight, 400);
+      const targetHeight = Math.max(clone.scrollHeight, clone.offsetHeight, 400);
 
-    // Fixed x:0, y:0, width:720 prevents html2canvas from scrolling off-screen to blank white!
-    const cvs = await html2canvas(clone, {
-      scale: 2,
-      useCORS: true,
-      allowTaint: true,
-      backgroundColor: '#ffffff',
-      scrollY: 0,
-      scrollX: 0,
-      x: 0,
-      y: 0,
-      width: 720,
-      height: targetHeight,
-      windowWidth: 720,
-      logging: false,
-    });
+      // Fixed x:0, y:0, width:720 prevents html2canvas from scrolling off-screen to blank white!
+      const cvs = await html2canvas(clone, {
+        scale: 2,
+        useCORS: true,
+        allowTaint: true,
+        backgroundColor: '#ffffff',
+        scrollY: 0,
+        scrollX: 0,
+        x: 0,
+        y: 0,
+        width: 720,
+        height: targetHeight,
+        windowWidth: 720,
+        logging: false,
+      });
 
-    document.body.removeChild(sbox);
-    return cvs;
+      return cvs;
+    } finally {
+      if (sbox && sbox.parentNode) {
+        sbox.parentNode.removeChild(sbox);
+      }
+    }
   };
 
   // Check if target has explicit .pdf-page elements (e.g. Worker Khata Statements or multi-page reports)

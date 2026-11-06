@@ -155,22 +155,28 @@ export const QuotationCard = React.memo(function QuotationCard({
       )}
 
       {/* Mobile Number & Direct Call / WhatsApp Actions */}
-      {quotation.mobile_number && (
-        <div
-          className="worker-contact-row order-contact-row"
-          style={{ marginBottom: '0.5rem' }}
-          onClick={(e) => e.stopPropagation()}
-        >
-          <div className="contact-mobile-link">
-            <span className="phone-icon-pill">
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#2563eb" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z" />
-              </svg>
-            </span>
-            <span className="mobile-number-text">{quotation.mobile_number}</span>
-          </div>
+      <div
+        className="worker-contact-row order-contact-row"
+        style={{ marginBottom: '0.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="contact-mobile-link">
+          {quotation.mobile_number ? (
+            <>
+              <span className="phone-icon-pill">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#2563eb" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z" />
+                </svg>
+              </span>
+              <span className="mobile-number-text">{quotation.mobile_number}</span>
+            </>
+          ) : (
+            <span style={{ fontSize: '0.8rem', color: '#94a3b8' }}>Quotation #{quotation.quotation_no}</span>
+          )}
+        </div>
 
-          <div className="contact-quick-actions">
+        <div className="contact-quick-actions" style={{ display: 'flex', gap: '0.4rem', alignItems: 'center' }}>
+          {cleanPhone && (
             <button
               type="button"
               className="quick-contact-btn quick-call-btn"
@@ -179,32 +185,36 @@ export const QuotationCard = React.memo(function QuotationCard({
             >
               Call
             </button>
-            <button
-              type="button"
-              className="quick-contact-btn quick-whatsapp-btn"
-              title="Share Quotation PDF directly via WhatsApp"
-              onClick={(e) => {
-                e.stopPropagation();
-                onDirectWhatsAppShare?.(quotation);
-              }}
-              disabled={isSharing}
-              style={{
-                background: '#16a34a',
-                color: '#ffffff',
-                fontWeight: 800,
-                fontSize: '0.78rem',
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '0.35rem',
-                boxShadow: '0 2px 6px rgba(22, 163, 74, 0.25)',
-              }}
-            >
-              <span>{isSharing ? '⏳' : '💬'}</span>
-              <span>{isSharing ? 'PDF શેર થાય છે...' : 'WhatsApp Share'}</span>
-            </button>
-          </div>
+          )}
+          <button
+            type="button"
+            className="quick-contact-btn quick-whatsapp-btn"
+            title="Share Quotation directly via WhatsApp"
+            onClick={(e) => {
+              e.stopPropagation();
+              onDirectWhatsAppShare?.(quotation);
+            }}
+            disabled={isSharing}
+            style={{
+              background: '#16a34a',
+              color: '#ffffff',
+              fontWeight: 800,
+              fontSize: '0.78rem',
+              padding: '0.36rem 0.72rem',
+              borderRadius: '6px',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '0.35rem',
+              border: 'none',
+              cursor: isSharing ? 'wait' : 'pointer',
+              boxShadow: '0 2px 6px rgba(22, 163, 74, 0.25)',
+            }}
+          >
+            <span>{isSharing ? '⏳' : '💬'}</span>
+            <span>{isSharing ? 'શેર થાય છે...' : 'WhatsApp Share'}</span>
+          </button>
         </div>
-      )}
+      </div>
 
       {/* Items Summary Snippet */}
       {itemsCount > 0 && (

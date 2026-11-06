@@ -3,7 +3,6 @@ import { useAuth } from '../../context/AuthContext';
 import { quotationService } from '../../services/quotationService';
 import { QuotationCard } from './QuotationCard';
 import { QuotationFormModal } from './QuotationFormModal';
-import { QuotationPrintModal } from './QuotationPrintModal';
 import { QuotationPrintContent } from './QuotationPrintContent';
 import { sharePdfFile } from '../../utils/pdfGenerator';
 import { Snackbar } from '../workers/Snackbar';
@@ -11,6 +10,12 @@ import { Snackbar } from '../workers/Snackbar';
 export function QuotationsPage({ onBackToHome }) {
   const { isAdmin, canAccessModule, hasPermission } = useAuth();
   const canAccessQuotations = isAdmin || canAccessModule('quotations') || hasPermission('quotations:view');
+
+  // Snackbar Toast Notification State
+  const [snackbar, setSnackbar] = useState({ message: '', type: 'info' });
+  const showSnackbar = useCallback((message, type = 'info') => {
+    setSnackbar({ message, type });
+  }, []);
 
   // If user cannot access quotations, redirect back to home immediately
   useEffect(() => {
@@ -28,57 +33,126 @@ export function QuotationsPage({ onBackToHome }) {
   // Modals
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingQuotation, setEditingQuotation] = useState(null);
-  const [isPrintOpen, setIsPrintOpen] = useState(false);
-  const [printingQuotation, setPrintingQuotation] = useState(null);
   const [deletingQuotation, setDeletingQuotation] = useState(null);
 
-  // Direct WhatsApp Share (1-tap, NO modal opened)
+  // Direct WhatsApp Share (1-tap, NO modal dialog)
   const [sharingQuote, setSharingQuote] = useState(null);
   const [sharingQuoteId, setSharingQuoteId] = useState(null);
 
+  // Build clean Gujarati + English formatted text matching Add Quotation slip
+  const buildQuotationShareText = useCallback((quote) => {
+    const cleanPhone = quote.mobile_number ? quote.mobile_number.replace(/[^0-9]/g, '') : '';
+    const waPhone = cleanPhone.length === 10 ? `91${cleanPhone}` : cleanPhone;
+
+    let msg = `*📋 QUOTATION - FAIZAN BODY WORKSHOP*\n`;
+    msg += `━━━━━━━━━━━━━━━━━━━━━\n`;
+    msg += `*કોટેશન નં:* ${quote.quotation_no || ''}\n`;
+    msg += `*તારીખ:* ${quote.quotation_date || ''}\n`;
+    msg += `*ગ્રાહકનું નામ:* ${quote.customer_name || ''}\n`;
+    if (quote.mobile_number) msg += `*મોબાઈલ:* ${quote.mobile_number}\n`;
+    if (quote.truck_chassis_no) msg += `*ટ્રક / ચેસીસ:* ${quote.truck_chassis_no}\n`;
+    msg += `━━━━━━━━━━━━━━━━━━━━━\n`;
+
+    // 1. Body Fabrication Specifications
+    if (quote.body_calc?.has_data) {
+      msg += `*🚛 બોડી માપ અને વિગત:*\n`;
+      if (quote.body_calc.taliyu?.length && quote.body_calc.taliyu?.width) {
+        msg += `• તળીયું (Floor): ${quote.body_calc.taliyu.length}' × ${quote.body_calc.taliyu.width}' (${quote.body_calc.taliyu.total_sqft || 0} Sq.Ft.)\n`;
+      }
+      if (quote.body_calc.side?.length && quote.body_calc.side?.height) {
+        msg += `• સાઇડ (Side): ${quote.body_calc.side.length}' × ${quote.body_calc.side.height}' × 2 બાજુ (${quote.body_calc.side.total_sqft || 0} Sq.Ft.)\n`;
+      }
+      if (Number(quote.body_calc.dhoka?.qty) > 0) {
+        msg += `• ધોકા (Cross Members): ${quote.body_calc.dhoka.qty} નંગ\n`;
+      }
+      if (Number(quote.body_calc.thambhla?.qty) > 0) {
+        msg += `• થાંભલા (Pillars): ${quote.body_calc.thambhla.qty} નંગ × ${quote.body_calc.thambhla.height || 0}' (${quote.body_calc.thambhla.total_feet || 0} ft)\n`;
+      }
+      if (quote.body_calc.purchuran?.enabled) {
+        msg += `• પરચુરણ (Purchuran): ✓ સામેલ (Included)\n`;
+      }
+      if (quote.body_calc.machado?.enabled) {
+        msg += `• માચડો (Machado / Carrier): ✓ સામેલ (Included)\n`;
+      }
+      msg += `━━━━━━━━━━━━━━━━━━━━━\n`;
+    }
+
+    // 2. Extra Items Included
+    const selectedItems = Array.isArray(quote.items)
+      ? quote.items.filter((it) => it.selected !== false && (it.selected === true || parseFloat(it.qty) > 0 || parseFloat(it.amount) > 0 || !('selected' in it)))
+      : [];
+    if (selectedItems.length > 0) {
+      msg += `*📦 વધારાની વસ્તુઓ (Items Included):*\n`;
+      selectedItems.forEach((it, idx) => {
+        const variant = it.variant_name ? ` (${it.variant_name})` : '';
+        msg += `${idx + 1}. ${it.name}${variant}: ✓ સામેલ\n`;
+      });
+      msg += `━━━━━━━━━━━━━━━━━━━━━\n`;
+    }
+
+    // 3. Final Total Price
+    msg += `*💰 TOTAL AMOUNT (કુલ રકમ): ₹${Number(quote.final_price).toLocaleString('en-IN', { minimumFractionDigits: 2 })}*\n`;
+    msg += `━━━━━━━━━━━━━━━━━━━━━\n`;
+    msg += `*Faizan Body Workshop*\n`;
+    msg += `મોબાઈલ: 7984882103`;
+
+    return { msg, waPhone };
+  }, []);
+
   const handleDirectWhatsAppShare = useCallback(async (quote) => {
     if (!quote || sharingQuoteId) return;
+
+    const openWhatsAppDirect = () => {
+      const { msg, waPhone } = buildQuotationShareText(quote);
+      const encoded = encodeURIComponent(msg);
+      const waUrl = waPhone ? `https://wa.me/${waPhone}?text=${encoded}` : `https://wa.me/?text=${encoded}`;
+      const waNative = waPhone ? `whatsapp://send?phone=${waPhone}&text=${encoded}` : `whatsapp://send?text=${encoded}`;
+
+      try {
+        window.location.href = waNative;
+        setTimeout(() => {
+          if (!document.hidden) window.open(waUrl, '_blank');
+        }, 500);
+      } catch {
+        window.open(waUrl, '_blank');
+      }
+    };
+
     try {
       setSharingQuoteId(quote.id);
       setSharingQuote(quote);
-      showSnackbar('⏳ Generating Quotation PDF...', 'info');
+      showSnackbar('⏳ Preparing Quotation for WhatsApp...', 'info');
 
-      // Allow DOM to update offscreen container
-      await new Promise((r) => setTimeout(r, 140));
+      // Wait briefly for offscreen element to render
+      await new Promise((r) => setTimeout(r, 120));
 
       const cleanCustomer = (quote.customer_name || 'Customer').replace(/[^a-zA-Z0-9_-]/g, '_');
       const cleanNo = (quote.quotation_no || 'Quote').replace(/[^a-zA-Z0-9_-]/g, '_');
       const fileName = `FaizanBody_Quotation_${cleanNo}_${cleanCustomer}.pdf`;
 
-      const res = await sharePdfFile({
+      // Safe 4.5s race timeout
+      const sharePromise = sharePdfFile({
         elementId: 'quotation-direct-share-element',
         fileName,
       });
+      const timeoutPromise = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('PDF share timeout')), 4500)
+      );
 
+      const res = await Promise.race([sharePromise, timeoutPromise]);
       if (res?.success) {
         showSnackbar('✓ Quotation PDF shared!', 'success');
+      } else {
+        openWhatsAppDirect();
       }
     } catch (err) {
-      console.error('Direct WhatsApp PDF share failed:', err);
-      // Fallback: direct WhatsApp URL
-      const cleanPhone = quote.mobile_number ? quote.mobile_number.replace(/[^0-9]/g, '') : '';
-      const waPhone = cleanPhone.length === 10 ? `91${cleanPhone}` : cleanPhone;
-      const summaryText = encodeURIComponent(
-        `*📋 QUOTATION - FAIZAN BODY*\n` +
-        `Quote No: ${quote.quotation_no}\n` +
-        `Date: ${quote.quotation_date}\n` +
-        `Customer: ${quote.customer_name}\n` +
-        (quote.truck_chassis_no ? `Truck: ${quote.truck_chassis_no}\n` : '') +
-        `*TOTAL AMOUNT: ₹${Number(quote.final_price).toLocaleString('en-IN')}*\n` +
-        `_Faizan Body Workshop_`
-      );
-      const url = waPhone ? `https://wa.me/${waPhone}?text=${summaryText}` : `https://wa.me/?text=${summaryText}`;
-      window.open(url, '_blank');
+      console.warn('PDF share fallback to direct WhatsApp:', err);
+      openWhatsAppDirect();
     } finally {
       setSharingQuoteId(null);
       setSharingQuote(null);
     }
-  }, [sharingQuoteId, showSnackbar]);
+  }, [sharingQuoteId, showSnackbar, buildQuotationShareText]);
 
   // Fetch quotations
   const fetchQuotations = useCallback(
@@ -349,20 +423,6 @@ export function QuotationsPage({ onBackToHome }) {
         }}
         initialData={editingQuotation}
         onSave={handleSaveQuotation}
-        onOpenPrint={(q) => {
-          setPrintingQuotation(q);
-          setIsPrintOpen(true);
-        }}
-      />
-
-      {/* 2. Quotation Print / PDF Modal */}
-      <QuotationPrintModal
-        isOpen={isPrintOpen}
-        onClose={() => {
-          setIsPrintOpen(false);
-          setPrintingQuotation(null);
-        }}
-        quotation={printingQuotation}
       />
 
       {/* 3. Delete Confirmation Dialog */}
