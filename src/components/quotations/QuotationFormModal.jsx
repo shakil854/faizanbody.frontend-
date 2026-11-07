@@ -2472,24 +2472,6 @@ export function QuotationFormModal({
                     </span>
                   </div>
 
-                  {/* Weight Input (kg) */}
-                  <div className="body-inputs-row" style={{ gridTemplateColumns: '1fr' }}>
-                    <div className="body-input-group">
-                      <label className="body-input-label">
-                        કુલ વજન <span className="sub-hint">(kg માં જથ્થો)</span>
-                      </label>
-                      <input
-                        type="number"
-                        step="any"
-                        min="0"
-                        className="body-calc-input font-mono"
-                        placeholder="e.g. 150 (કુલ વજન kg)"
-                        value={bodyCalc.purchuran?.weight}
-                        onChange={(e) => handlePurchuranChange('weight', e.target.value)}
-                      />
-                    </div>
-                  </div>
-
                   {/* Dynamic Options List with Weight/Qty and Rate (₹/kg) */}
                   <div className="body-calc-options-wrap">
                     <div className="body-calc-options-head">
@@ -2615,24 +2597,6 @@ export function QuotationFormModal({
                     <span style={{ fontSize: '0.72rem', color: bodyCalc.machado?.enabled ? '#16a34a' : '#64748b', fontWeight: 700 }}>
                       {bodyCalc.machado?.enabled ? '✓ સામેલ છે (Included)' : '✗ બાકાત છે (Unchecked)'}
                     </span>
-                  </div>
-
-                  {/* Weight Input (kg) */}
-                  <div className="body-inputs-row" style={{ gridTemplateColumns: '1fr' }}>
-                    <div className="body-input-group">
-                      <label className="body-input-label">
-                        કુલ વજન <span className="sub-hint">(kg માં જથ્થો)</span>
-                      </label>
-                      <input
-                        type="number"
-                        step="any"
-                        min="0"
-                        className="body-calc-input font-mono"
-                        placeholder="e.g. 100 (કુલ વજન kg)"
-                        value={bodyCalc.machado?.weight}
-                        onChange={(e) => handleMachadoChange('weight', e.target.value)}
-                      />
-                    </div>
                   </div>
 
                   {/* Dynamic Options List with Weight/Qty and Rate (₹/kg) */}
