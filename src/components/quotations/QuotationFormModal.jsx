@@ -34,6 +34,7 @@ const normalizeBodyOptionsList = (rawOpts, defaultList = []) => {
       id: opt.id || String(Date.now() + i),
       name: opt.name !== undefined ? String(opt.name) : (defaultList[i]?.name || `Option ${i + 1}`),
       weight_per_sqft: opt.weight_per_sqft !== undefined && opt.weight_per_sqft !== null ? String(opt.weight_per_sqft) : '',
+      weight: opt.weight !== undefined && opt.weight !== null ? String(opt.weight) : (opt.qty !== undefined && opt.qty !== null ? String(opt.qty) : (defaultList[i]?.weight || '')),
       rate: opt.rate !== undefined && opt.rate !== null ? String(opt.rate) : '',
     }));
   }
@@ -44,6 +45,7 @@ const normalizeBodyOptionsList = (rawOpts, defaultList = []) => {
         id: String(i + 1),
         name: rawOpts[k]?.name || (k === '4mm' ? '4 mm' : k === '5mm' ? '5 mm' : k === '12g' ? '12 ગેજ' : k === '14g' ? '14 ગેજ' : k),
         weight_per_sqft: rawOpts[k]?.weight_per_sqft !== undefined && rawOpts[k]?.weight_per_sqft !== null ? String(rawOpts[k].weight_per_sqft) : '',
+        weight: rawOpts[k]?.weight !== undefined && rawOpts[k]?.weight !== null ? String(rawOpts[k].weight) : (rawOpts[k]?.qty !== undefined ? String(rawOpts[k].qty) : ''),
         rate: rawOpts[k]?.rate !== undefined && rawOpts[k]?.rate !== null ? String(rawOpts[k].rate) : '',
       }));
     }
@@ -52,6 +54,7 @@ const normalizeBodyOptionsList = (rawOpts, defaultList = []) => {
     id: String(i + 1),
     name: d.name,
     weight_per_sqft: d.weight_per_sqft !== undefined ? String(d.weight_per_sqft) : '',
+    weight: d.weight !== undefined ? String(d.weight) : (d.qty !== undefined ? String(d.qty) : ''),
     rate: d.rate !== undefined ? String(d.rate) : '',
   }));
 };
@@ -67,11 +70,11 @@ const DEFAULT_SIDE_OPTIONS = [
 ];
 
 const DEFAULT_PURCHURAN_OPTIONS = [
-  { id: '1', name: '', rate: '' },
+  { id: '1', name: '', weight: '', rate: '' },
 ];
 
 const DEFAULT_MACHADO_OPTIONS = [
-  { id: '1', name: '', rate: '' },
+  { id: '1', name: '', weight: '', rate: '' },
 ];
 
 // Helper to create initial blank/default body calculation structure
@@ -886,19 +889,32 @@ export function QuotationFormModal({
   };
 
   const handleSelectPurchuranOption = (optIdx) => {
-    setBodyCalc((prev) => ({
-      ...prev,
-      purchuran: { ...prev.purchuran, selected_option_index: optIdx },
-    }));
+    setBodyCalc((prev) => {
+      const opts = Array.isArray(prev.purchuran?.options) ? prev.purchuran.options : [];
+      const chosen = opts[optIdx];
+      const optWeight = chosen?.weight !== undefined && chosen?.weight !== '' ? String(chosen.weight) : prev.purchuran?.weight;
+      return {
+        ...prev,
+        purchuran: {
+          ...prev.purchuran,
+          selected_option_index: optIdx,
+          weight: optWeight !== undefined ? String(optWeight) : '',
+        },
+      };
+    });
   };
 
   const handleUpdatePurchuranOption = (optIdx, field, value) => {
     setBodyCalc((prev) => {
       const opts = Array.isArray(prev.purchuran?.options) ? [...prev.purchuran.options] : [];
       opts[optIdx] = { ...opts[optIdx], [field]: value };
+      const nextPurchuran = { ...prev.purchuran, options: opts };
+      if (field === 'weight' && prev.purchuran?.selected_option_index === optIdx) {
+        nextPurchuran.weight = value;
+      }
       return {
         ...prev,
-        purchuran: { ...prev.purchuran, options: opts },
+        purchuran: nextPurchuran,
       };
     });
   };
@@ -909,6 +925,7 @@ export function QuotationFormModal({
       opts.push({
         id: String(Date.now()),
         name: '',
+        weight: '',
         rate: '',
       });
       return {
@@ -923,7 +940,7 @@ export function QuotationFormModal({
       let opts = Array.isArray(prev.purchuran?.options) ? [...prev.purchuran.options] : [];
       opts = opts.filter((_, i) => i !== optIdx);
       if (opts.length === 0) {
-        opts = [{ id: '1', name: '', rate: '' }];
+        opts = [{ id: '1', name: '', weight: '', rate: '' }];
       }
       let selIdx = prev.purchuran?.selected_option_index || 0;
       if (selIdx >= opts.length) selIdx = Math.max(0, opts.length - 1);
@@ -937,6 +954,14 @@ export function QuotationFormModal({
   const handlePurchuranChange = (field, value) => {
     setBodyCalc((prev) => {
       const nextPurchuran = { ...prev.purchuran, [field]: value };
+      if (field === 'weight') {
+        const opts = Array.isArray(prev.purchuran?.options) ? [...prev.purchuran.options] : [];
+        const selIdx = prev.purchuran?.selected_option_index || 0;
+        if (opts[selIdx]) {
+          opts[selIdx] = { ...opts[selIdx], weight: value };
+          nextPurchuran.options = opts;
+        }
+      }
       return {
         ...prev,
         purchuran: nextPurchuran,
@@ -945,19 +970,32 @@ export function QuotationFormModal({
   };
 
   const handleSelectMachadoOption = (optIdx) => {
-    setBodyCalc((prev) => ({
-      ...prev,
-      machado: { ...prev.machado, selected_option_index: optIdx },
-    }));
+    setBodyCalc((prev) => {
+      const opts = Array.isArray(prev.machado?.options) ? prev.machado.options : [];
+      const chosen = opts[optIdx];
+      const optWeight = chosen?.weight !== undefined && chosen?.weight !== '' ? String(chosen.weight) : prev.machado?.weight;
+      return {
+        ...prev,
+        machado: {
+          ...prev.machado,
+          selected_option_index: optIdx,
+          weight: optWeight !== undefined ? String(optWeight) : '',
+        },
+      };
+    });
   };
 
   const handleUpdateMachadoOption = (optIdx, field, value) => {
     setBodyCalc((prev) => {
       const opts = Array.isArray(prev.machado?.options) ? [...prev.machado.options] : [];
       opts[optIdx] = { ...opts[optIdx], [field]: value };
+      const nextMachado = { ...prev.machado, options: opts };
+      if (field === 'weight' && prev.machado?.selected_option_index === optIdx) {
+        nextMachado.weight = value;
+      }
       return {
         ...prev,
-        machado: { ...prev.machado, options: opts },
+        machado: nextMachado,
       };
     });
   };
@@ -968,6 +1006,7 @@ export function QuotationFormModal({
       opts.push({
         id: String(Date.now()),
         name: '',
+        weight: '',
         rate: '',
       });
       return {
@@ -982,7 +1021,7 @@ export function QuotationFormModal({
       let opts = Array.isArray(prev.machado?.options) ? [...prev.machado.options] : [];
       opts = opts.filter((_, i) => i !== optIdx);
       if (opts.length === 0) {
-        opts = [{ id: '1', name: '', rate: '' }];
+        opts = [{ id: '1', name: '', weight: '', rate: '' }];
       }
       let selIdx = prev.machado?.selected_option_index || 0;
       if (selIdx >= opts.length) selIdx = Math.max(0, opts.length - 1);
@@ -996,6 +1035,14 @@ export function QuotationFormModal({
   const handleMachadoChange = (field, value) => {
     setBodyCalc((prev) => {
       const nextMachado = { ...prev.machado, [field]: value };
+      if (field === 'weight') {
+        const opts = Array.isArray(prev.machado?.options) ? [...prev.machado.options] : [];
+        const selIdx = prev.machado?.selected_option_index || 0;
+        if (opts[selIdx]) {
+          opts[selIdx] = { ...opts[selIdx], weight: value };
+          nextMachado.options = opts;
+        }
+      }
       return {
         ...prev,
         machado: nextMachado,
@@ -1446,7 +1493,9 @@ export function QuotationFormModal({
       : 0;
     const pChosen = pOpts[selPIdx] || pOpts[0] || {};
     const pRate = parseFloat(pChosen.rate) || 0;
-    const pWeight = parseFloat(bodyCalc.purchuran?.weight) || 0;
+    const pWeight = (pChosen.weight !== undefined && pChosen.weight !== '' && !isNaN(parseFloat(pChosen.weight)))
+      ? (parseFloat(pChosen.weight) || 0)
+      : (parseFloat(bodyCalc.purchuran?.weight) || 0);
     const pCalcAmount = Math.round(pWeight * pRate * 100) / 100;
     const pDirectAmount = parseFloat(bodyCalc.purchuran?.amount) || 0;
     const pFinalAmount = pCalcAmount > 0 ? pCalcAmount : (pDirectAmount > 0 ? pDirectAmount : 0);
@@ -1461,7 +1510,9 @@ export function QuotationFormModal({
       : 0;
     const mChosen = mOpts[selMIdx] || mOpts[0] || {};
     const mRate = parseFloat(mChosen.rate) || 0;
-    const mWeight = parseFloat(bodyCalc.machado?.weight) || 0;
+    const mWeight = (mChosen.weight !== undefined && mChosen.weight !== '' && !isNaN(parseFloat(mChosen.weight)))
+      ? (parseFloat(mChosen.weight) || 0)
+      : (parseFloat(bodyCalc.machado?.weight) || 0);
     const mCalcAmount = Math.round(mWeight * mRate * 100) / 100;
     const mDirectAmount = parseFloat(bodyCalc.machado?.amount) || 0;
     const mFinalAmount = mCalcAmount > 0 ? mCalcAmount : (mDirectAmount > 0 ? mDirectAmount : 0);
@@ -2439,11 +2490,11 @@ export function QuotationFormModal({
                     </div>
                   </div>
 
-                  {/* Dynamic Options List with Rate (₹/kg) */}
+                  {/* Dynamic Options List with Weight/Qty and Rate (₹/kg) */}
                   <div className="body-calc-options-wrap">
                     <div className="body-calc-options-head">
                       <span>ઓપ્શન / વિગત (સિલેક્ટ કરો)</span>
-                      {isAdmin && <span>ભાવ (₹/kg)</span>}
+                      {isAdmin && <span>વજન / Qty (kg) &bull; ભાવ (₹/kg)</span>}
                     </div>
 
                     {(bodyCalc.purchuran?.options || []).map((opt, optIdx) => (
@@ -2470,6 +2521,17 @@ export function QuotationFormModal({
                         />
                         {isAdmin && (
                           <>
+                            <input
+                              type="number"
+                              step="any"
+                              min="0"
+                              className="body-calc-opt-num"
+                              placeholder="Qty kg"
+                              value={opt.weight !== undefined && opt.weight !== null ? opt.weight : (opt.qty ?? '')}
+                              onClick={(e) => e.stopPropagation()}
+                              onChange={(e) => handleUpdatePurchuranOption(optIdx, 'weight', e.target.value)}
+                              title="કુલ વજન / Qty (kg)"
+                            />
                             <span style={{ fontSize: '0.74rem', fontWeight: 700, color: '#64748b' }}>₹</span>
                             <input
                               type="number"
@@ -2573,11 +2635,11 @@ export function QuotationFormModal({
                     </div>
                   </div>
 
-                  {/* Dynamic Options List with Rate (₹/kg) */}
+                  {/* Dynamic Options List with Weight/Qty and Rate (₹/kg) */}
                   <div className="body-calc-options-wrap">
                     <div className="body-calc-options-head">
                       <span>ઓપ્શન / વિગત (સિલેક્ટ કરો)</span>
-                      {isAdmin && <span>ભાવ (₹/kg)</span>}
+                      {isAdmin && <span>વજન / Qty (kg) &bull; ભાવ (₹/kg)</span>}
                     </div>
 
                     {(bodyCalc.machado?.options || []).map((opt, optIdx) => (
@@ -2604,6 +2666,17 @@ export function QuotationFormModal({
                         />
                         {isAdmin && (
                           <>
+                            <input
+                              type="number"
+                              step="any"
+                              min="0"
+                              className="body-calc-opt-num"
+                              placeholder="Qty kg"
+                              value={opt.weight !== undefined && opt.weight !== null ? opt.weight : (opt.qty ?? '')}
+                              onClick={(e) => e.stopPropagation()}
+                              onChange={(e) => handleUpdateMachadoOption(optIdx, 'weight', e.target.value)}
+                              title="કુલ વજન / Qty (kg)"
+                            />
                             <span style={{ fontSize: '0.74rem', fontWeight: 700, color: '#64748b' }}>₹</span>
                             <input
                               type="number"
