@@ -31,7 +31,7 @@ export function QuotationPrintContent({ quotation, isCustomerView = true }) {
           <div className="letterhead-text">
             <h1 className="letterhead-company-name">FAIZAN BODY</h1>
             <p className="letterhead-tagline">High Performance Truck Body Fabrication & Workshop</p>
-            <p className="letterhead-contact">Mobile: 7984882103 &bull; Quality &bull; Strength &bull; Precision</p>
+            <p className="letterhead-contact">Mobile: 9737231947 &bull; Quality &bull; Strength &bull; Precision</p>
           </div>
         </div>
         <div className="letterhead-badge" style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '0.25rem', paddingRight: '4px' }}>
