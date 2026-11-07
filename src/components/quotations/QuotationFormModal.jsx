@@ -70,12 +70,17 @@ const DEFAULT_PURCHURAN_OPTIONS = [
   { id: '1', name: '', rate: '' },
 ];
 
+const DEFAULT_MACHADO_OPTIONS = [
+  { id: '1', name: '', rate: '' },
+];
+
 // Helper to create initial blank/default body calculation structure
 const createInitialBodyCalc = (savedDefaults = null) => {
   const d = savedDefaults || {};
   const taliyuOpts = normalizeBodyOptionsList(d.taliyu?.options, DEFAULT_TALIYU_OPTIONS);
   const sideOpts = normalizeBodyOptionsList(d.side?.options, DEFAULT_SIDE_OPTIONS);
   const purchuranOpts = normalizeBodyOptionsList(d.purchuran?.options, DEFAULT_PURCHURAN_OPTIONS);
+  const machadoOpts = normalizeBodyOptionsList(d.machado?.options, DEFAULT_MACHADO_OPTIONS);
 
   return {
     taliyu: {
@@ -111,9 +116,11 @@ const createInitialBodyCalc = (savedDefaults = null) => {
     },
     machado: {
       enabled: Boolean(d.machado?.enabled ?? false),
-      amount: (d.machado?.amount !== undefined && d.machado?.amount !== null && String(d.machado.amount).trim() !== '')
-        ? String(d.machado.amount)
-        : '12000',
+      selected_option_index: typeof d.machado?.selected_option_index === 'number' ? d.machado.selected_option_index : 0,
+      options: machadoOpts,
+      weight: d.machado?.weight !== undefined && d.machado?.weight !== null ? String(d.machado.weight) : '',
+      rate: d.machado?.rate !== undefined && d.machado?.rate !== null ? String(d.machado.rate) : '',
+      amount: d.machado?.amount !== undefined && d.machado?.amount !== null ? String(d.machado.amount) : '',
     },
     monofo: {
       enabled: Boolean(d.monofo?.enabled ?? false),
@@ -139,6 +146,10 @@ const normalizeBodyCalcFromData = (raw) => {
   const purchuranOpts = normalizeBodyOptionsList(
     raw.purchuran?.options || defaults.purchuran?.options,
     DEFAULT_PURCHURAN_OPTIONS
+  );
+  const machadoOpts = normalizeBodyOptionsList(
+    raw.machado?.options || defaults.machado?.options,
+    DEFAULT_MACHADO_OPTIONS
   );
 
   let selTaliyuIdx = 0;
@@ -220,12 +231,23 @@ const normalizeBodyCalcFromData = (raw) => {
             : String(defaults.purchuran?.rate ?? ''))),
     },
     machado: {
-      enabled: Boolean(raw.machado?.enabled ?? defaults.machado?.enabled ?? false),
+      enabled: Boolean(
+        raw.machado?.enabled ??
+        (Number(raw.machado?.amount) > 0 || (Number(raw.machado?.weight) > 0 && Number(raw.machado?.rate) > 0)) ??
+        defaults.machado?.enabled ??
+        false
+      ),
+      selected_option_index: typeof raw.machado?.selected_option_index === 'number'
+        ? raw.machado.selected_option_index
+        : (typeof defaults.machado?.selected_option_index === 'number' ? defaults.machado.selected_option_index : 0),
+      options: machadoOpts,
+      weight: raw.machado?.weight !== undefined && raw.machado?.weight !== null ? String(raw.machado.weight) : (defaults.machado?.weight !== undefined ? String(defaults.machado.weight) : ''),
+      rate: raw.machado?.rate !== undefined && raw.machado?.rate !== null ? String(raw.machado.rate) : (defaults.machado?.rate !== undefined ? String(defaults.machado.rate) : ''),
       amount: (raw.machado?.amount !== undefined && raw.machado?.amount !== null && String(raw.machado.amount).trim() !== '')
         ? String(raw.machado.amount)
         : ((raw.machado?.raw_amount !== undefined && raw.machado?.raw_amount !== null && String(raw.machado.raw_amount).trim() !== '')
           ? String(raw.machado.raw_amount)
-          : String(defaults.machado?.amount || '12000')),
+          : String(defaults.machado?.amount || '')),
     },
     monofo: {
       enabled: Boolean(raw.monofo?.enabled ?? defaults.monofo?.enabled ?? false),
@@ -922,22 +944,58 @@ export function QuotationFormModal({
     });
   };
 
+  const handleSelectMachadoOption = (optIdx) => {
+    setBodyCalc((prev) => ({
+      ...prev,
+      machado: { ...prev.machado, selected_option_index: optIdx },
+    }));
+  };
+
+  const handleUpdateMachadoOption = (optIdx, field, value) => {
+    setBodyCalc((prev) => {
+      const opts = Array.isArray(prev.machado?.options) ? [...prev.machado.options] : [];
+      opts[optIdx] = { ...opts[optIdx], [field]: value };
+      return {
+        ...prev,
+        machado: { ...prev.machado, options: opts },
+      };
+    });
+  };
+
+  const handleAddMachadoOption = () => {
+    setBodyCalc((prev) => {
+      const opts = Array.isArray(prev.machado?.options) ? [...prev.machado.options] : [];
+      opts.push({
+        id: String(Date.now()),
+        name: '',
+        rate: '',
+      });
+      return {
+        ...prev,
+        machado: { ...prev.machado, options: opts },
+      };
+    });
+  };
+
+  const handleRemoveMachadoOption = (optIdx) => {
+    setBodyCalc((prev) => {
+      let opts = Array.isArray(prev.machado?.options) ? [...prev.machado.options] : [];
+      opts = opts.filter((_, i) => i !== optIdx);
+      if (opts.length === 0) {
+        opts = [{ id: '1', name: '', rate: '' }];
+      }
+      let selIdx = prev.machado?.selected_option_index || 0;
+      if (selIdx >= opts.length) selIdx = Math.max(0, opts.length - 1);
+      return {
+        ...prev,
+        machado: { ...prev.machado, options: opts, selected_option_index: selIdx },
+      };
+    });
+  };
+
   const handleMachadoChange = (field, value) => {
     setBodyCalc((prev) => {
       const nextMachado = { ...prev.machado, [field]: value };
-      if (field === 'enabled' && value) {
-        if (!nextMachado.amount || parseFloat(nextMachado.amount) === 0) {
-          const defaults = loadSavedBodyDefaults();
-          nextMachado.amount = String(defaults?.machado?.amount || '12000');
-        }
-      }
-      if (field === 'amount') {
-        try {
-          const defaults = loadSavedBodyDefaults();
-          defaults.machado = { ...(defaults.machado || {}), amount: value };
-          localStorage.setItem(DEFAULT_BODY_CALC_STORAGE_KEY, JSON.stringify(defaults));
-        } catch { }
-      }
       return {
         ...prev,
         machado: nextMachado,
@@ -997,7 +1055,11 @@ export function QuotationFormModal({
         },
         machado: {
           enabled: Boolean(bodyCalc.machado?.enabled),
-          amount: bodyCalc.machado?.amount,
+          selected_option_index: bodyCalc.machado?.selected_option_index || 0,
+          options: bodyCalc.machado?.options || [],
+          weight: bodyCalc.machado?.weight || '',
+          rate: bodyCalc.machado?.rate || '',
+          amount: bodyCalc.machado?.amount || '',
         },
         monofo: {
           enabled: Boolean(bodyCalc.monofo?.enabled),
@@ -1391,10 +1453,20 @@ export function QuotationFormModal({
     const pAmount = pEnabled ? pFinalAmount : 0;
     const pSelectedName = pChosen.name || '';
 
-    // F. Machado (માચડો)
+    // F. Machado (માચડો) - Multi-option (kg × ₹/kg) or direct amount fallback
     const mEnabled = Boolean(bodyCalc.machado?.enabled);
-    const mAmountInput = parseFloat(bodyCalc.machado?.amount) || parseFloat(loadSavedBodyDefaults()?.machado?.amount) || 12000;
-    const mAmount = mEnabled ? Math.round(mAmountInput * 100) / 100 : 0;
+    const mOpts = Array.isArray(bodyCalc.machado?.options) ? bodyCalc.machado.options : [];
+    const selMIdx = (typeof bodyCalc.machado?.selected_option_index === 'number' && bodyCalc.machado.selected_option_index >= 0 && bodyCalc.machado.selected_option_index < mOpts.length)
+      ? bodyCalc.machado.selected_option_index
+      : 0;
+    const mChosen = mOpts[selMIdx] || mOpts[0] || {};
+    const mRate = parseFloat(mChosen.rate) || 0;
+    const mWeight = parseFloat(bodyCalc.machado?.weight) || 0;
+    const mCalcAmount = Math.round(mWeight * mRate * 100) / 100;
+    const mDirectAmount = parseFloat(bodyCalc.machado?.amount) || 0;
+    const mFinalAmount = mCalcAmount > 0 ? mCalcAmount : (mDirectAmount > 0 ? mDirectAmount : 0);
+    const mAmount = mEnabled ? mFinalAmount : 0;
+    const mSelectedName = mChosen.name || '';
 
     // G. Mpnfo
     const monoEnabled = Boolean(bodyCalc.monofo?.enabled);
@@ -1403,7 +1475,7 @@ export function QuotationFormModal({
 
     // Body Totals
     const bodyTotalAmount = Math.round((tAmount + sAmount + dAmount + thAmount + pAmount + mAmount + monoAmount) * 100) / 100;
-    const bodyTotalWeight = Math.round((tWeight + sWeight + dWeight + thWeight + (pEnabled ? pWeight : 0)) * 100) / 100;
+    const bodyTotalWeight = Math.round((tWeight + sWeight + dWeight + thWeight + (pEnabled ? pWeight : 0) + (mEnabled ? mWeight : 0)) * 100) / 100;
 
     // Grand Subtotal
     const subtotal = Math.round((bodyTotalAmount + lowerItemsSubtotal) * 100) / 100;
@@ -1424,7 +1496,7 @@ export function QuotationFormModal({
         dhoka: { weight: dWeight, amount: dAmount, qty: dQty },
         thambhla: { feet: thTotalFeet, weight: thWeight, amount: thAmount, effectiveQty: thQty, effectiveHeight: thHeight },
         purchuran: { enabled: pEnabled, amount: pAmount, rawAmount: pFinalAmount, rate: pRate, weight: pWeight, selectedName: pSelectedName, selectedIndex: selPIdx },
-        machado: { enabled: mEnabled, amount: mAmount, rawAmount: mAmountInput },
+        machado: { enabled: mEnabled, amount: mAmount, rawAmount: mFinalAmount, rate: mRate, weight: mWeight, selectedName: mSelectedName, selectedIndex: selMIdx },
         monofo: { enabled: monoEnabled, amount: monoAmount, rawAmount: monoAmountInput },
       },
       bodyTotalAmount,
@@ -1515,6 +1587,11 @@ export function QuotationFormModal({
         },
         machado: {
           enabled: calculations.bodyCalcDetails.machado.enabled,
+          selected_option_index: calculations.bodyCalcDetails.machado.selectedIndex,
+          selected_label: calculations.bodyCalcDetails.machado.selectedName,
+          options: Array.isArray(bodyCalc.machado?.options) ? bodyCalc.machado.options : [],
+          weight: calculations.bodyCalcDetails.machado.weight,
+          rate: calculations.bodyCalcDetails.machado.rate,
           amount: calculations.bodyCalcDetails.machado.amount,
           raw_amount: calculations.bodyCalcDetails.machado.rawAmount,
         },
@@ -1618,7 +1695,11 @@ export function QuotationFormModal({
             },
             machado: {
               enabled: Boolean(bodyCalc.machado?.enabled),
-              amount: bodyCalc.machado?.amount || loadSavedBodyDefaults()?.machado?.amount || '12000',
+              selected_option_index: bodyCalc.machado?.selected_option_index || 0,
+              options: bodyCalc.machado?.options || [],
+              weight: bodyCalc.machado?.weight || '',
+              rate: bodyCalc.machado?.rate || '',
+              amount: bodyCalc.machado?.amount || '',
             },
             monofo: {
               enabled: Boolean(bodyCalc.monofo?.enabled),
@@ -1797,7 +1878,7 @@ export function QuotationFormModal({
                       ગાડી કાંટલે / બોડી કેલ્ક્યુલેશન (Body Size & Materials Calculation)
                     </h4>
                     <p className="body-calc-sub-title">
-                      તળીયું, સાઈડ, ધોકા અને થાંભલા ની ચોરસ ફૂટ, વજન અને રકમ ની લાઈવ ગણતરી
+                      પ્લેટફોર્મ, સાઈડ, ધોકા અને થાંભલા ની ચોરસ ફૂટ, વજન અને રકમ ની લાઈવ ગણતરી
                     </p>
                   </div>
                 </div>
@@ -1833,7 +1914,7 @@ export function QuotationFormModal({
               {/* 4 Parts Grid */}
               <div className="body-calc-grid">
                 {/* ----------------------------------------------------
-                    PART 1: તળીયું (Floor)
+                    PART 1: પ્લેટફોર્મ (Platform)
                     Options: Dynamic (4mm, 5mm, + Add Option)
                     Inputs: Length, Width, Option Name, 1 S.F. Weight, 1 S.F. Rate
                     Sq.Ft. = Length * Width
@@ -1842,7 +1923,7 @@ export function QuotationFormModal({
                 <div className="body-part-card">
                   <div className="body-part-top">
                     <span className="body-part-label">
-                      <span>૧. તળીયું (Floor)</span>
+                      <span>૧. પ્લેટફોર્મ (Platform)</span>
                     </span>
                     <span style={{ fontSize: '0.72rem', color: '#2563eb', fontWeight: 700 }}>
                       ચોરસ ફૂટ = લંબાઈ × પહોળાઈ
@@ -1979,19 +2060,19 @@ export function QuotationFormModal({
                 </div>
 
                 {/* ----------------------------------------------------
-                    PART 2: Side (બાજુ)
+                    PART 2: સાઇડ (Side)
                     Options: Dynamic (12 ગેજ, 14 ગેજ, + Add Option)
-                    Inputs: Length (auto from Taliyu), Height, Option Name, 1 S.F. Weight, 1 S.F. Rate
+                    Inputs: Length (auto from Platform), Height, Option Name, 1 S.F. Weight, 1 S.F. Rate
                     Sq.Ft. = Length * Height * 2 (2 sides)
                     Amount = Sq.Ft. * Rate
                     ---------------------------------------------------- */}
                 <div className="body-part-card">
                   <div className="body-part-top">
                     <span className="body-part-label">
-                      <span>૨. Side (બાજુ)</span>
+                      <span>૨. સાઇડ (Side)</span>
                     </span>
                     <span style={{ fontSize: '0.72rem', color: '#2563eb', fontWeight: 700 }}>
-                      ચોરસ ફૂટ = લંબાઈ × ઉંચાઈ × 2 (બંને બાજુ)
+                      ચોરસ ફૂટ = લંબાઈ × ઉંચાઈ × 2 (બંને સાઇડ)
                     </span>
                   </div>
 
@@ -1999,7 +2080,7 @@ export function QuotationFormModal({
                   <div className="body-inputs-row" style={{ gridTemplateColumns: 'repeat(2, 1fr)' }}>
                     <div className="body-input-group">
                       <label className="body-input-label">
-                        લંબાઈ (ફૂટ) <span className="sub-hint">{bodyCalc.side?.length === '' ? '(તળીયા પરથી)' : ''}</span>
+                        લંબાઈ (ફૂટ) <span className="sub-hint">{bodyCalc.side?.length === '' ? '(પ્લેટફોર્મ પરથી)' : ''}</span>
                       </label>
                       <input
                         type="number"
@@ -2455,8 +2536,8 @@ export function QuotationFormModal({
 
                 {/* ----------------------------------------------------
                     PART 6: માચડો (Machado / Carrier)
-                    Direct Amount (Lump-sum) with Selection Checkbox
-                    Only included in total calculation when checked (right)
+                    Options like Purchuran + Weight (kg)
+                    Amount = Weight × Rate (₹/kg)
                     ---------------------------------------------------- */}
                 <div className={`body-part-card ${bodyCalc.machado?.enabled ? 'body-part-card-active' : ''}`} style={{ borderColor: bodyCalc.machado?.enabled ? '#2563eb' : undefined }}>
                   <div className="body-part-top">
@@ -2474,25 +2555,95 @@ export function QuotationFormModal({
                     </span>
                   </div>
 
-                  {/* Input: Direct Amount */}
-                  {isAdmin && (
-                    <div className="body-inputs-row" style={{ gridTemplateColumns: '1fr' }}>
-                      <div className="body-input-group">
-                        <label className="body-input-label">
-                          માચડાની રકમ / ભાવ <span className="sub-hint">(Direct Amount ₹)</span>
-                        </label>
-                        <input
-                          type="number"
-                          step="any"
-                          min="0"
-                          className="body-calc-input font-mono"
-                          placeholder="e.g. 12000 (ડાયરેક્ટ રકમ)"
-                          value={bodyCalc.machado?.amount}
-                          onChange={(e) => handleMachadoChange('amount', e.target.value)}
-                        />
-                      </div>
+                  {/* Weight Input (kg) */}
+                  <div className="body-inputs-row" style={{ gridTemplateColumns: '1fr' }}>
+                    <div className="body-input-group">
+                      <label className="body-input-label">
+                        કુલ વજન <span className="sub-hint">(kg માં જથ્થો)</span>
+                      </label>
+                      <input
+                        type="number"
+                        step="any"
+                        min="0"
+                        className="body-calc-input font-mono"
+                        placeholder="e.g. 100 (કુલ વજન kg)"
+                        value={bodyCalc.machado?.weight}
+                        onChange={(e) => handleMachadoChange('weight', e.target.value)}
+                      />
                     </div>
-                  )}
+                  </div>
+
+                  {/* Dynamic Options List with Rate (₹/kg) */}
+                  <div className="body-calc-options-wrap">
+                    <div className="body-calc-options-head">
+                      <span>ઓપ્શન / વિગત (સિલેક્ટ કરો)</span>
+                      {isAdmin && <span>ભાવ (₹/kg)</span>}
+                    </div>
+
+                    {(bodyCalc.machado?.options || []).map((opt, optIdx) => (
+                      <div
+                        key={opt.id || optIdx}
+                        className={`body-calc-opt-row ${bodyCalc.machado?.selected_option_index === optIdx ? 'opt-active' : ''}`}
+                        onClick={() => handleSelectMachadoOption(optIdx)}
+                        title="Click to select this option for calculation"
+                      >
+                        <input
+                          type="radio"
+                          name="machado-option-radio"
+                          checked={bodyCalc.machado?.selected_option_index === optIdx}
+                          onChange={() => handleSelectMachadoOption(optIdx)}
+                          className="body-calc-opt-radio"
+                        />
+                        <input
+                          type="text"
+                          className="body-calc-opt-name"
+                          placeholder="ઓપ્શન નામ લખો..."
+                          value={opt.name}
+                          onClick={(e) => e.stopPropagation()}
+                          onChange={(e) => handleUpdateMachadoOption(optIdx, 'name', e.target.value)}
+                        />
+                        {isAdmin && (
+                          <>
+                            <span style={{ fontSize: '0.74rem', fontWeight: 700, color: '#64748b' }}>₹</span>
+                            <input
+                              type="number"
+                              step="any"
+                              min="0"
+                              className="body-calc-opt-num"
+                              placeholder="ભાવ ₹/kg"
+                              value={opt.rate}
+                              onClick={(e) => e.stopPropagation()}
+                              onChange={(e) => handleUpdateMachadoOption(optIdx, 'rate', e.target.value)}
+                              title="૧ kg નો ભાવ (₹)"
+                            />
+                            {bodyCalc.machado?.options?.length > 1 && (
+                              <button
+                                type="button"
+                                className="btn-del-body-opt"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleRemoveMachadoOption(optIdx);
+                                }}
+                                title="Remove option"
+                              >
+                                ✕
+                              </button>
+                            )}
+                          </>
+                        )}
+                      </div>
+                    ))}
+
+                    {isAdmin && (
+                      <button
+                        type="button"
+                        className="btn-add-body-opt"
+                        onClick={handleAddMachadoOption}
+                      >
+                        ＋ Add Option (નવો ઓપ્શન ઉમેરો)
+                      </button>
+                    )}
+                  </div>
 
                   {/* Live Results Bar */}
                   <div className="body-calc-result-box" style={{ background: bodyCalc.machado?.enabled ? '#eff6ff' : '#f8fafc' }}>
@@ -2500,9 +2651,14 @@ export function QuotationFormModal({
                       <span>સ્ટેટસ: </span>
                       <strong>
                         {bodyCalc.machado?.enabled
-                          ? 'કેલ્ક્યુલેશનમાં સામેલ'
+                          ? (calculations.bodyCalcDetails.machado.selectedName
+                              ? `સામેલ (${calculations.bodyCalcDetails.machado.selectedName})`
+                              : 'સામેલ છે')
                           : 'અનચેક (ગણતરીમાં નથી)'}
                       </strong>
+                      {isAdmin && bodyCalc.machado?.enabled && calculations.bodyCalcDetails.machado.weight > 0 && (
+                        <span> &bull; વજન: <strong>{calculations.bodyCalcDetails.machado.weight} kg</strong></span>
+                      )}
                     </div>
                     {isAdmin && (
                       <div className="body-calc-result-badge-amount" style={{ color: bodyCalc.machado?.enabled ? '#1d4ed8' : '#94a3b8' }}>

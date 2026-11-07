@@ -71,13 +71,13 @@ export function QuotationPrintContent({ quotation, isCustomerView = true }) {
               </tr>
             </thead>
             <tbody>
-              {/* Part 1: Floor / Taliyu */}
+              {/* Part 1: Platform / Floor */}
               {(Number(quotation.body_calc.taliyu?.amount) > 0 || Number(quotation.body_calc.taliyu?.total_weight) > 0 || Number(quotation.body_calc.taliyu?.total_sqft) > 0 || quotation.body_calc.taliyu?.length) && (
                 <tr>
                   <td style={{ textAlign: 'center', color: '#64748b' }}>1</td>
                   <td>
                     <div className="print-item-title">
-                      તળીયું (Floor) - {quotation.body_calc.taliyu.selected_label || quotation.body_calc.taliyu.selected_option || 'પ્લેટ'}
+                      પ્લેટફોર્મ (Platform) - {quotation.body_calc.taliyu.selected_label || quotation.body_calc.taliyu.selected_option || 'પ્લેટ'}
                     </div>
                     <span className="print-item-variant">
                       લંબાઈ: {quotation.body_calc.taliyu.length} ft × પહોળાઈ: {quotation.body_calc.taliyu.width} ft
@@ -95,14 +95,14 @@ export function QuotationPrintContent({ quotation, isCustomerView = true }) {
                   <td style={{ textAlign: 'center', color: '#64748b' }}>2</td>
                   <td>
                     <div className="print-item-title">
-                      Side (બાજુ) - {quotation.body_calc.side.selected_label || quotation.body_calc.side.selected_option || 'ચાદર'}
+                      સાઇડ (Side) - {quotation.body_calc.side.selected_label || quotation.body_calc.side.selected_option || 'ચાદર'}
                     </div>
                     <span className="print-item-variant">
-                      લંબાઈ: {quotation.body_calc.side.length} ft × ઉંચાઈ: {quotation.body_calc.side.height} ft × 2 બાજુ
+                      લંબાઈ: {quotation.body_calc.side.length} ft × ઉંચાઈ: {quotation.body_calc.side.height} ft × ૨ સાઇડ
                     </span>
                   </td>
                   <td style={{ textAlign: 'center' }} className="font-mono">
-                    <strong>{quotation.body_calc.side.length}' × {quotation.body_calc.side.height}' (૨ બાજુ)</strong>
+                    <strong>{quotation.body_calc.side.length}' × {quotation.body_calc.side.height}' (૨ સાઇડ)</strong>
                   </td>
                 </tr>
               )}
@@ -136,48 +136,18 @@ export function QuotationPrintContent({ quotation, isCustomerView = true }) {
                 </tr>
               )}
 
-              {/* Part 5: Purchuran */}
+              {/* Part 5: Machado */}
               {Boolean(
-                (quotation.body_calc.purchuran?.enabled ?? (Number(quotation.body_calc.purchuran?.amount) > 0 || Number(quotation.body_calc.purchuran?.rate) > 0)) &&
-                (Number(quotation.body_calc.purchuran?.amount || quotation.body_calc.purchuran?.rate) > 0 || isCustomerView)
+                quotation.body_calc.machado?.enabled &&
+                (Number(quotation.body_calc.machado?.amount) > 0 || Number(quotation.body_calc.machado?.weight) > 0 || isCustomerView)
               ) && (
                 <tr>
                   <td style={{ textAlign: 'center', color: '#64748b' }}>5</td>
                   <td>
-                    <div className="print-item-title">૫. પરચુરણ (Purchuran / Misc)</div>
-                    {Boolean(quotation.body_calc.purchuran.selected_label || quotation.body_calc.purchuran.selectedName) && (
-                      <span className="print-item-variant">
-                        {quotation.body_calc.purchuran.selected_label || quotation.body_calc.purchuran.selectedName}
-                      </span>
-                    )}
-                  </td>
-                  <td style={{ textAlign: 'center' }} className="font-mono">
-                    <strong style={{ color: '#16a34a' }}>✓ સામેલ (Included)</strong>
-                  </td>
-                </tr>
-              )}
-
-              {/* Part 6: Machado */}
-              {Boolean(quotation.body_calc.machado?.enabled && (Number(quotation.body_calc.machado?.amount) > 0 || isCustomerView)) && (
-                <tr>
-                  <td style={{ textAlign: 'center', color: '#64748b' }}>6</td>
-                  <td>
-                    <div className="print-item-title">૬. માચડો (Machado / Carrier)</div>
-                    <span className="print-item-variant">કેરિયર / માચડો ફીટીંગ વર્ક</span>
-                  </td>
-                  <td style={{ textAlign: 'center' }} className="font-mono">
-                    <strong style={{ color: '#16a34a' }}>✓ સામેલ (Included)</strong>
-                  </td>
-                </tr>
-              )}
-
-              {/* Part 7: Mpnfo */}
-              {Boolean((quotation.body_calc.monofo?.enabled || quotation.body_calc.mpnfo?.enabled) && (Number(quotation.body_calc.monofo?.amount || quotation.body_calc.mpnfo?.amount) > 0 || isCustomerView)) && (
-                <tr>
-                  <td style={{ textAlign: 'center', color: '#64748b' }}>7</td>
-                  <td>
-                    <div className="print-item-title">7. Mpnfo</div>
-                    <span className="print-item-variant">Mpnfo</span>
+                    <div className="print-item-title">માચડો (Machado / Carrier)</div>
+                    <span className="print-item-variant">
+                      {quotation.body_calc.machado.selected_label || quotation.body_calc.machado.selectedName || 'કેરિયર / માચડો ફીટીંગ વર્ક'}
+                    </span>
                   </td>
                   <td style={{ textAlign: 'center' }} className="font-mono">
                     <strong style={{ color: '#16a34a' }}>✓ સામેલ (Included)</strong>
