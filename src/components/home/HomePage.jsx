@@ -6,7 +6,7 @@ import { quotationService } from '../../services/quotationService';
 import { stockService } from '../../services/stockService';
 import { isLeavingSoon } from '../../utils/dateAlerts';
 
-export function HomePage({ onNavigate, onQuickAddWorker }) {
+export function HomePage({ onNavigate, onQuickAddWorker, onOpenBackup }) {
   const { user, isAdmin, canAccessModule } = useAuth();
 
   // Instant SWR cache initialization
@@ -407,6 +407,39 @@ export function HomePage({ onNavigate, onQuickAddWorker }) {
 
               <div className="compact-tile-bottom">
                 <span className="compact-open-tag">Manage Access</span>
+                <span className="compact-arrow-icon">→</span>
+              </div>
+            </div>
+          )}
+
+          {/* Database Backup & Restore Tile (Admin Only) */}
+          {isAdmin && (
+            <div
+              className="compact-tile tile-theme-backup"
+              onClick={() => onNavigate('backup')}
+              role="button"
+              tabIndex={0}
+            >
+              <div className="compact-tile-top">
+                <div className="compact-icon-wrapper" style={{ background: 'linear-gradient(135deg, #059669, #10b981)' }}>
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.3" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                    <polyline points="7 10 12 15 17 10" />
+                    <line x1="12" y1="15" x2="12" y2="3" />
+                  </svg>
+                </div>
+                <span className="compact-stat-bubble" style={{ background: '#dcfce7', color: '#166534' }}>👑 Admin</span>
+              </div>
+
+              <div className="compact-tile-middle">
+                <h3 className="compact-module-heading">Database Backup</h3>
+                <p className="compact-status-hint" style={{ color: '#059669' }}>
+                  Single File & 30-Day Auto
+                </p>
+              </div>
+
+              <div className="compact-tile-bottom">
+                <span className="compact-open-tag">Backup & Restore</span>
                 <span className="compact-arrow-icon">→</span>
               </div>
             </div>

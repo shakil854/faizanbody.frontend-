@@ -44,4 +44,14 @@ export const ENDPOINTS = {
     REVOKE_SESSION: (id) => `/auth/sessions/${id}`,
     REVOKE_USER_SESSIONS: (userId) => `/auth/users/${userId}/sessions`,
   },
+  BACKUP: {
+    STATS: '/backup/stats',
+    DOWNLOAD_JSON: '/backup/download-json',
+    DOWNLOAD_SQL: '/backup/download-sql',
+    LIST: '/backup/list',
+    SERVER_FILE: (filename) => `/backup/server-file/${encodeURIComponent(filename)}`,
+    RESTORE_FILE: '/backup/restore-file',
+    RESTORE_SERVER: '/backup/restore-server',
+    MANUAL_NOW: '/backup/manual-now',
+  },
 };

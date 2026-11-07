@@ -10,6 +10,7 @@ import { QuotationsPage } from './components/quotations/QuotationsPage';
 import { StockPage } from './components/stock/StockPage';
 import { UsersPage } from './components/users/UsersPage';
 import { WorkerFormModal } from './components/workers/WorkerFormModal';
+import { BackupPage } from './components/backup/BackupPage';
 import { Snackbar } from './components/workers/Snackbar';
 import { BottomNav } from './components/common/BottomNav';
 import { workerService } from './services/workerService';
@@ -31,6 +32,7 @@ export function App() {
     if (hash === '#quotations') return 'quotations';
     if (hash === '#stock') return 'stock';
     if (hash === '#users') return 'users';
+    if (hash === '#backup') return 'backup';
     return 'home';
   });
 
@@ -143,8 +145,9 @@ export function App() {
         : hash === '#orders' ? 'orders'
           : hash === '#quotations' ? (isAdmin ? 'quotations' : 'home')
             : hash === '#stock' ? 'stock'
-              : hash === '#users' ? 'users'
-                : 'home';
+              : hash === '#users' ? (isAdmin ? 'users' : 'home')
+                : hash === '#backup' ? (isAdmin ? 'backup' : 'home')
+                  : 'home';
 
       setCurrentPage((prev) => {
         if (prev !== targetPage) {
@@ -350,6 +353,12 @@ export function App() {
 
         {currentPage === 'users' && isAdmin && (
           <UsersPage
+            onBackToHome={() => navigateTo('home')}
+          />
+        )}
+
+        {currentPage === 'backup' && isAdmin && (
+          <BackupPage
             onBackToHome={() => navigateTo('home')}
           />
         )}
