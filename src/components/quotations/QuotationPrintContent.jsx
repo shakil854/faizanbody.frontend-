@@ -9,7 +9,19 @@ export function QuotationPrintContent({ quotation, isCustomerView = true }) {
     : [];
 
   return (
-    <div id="pdf-single-page" className="pdf-page" style={{ backgroundColor: '#ffffff', color: '#0f172a' }}>
+    <div
+      id="pdf-single-page"
+      className="pdf-page quotation-single-sheet"
+      style={{
+        backgroundColor: '#ffffff',
+        color: '#0f172a',
+        padding: '24px 28px',
+        boxSizing: 'border-box',
+        width: '100%',
+        maxWidth: '720px',
+        margin: '0 auto',
+      }}
+    >
       {/* Letterhead */}
       <div className="print-letterhead">
         <div className="letterhead-brand">
@@ -22,9 +34,9 @@ export function QuotationPrintContent({ quotation, isCustomerView = true }) {
             <p className="letterhead-contact">Mobile: 7984882103 &bull; Quality &bull; Strength &bull; Precision</p>
           </div>
         </div>
-        <div className="letterhead-badge">
-          <span className="doc-type-badge">QUOTATION</span>
-          <span className="doc-number font-mono">{quotation.quotation_no}</span>
+        <div className="letterhead-badge" style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '0.25rem', paddingRight: '4px' }}>
+          <span className="doc-type-badge" style={{ whiteSpace: 'nowrap', letterSpacing: '1px' }}>QUOTATION</span>
+          <span className="doc-number font-mono" style={{ whiteSpace: 'nowrap', letterSpacing: '0.5px' }}>{quotation.quotation_no}</span>
         </div>
       </div>
 
@@ -66,8 +78,8 @@ export function QuotationPrintContent({ quotation, isCustomerView = true }) {
             <thead>
               <tr>
                 <th style={{ width: '8%', textAlign: 'center' }}>Sr.</th>
-                <th style={{ width: '60%' }}>Part Description (વિગત)</th>
-                <th style={{ width: '32%', textAlign: 'center' }}>Specification / Dimensions (માપ અને વિગત)</th>
+                <th style={{ width: '62%' }}>Part Description (વિગત)</th>
+                <th style={{ width: '30%', textAlign: 'center' }}>Status (સામેલ)</th>
               </tr>
             </thead>
             <tbody>
@@ -84,7 +96,7 @@ export function QuotationPrintContent({ quotation, isCustomerView = true }) {
                     </span>
                   </td>
                   <td style={{ textAlign: 'center' }} className="font-mono">
-                    <strong>{quotation.body_calc.taliyu.length}' × {quotation.body_calc.taliyu.width}'</strong>
+                    <strong style={{ color: '#16a34a' }}>✓ સામેલ (Included)</strong>
                   </td>
                 </tr>
               )}
@@ -102,7 +114,7 @@ export function QuotationPrintContent({ quotation, isCustomerView = true }) {
                     </span>
                   </td>
                   <td style={{ textAlign: 'center' }} className="font-mono">
-                    <strong>{quotation.body_calc.side.length}' × {quotation.body_calc.side.height}' (૨ સાઇડ)</strong>
+                    <strong style={{ color: '#16a34a' }}>✓ સામેલ (Included)</strong>
                   </td>
                 </tr>
               )}
@@ -113,9 +125,12 @@ export function QuotationPrintContent({ quotation, isCustomerView = true }) {
                   <td style={{ textAlign: 'center', color: '#64748b' }}>3</td>
                   <td>
                     <div className="print-item-title">ધોકા (Cross Members)</div>
+                    {quotation.body_calc.dhoka?.qty > 0 && (
+                      <span className="print-item-variant">જથ્થો: {quotation.body_calc.dhoka.qty} નંગ</span>
+                    )}
                   </td>
                   <td style={{ textAlign: 'center' }} className="font-mono">
-                    <strong>{quotation.body_calc.dhoka.qty || 0} નંગ</strong>
+                    <strong style={{ color: '#16a34a' }}>✓ સામેલ (Included)</strong>
                   </td>
                 </tr>
               )}
@@ -131,7 +146,7 @@ export function QuotationPrintContent({ quotation, isCustomerView = true }) {
                     </span>
                   </td>
                   <td style={{ textAlign: 'center' }} className="font-mono">
-                    <strong>{quotation.body_calc.thambhla.total_feet || 0} ft ({quotation.body_calc.thambhla.qty} નંગ)</strong>
+                    <strong style={{ color: '#16a34a' }}>✓ સામેલ (Included)</strong>
                   </td>
                 </tr>
               )}

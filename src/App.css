@@ -19162,6 +19162,7 @@
   flex-direction: column;
   align-items: flex-end;
   gap: 0.25rem;
+  padding-right: 4px;
 }
 
 .doc-type-badge {
@@ -19178,6 +19179,7 @@
   font-size: 0.95rem;
   font-weight: 800;
   color: #1e293b;
+  white-space: nowrap;
 }
 
 .print-divider-line {

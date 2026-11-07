@@ -143,6 +143,15 @@ export async function generatePdfBlob(element, customFileName = 'Order_Slip.pdf'
     clone.style.display = 'block';
     clone.style.visibility = 'visible';
     clone.style.opacity = '1';
+    clone.style.boxShadow = 'none';
+
+    // Ensure clone always has adequate padding so right-aligned elements (like quotation numbers) never clip
+    if (!clone.style.padding || clone.style.padding === '0px') {
+      const computedPad = window.getComputedStyle ? window.getComputedStyle(domElem).padding : '';
+      if (!computedPad || computedPad === '0px') {
+        clone.style.padding = '24px 28px';
+      }
+    }
 
     // Strip any negative coordinates or fixed positions from children
     clone.querySelectorAll('*').forEach((el) => {
