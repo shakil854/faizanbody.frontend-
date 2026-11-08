@@ -268,3 +268,91 @@ export function calculateMonthKhataVahi(transactions = [], monthKey = '') {
       closingAdvance > 0 ? 'advance_due' : closingAdvance < 0 ? 'due_to_worker' : 'settled',
   };
 }
+
+/**
+ * Compute summary khata numbers for a single worker for any selected period
+ * ('running_month', 'last_month', 'all_time', 'custom') from their raw transactions.
+ * Accurately forwards prior month's balance as Opening Balance (B/F).
+ */
+export function calculateWorkerKhataForPeriod(
+  transactions = [],
+  period = 'running_month',
+  customFrom = '',
+  customTo = ''
+) {
+  const range = getPeriodDateRange(period, customFrom, customTo);
+  const allTxs = Array.isArray(transactions) ? transactions : [];
+
+  if (period === 'all_time' || (!range.startDate && !range.endDate)) {
+    const totalSalary = allTxs
+      .filter((t) => t && t.type === 'salary')
+      .reduce((s, t) => s + (Number(t.amount) || 0), 0);
+    const totalUpad = allTxs
+      .filter((t) => t && t.type === 'upad')
+      .reduce((s, t) => s + (Number(t.amount) || 0), 0);
+    const totalPaid = allTxs
+      .filter((t) => t && t.type === 'payment')
+      .reduce((s, t) => s + (Number(t.amount) || 0), 0);
+    const balance = totalSalary - (totalUpad + totalPaid);
+    return {
+      total_salary: totalSalary,
+      total_upad: totalUpad,
+      total_paid: totalPaid,
+      opening_balance: 0,
+      balance,
+      closing_balance: Math.abs(balance),
+    };
+  }
+
+  // 1. Calculate Opening Balance strictly before range.startDate:
+  // priorUpad + priorPaid - priorSalary (> 0 = advance B/F, < 0 = credit B/F)
+  let priorSalary = 0;
+  let priorUpad = 0;
+  let priorPaid = 0;
+
+  allTxs.forEach((t) => {
+    if (!t || !t.date) return;
+    const txDate = String(t.date).slice(0, 10);
+    if (range.startDate && txDate < range.startDate) {
+      const amt = Number(t.amount) || 0;
+      if (t.type === 'salary') priorSalary += amt;
+      else if (t.type === 'upad') priorUpad += amt;
+      else if (t.type === 'payment') priorPaid += amt;
+    }
+  });
+
+  const openingBalance = (priorUpad + priorPaid) - priorSalary;
+
+  // 2. Transactions strictly within range:
+  const periodTxs = allTxs.filter((t) => {
+    if (!t || !t.date) return false;
+    const txDate = String(t.date).slice(0, 10);
+    if (range.startDate && txDate < range.startDate) return false;
+    if (range.endDate && txDate > range.endDate) return false;
+    return true;
+  });
+
+  const totalSalary = periodTxs
+    .filter((t) => t && t.type === 'salary')
+    .reduce((s, t) => s + (Number(t.amount) || 0), 0);
+  const totalUpad = periodTxs
+    .filter((t) => t && t.type === 'upad')
+    .reduce((s, t) => s + (Number(t.amount) || 0), 0);
+  const totalPaid = periodTxs
+    .filter((t) => t && t.type === 'payment')
+    .reduce((s, t) => s + (Number(t.amount) || 0), 0);
+
+  // Closing balance:
+  const closingUpad = (openingBalance > 0 ? openingBalance : 0) + totalUpad + totalPaid;
+  const closingWork = (openingBalance < 0 ? Math.abs(openingBalance) : 0) + totalSalary;
+  const balance = closingWork - closingUpad; // > 0: Payable, < 0: Advance Due
+
+  return {
+    total_salary: totalSalary,
+    total_upad: totalUpad,
+    total_paid: totalPaid,
+    opening_balance: openingBalance,
+    balance,
+    closing_balance: Math.abs(balance),
+  };
+}

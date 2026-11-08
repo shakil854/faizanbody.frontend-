@@ -10,6 +10,7 @@ let cachedWorkers = null;
 let lastFetchTime = 0;
 const CACHE_TTL_MS = 60000; // 1 minute fresh cache
 const listeners = new Set();
+const transactionsCache = new Map();
 
 function notifyListeners() {
   if (cachedWorkers) {
@@ -157,14 +158,31 @@ export const workerService = {
   },
 
   /**
-   * Get all Khata transactions & summary for a worker
+   * Invalidate or clear cached transactions for a worker
    */
-  async getWorkerTransactions(workerId) {
+  invalidateWorkerTransactions(workerId) {
+    if (workerId) {
+      transactionsCache.delete(Number(workerId));
+      transactionsCache.delete(String(workerId));
+    } else {
+      transactionsCache.clear();
+    }
+  },
+
+  /**
+   * Get all Khata transactions & summary for a worker (with fast in-memory caching)
+   */
+  async getWorkerTransactions(workerId, { force = false } = {}) {
+    const key = Number(workerId);
+    if (!force && transactionsCache.has(key)) {
+      return transactionsCache.get(key);
+    }
+
     try {
       const response = await axiosInstance.get(ENDPOINTS.WORKER_TRANSACTIONS(workerId));
       const data = response.data?.data;
       if (data && typeof data === 'object') {
-        return {
+        const result = {
           transactions: Array.isArray(data.transactions) ? data.transactions : [],
           summary: {
             total_salary: Number(data.summary?.total_salary) || 0,
@@ -173,6 +191,8 @@ export const workerService = {
             balance: Number(data.summary?.balance) || 0,
           },
         };
+        transactionsCache.set(key, result);
+        return result;
       }
     } catch (err) {
       console.warn('⚠️ [WorkerService Khata API offline fallback]:', err.message);
@@ -184,9 +204,30 @@ export const workerService = {
   },
 
   /**
+   * Load transactions for multiple workers concurrently
+   */
+  async loadAllWorkersTransactions(workerIds = []) {
+    const ids = Array.isArray(workerIds) ? workerIds : [];
+    const results = {};
+    await Promise.all(
+      ids.map(async (id) => {
+        try {
+          const res = await this.getWorkerTransactions(id);
+          results[id] = res.transactions || [];
+        } catch {
+          results[id] = [];
+        }
+      })
+    );
+    return results;
+  },
+
+  /**
    * Add a new transaction (upad, payment, salary) for a worker
    */
   async addWorkerTransaction(workerId, transactionData) {
+    transactionsCache.delete(Number(workerId));
+    transactionsCache.delete(String(workerId));
     const response = await axiosInstance.post(ENDPOINTS.WORKER_TRANSACTIONS(workerId), transactionData);
     const data = response.data?.data;
 
@@ -212,6 +253,8 @@ export const workerService = {
    * Update an existing transaction (upad, payment, salary) for a worker
    */
   async updateWorkerTransaction(workerId, transactionId, transactionData) {
+    transactionsCache.delete(Number(workerId));
+    transactionsCache.delete(String(workerId));
     const response = await axiosInstance.put(
       ENDPOINTS.WORKER_TRANSACTION_DELETE(workerId, transactionId),
       transactionData
@@ -240,6 +283,8 @@ export const workerService = {
    * Delete a transaction record
    */
   async deleteWorkerTransaction(workerId, transactionId) {
+    transactionsCache.delete(Number(workerId));
+    transactionsCache.delete(String(workerId));
     const response = await axiosInstance.delete(ENDPOINTS.WORKER_TRANSACTION_DELETE(workerId, transactionId));
     const data = response.data?.data;
 

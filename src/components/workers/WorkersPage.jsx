@@ -8,7 +8,7 @@ import { WorkerFab } from './WorkerFab';
 import { Snackbar } from './Snackbar';
 import { BottomNav } from '../common/BottomNav';
 import { isLeavingSoon, getDaysUntil } from '../../utils/dateAlerts';
-import { getPeriodDateRange } from '../../utils/khataPeriodHelper';
+import { getPeriodDateRange, calculateWorkerKhataForPeriod } from '../../utils/khataPeriodHelper';
 import { useAuth } from '../../context/AuthContext';
 
 
@@ -34,6 +34,26 @@ export function WorkersPage({ onBackToHome, onAlertCountChange }) {
     () => getPeriodDateRange(periodFilter, customFrom, customTo),
     [periodFilter, customFrom, customTo]
   );
+
+  // Map of transactions per worker: { [workerId]: transactions[] }
+  const [workerTransactionsMap, setWorkerTransactionsMap] = useState({});
+
+  const refreshAllWorkerTransactions = useCallback(async (workerList = workers) => {
+    if (!workerList || !workerList.length) return;
+    const ids = workerList.map((w) => w.id).filter(Boolean);
+    try {
+      const map = await workerService.loadAllWorkersTransactions(ids);
+      setWorkerTransactionsMap((prev) => ({ ...prev, ...map }));
+    } catch (e) {
+      console.warn('Failed to load worker transactions:', e);
+    }
+  }, [workers]);
+
+  useEffect(() => {
+    if (workers && workers.length > 0) {
+      refreshAllWorkerTransactions(workers);
+    }
+  }, [workers, refreshAllWorkerTransactions]);
 
   // Modals state
   const [isFormOpen, setIsFormOpen] = useState(false);
@@ -152,9 +172,8 @@ export function WorkersPage({ onBackToHome, onAlertCountChange }) {
     }
   };
 
-  // Ultra-fast sorted list:
-  // Leaving soon workers appear at the top, rest ordered naturally
-  const sortedWorkers = useMemo(() => {
+  // Ultra-fast sorted list with instant period-specific Khata calculations
+  const displayedWorkers = useMemo(() => {
     // Zero-duplicate guarantee: deduplicate by id
     const seen = new Set();
     const uniqueList = workers.filter((w) => {
@@ -174,7 +193,20 @@ export function WorkersPage({ onBackToHome, onAlertCountChange }) {
       );
     }
 
-    return [...list].sort((a, b) => {
+    // Recalculate each worker's khata specifically for the active period filter
+    const listWithPeriodKhata = list.map((w) => {
+      const txs = workerTransactionsMap[w.id];
+      if (Array.isArray(txs) && txs.length > 0) {
+        const periodKhata = calculateWorkerKhataForPeriod(txs, periodFilter, customFrom, customTo);
+        return {
+          ...w,
+          khata: periodKhata,
+        };
+      }
+      return w;
+    });
+
+    return [...listWithPeriodKhata].sort((a, b) => {
       const aAlert = isLeavingSoon(a.going_date);
       const bAlert = isLeavingSoon(b.going_date);
 
@@ -189,7 +221,7 @@ export function WorkersPage({ onBackToHome, onAlertCountChange }) {
 
       return 0;
     });
-  }, [workers, searchQuery]);
+  }, [workers, searchQuery, workerTransactionsMap, periodFilter, customFrom, customTo]);
 
   return (
     <div className="workers-page-shell">
@@ -319,7 +351,7 @@ export function WorkersPage({ onBackToHome, onAlertCountChange }) {
                 </div>
               ))}
             </div>
-          ) : sortedWorkers.length === 0 ? (
+          ) : displayedWorkers.length === 0 ? (
             /* Empty State */
             <div className="empty-workers-state">
               <div className="empty-luxury-illustration">
@@ -354,7 +386,7 @@ export function WorkersPage({ onBackToHome, onAlertCountChange }) {
           ) : (
             /* High-Performance Smooth Virtualized Cards */
             <div className="workers-grid">
-              {sortedWorkers.map((worker) => (
+              {displayedWorkers.map((worker) => (
                 <WorkerCard
                   key={worker.id}
                   worker={worker}
@@ -367,6 +399,7 @@ export function WorkersPage({ onBackToHome, onAlertCountChange }) {
                   periodFilter={periodFilter}
                   periodDateRange={activePeriodInfo}
                   periodShortLabel={activePeriodInfo.shortLabel}
+                  onKhataUpdated={refreshAllWorkerTransactions}
                 />
               ))}
             </div>

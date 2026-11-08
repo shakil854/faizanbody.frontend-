@@ -16,6 +16,7 @@ export const WorkerCard = React.memo(function WorkerCard({
   periodFilter = 'running_month',
   periodDateRange = null,
   periodShortLabel = '',
+  onKhataUpdated,
 }) {
   const [showAadharModal, setShowAadharModal] = useState(false);
   const [showKhataModal, setShowKhataModal] = useState(false);
@@ -67,6 +68,7 @@ export const WorkerCard = React.memo(function WorkerCard({
   const khataUpad = Number(worker?.khata?.total_upad) || 0;
   const khataSalary = Number(worker?.khata?.total_salary) || 0;
   const khataPaid = Number(worker?.khata?.total_paid) || 0;
+  const openingBalance = Number(worker?.khata?.opening_balance) || 0;
 
   return (
     <>
@@ -249,6 +251,11 @@ export const WorkerCard = React.memo(function WorkerCard({
                 <span className="balance-strip-amount">
                   ₹{Math.abs(khataBalance).toLocaleString('en-IN')}
                 </span>
+                {openingBalance !== 0 && periodFilter !== 'all_time' && (
+                  <span style={{ fontSize: '0.64rem', color: '#64748b', fontWeight: 600, marginLeft: '0.35rem' }}>
+                    ({openingBalance > 0 ? `Incl. ₹${openingBalance.toLocaleString('en-IN')} B/F` : `Incl. ₹${Math.abs(openingBalance).toLocaleString('en-IN')} Cr B/F`})
+                  </span>
+                )}
               </div>
               <span className="balance-strip-badge">
                 {khataBalance > 0 ? 'Payable' : khataBalance < 0 ? 'Advance Due' : 'Settled'}
@@ -349,7 +356,12 @@ export const WorkerCard = React.memo(function WorkerCard({
       {showKhataModal && (
         <WorkerKhataModal
           isOpen={showKhataModal}
-          onClose={() => setShowKhataModal(false)}
+          onClose={() => {
+            setShowKhataModal(false);
+            if (typeof onKhataUpdated === 'function') {
+              onKhataUpdated();
+            }
+          }}
           worker={worker}
           canManage={canManage}
           initialFromDate={periodDateRange?.startDate || ''}
