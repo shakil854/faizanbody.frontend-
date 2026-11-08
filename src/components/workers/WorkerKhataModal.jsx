@@ -1,8 +1,17 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { workerService } from '../../services/workerService';
 import { sharePdfFile, downloadPdfFile } from '../../utils/pdfGenerator';
+import { getPeriodDateRange } from '../../utils/khataPeriodHelper';
 
-export function WorkerKhataModal({ isOpen, onClose, worker, canManage = true }) {
+export function WorkerKhataModal({
+  isOpen,
+  onClose,
+  worker,
+  canManage = true,
+  initialFromDate = '',
+  initialToDate = '',
+  initialPeriod = '',
+}) {
   const [loading, setLoading] = useState(true);
   const [transactions, setTransactions] = useState([]);
   const [summary, setSummary] = useState({
@@ -80,8 +89,10 @@ export function WorkerKhataModal({ isOpen, onClose, worker, canManage = true }) 
       setDate(new Date().toISOString().split('T')[0]);
       setEntryType('upad');
       setPdfToast('');
+      setFromDate(initialFromDate || '');
+      setToDate(initialToDate || '');
     }
-  }, [isOpen, worker?.id, fetchKhata]);
+  }, [isOpen, worker?.id, fetchKhata, initialFromDate, initialToDate]);
 
   // 1. Filter all transactions by Date Range (From Date -> To Date)
   const dateFilteredTransactions = useMemo(() => {
@@ -461,6 +472,68 @@ export function WorkerKhataModal({ isOpen, onClose, worker, canManage = true }) 
                   ✕ Show All Time
                 </button>
               )}
+            </div>
+
+            {/* Quick Preset Buttons */}
+            <div style={{ display: 'flex', gap: '0.4rem', margin: '0.45rem 0 0.65rem', flexWrap: 'wrap' }}>
+              <button
+                type="button"
+                onClick={() => {
+                  const r = getPeriodDateRange('running_month');
+                  setFromDate(r.startDate);
+                  setToDate(r.endDate);
+                }}
+                style={{
+                  padding: '0.3rem 0.65rem',
+                  borderRadius: '16px',
+                  fontSize: '0.74rem',
+                  fontWeight: 700,
+                  background: '#eff6ff',
+                  color: '#2563eb',
+                  border: '1px solid #bfdbfe',
+                  cursor: 'pointer',
+                }}
+              >
+                📅 ચાલુ મહિનો
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  const r = getPeriodDateRange('last_month');
+                  setFromDate(r.startDate);
+                  setToDate(r.endDate);
+                }}
+                style={{
+                  padding: '0.3rem 0.65rem',
+                  borderRadius: '16px',
+                  fontSize: '0.74rem',
+                  fontWeight: 700,
+                  background: '#f8fafc',
+                  color: '#475569',
+                  border: '1px solid #cbd5e1',
+                  cursor: 'pointer',
+                }}
+              >
+                ⏮️ ગયેલ મહિનો
+              </button>
+
+              <button
+                type="button"
+                onClick={() => { setFromDate(''); setToDate(''); }}
+                style={{
+                  padding: '0.3rem 0.65rem',
+                  borderRadius: '16px',
+                  fontSize: '0.74rem',
+                  fontWeight: 700,
+                  background: '#f8fafc',
+                  color: '#475569',
+                  border: '1px solid #cbd5e1',
+                  cursor: 'pointer',
+                }}
+              >
+                🌐 તમામ હિસાબ
+              </button>
             </div>
 
             <div className="date-range-fields-row">

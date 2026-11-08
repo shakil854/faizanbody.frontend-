@@ -8,6 +8,7 @@ import { WorkerFab } from './WorkerFab';
 import { Snackbar } from './Snackbar';
 import { BottomNav } from '../common/BottomNav';
 import { isLeavingSoon, getDaysUntil } from '../../utils/dateAlerts';
+import { getPeriodDateRange } from '../../utils/khataPeriodHelper';
 import { useAuth } from '../../context/AuthContext';
 
 
@@ -24,6 +25,16 @@ export function WorkersPage({ onBackToHome, onAlertCountChange }) {
   const [loading, setLoading] = useState(() => workerService.getCachedWorkers().length === 0);
   const [searchQuery, setSearchQuery] = useState('');
 
+  // Khata period filter: 'running_month' (DEFAULT), 'last_month', 'all_time', 'custom'
+  const [periodFilter, setPeriodFilter] = useState('running_month');
+  const [customFrom, setCustomFrom] = useState('');
+  const [customTo, setCustomTo] = useState('');
+
+  const activePeriodInfo = useMemo(
+    () => getPeriodDateRange(periodFilter, customFrom, customTo),
+    [periodFilter, customFrom, customTo]
+  );
+
   // Modals state
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingWorker, setEditingWorker] = useState(null);
@@ -37,12 +48,16 @@ export function WorkersPage({ onBackToHome, onAlertCountChange }) {
     setSnackbar({ message, type });
   }, []);
 
-  const fetchWorkers = useCallback(async ({ force = false } = {}) => {
+  const fetchWorkers = useCallback(async ({ force = false, filter = periodFilter, from = customFrom, to = customTo } = {}) => {
+    const range = getPeriodDateRange(filter, from, to);
     if (workerService.getCachedWorkers().length === 0) {
       setLoading(true);
     }
     try {
-      const response = await workerService.getWorkers({}, { forceRefresh: force });
+      const response = await workerService.getWorkers({
+        startDate: range.startDate,
+        endDate: range.endDate,
+      }, { forceRefresh: force });
       if (response && response.data) {
         setWorkers(response.data);
       }
@@ -52,7 +67,22 @@ export function WorkersPage({ onBackToHome, onAlertCountChange }) {
     } finally {
       setLoading(false);
     }
-  }, [showSnackbar]);
+  }, [periodFilter, customFrom, customTo, showSnackbar]);
+
+  const handlePeriodChange = (newPeriod) => {
+    setPeriodFilter(newPeriod);
+    if (newPeriod !== 'custom') {
+      fetchWorkers({ force: true, filter: newPeriod });
+    }
+  };
+
+  const handleApplyCustomDates = () => {
+    if (!customFrom || !customTo) {
+      showSnackbar('કૃપા કરીને શરૂઆત અને અંત બંને તારીખ પસંદ કરો', 'error');
+      return;
+    }
+    fetchWorkers({ force: true, filter: 'custom', from: customFrom, to: customTo });
+  };
 
   // Subscribe to service cache updates in real time
   useEffect(() => {
@@ -171,6 +201,82 @@ export function WorkersPage({ onBackToHome, onAlertCountChange }) {
           onSearchChange={setSearchQuery}
         />
 
+        {/* Khata Period Filter Bar (Running Month by default) */}
+        {canKhata && (
+          <div className="khata-period-filter-bar">
+            <div className="khata-period-chips-row">
+              <button
+                type="button"
+                className={`khata-period-chip ${periodFilter === 'running_month' ? 'active' : ''}`}
+                onClick={() => handlePeriodChange('running_month')}
+              >
+                📅 ચાલુ મહિનો
+              </button>
+
+              <button
+                type="button"
+                className={`khata-period-chip ${periodFilter === 'last_month' ? 'active' : ''}`}
+                onClick={() => handlePeriodChange('last_month')}
+              >
+                ⏮️ ગયેલ મહિનો
+              </button>
+
+              <button
+                type="button"
+                className={`khata-period-chip ${periodFilter === 'all_time' ? 'active' : ''}`}
+                onClick={() => handlePeriodChange('all_time')}
+              >
+                🌐 તમામ હિસાબ
+              </button>
+
+              <button
+                type="button"
+                className={`khata-period-chip ${periodFilter === 'custom' ? 'active' : ''}`}
+                onClick={() => handlePeriodChange('custom')}
+              >
+                🔍 કસ્ટમ તારીખ
+              </button>
+            </div>
+
+            {/* Custom Date Pickers */}
+            {periodFilter === 'custom' && (
+              <div className="khata-custom-dates-box">
+                <div className="khata-custom-date-field">
+                  <label>From Date (તારીખથી):</label>
+                  <input
+                    type="date"
+                    value={customFrom}
+                    onChange={(e) => setCustomFrom(e.target.value)}
+                  />
+                </div>
+                <div className="khata-custom-date-field">
+                  <label>To Date (તારીખ સુધી):</label>
+                  <input
+                    type="date"
+                    value={customTo}
+                    onChange={(e) => setCustomTo(e.target.value)}
+                  />
+                </div>
+                <button
+                  type="button"
+                  className="khata-apply-date-btn"
+                  onClick={handleApplyCustomDates}
+                >
+                  લાગુ કરો
+                </button>
+              </div>
+            )}
+
+            {/* Active Period Status Pill */}
+            <div className="khata-active-period-indicator">
+              <span className="khata-indicator-dot"></span>
+              <span className="khata-indicator-text">
+                ખાતા હિસાબ સમયગાળો: <strong>{activePeriodInfo.label}</strong>
+              </span>
+            </div>
+          </div>
+        )}
+
         {/* Urgent Leaving Soon Compact Red Alert Banner */}
         {leavingSoonCount > 0 && !searchQuery && (
           <div className="workers-leaving-alert-banner">
@@ -258,6 +364,9 @@ export function WorkersPage({ onBackToHome, onAlertCountChange }) {
                   canDelete={canDelete}
                   canKhata={canKhata}
                   canAadhar={canAadhar}
+                  periodFilter={periodFilter}
+                  periodDateRange={activePeriodInfo}
+                  periodShortLabel={activePeriodInfo.shortLabel}
                 />
               ))}
             </div>

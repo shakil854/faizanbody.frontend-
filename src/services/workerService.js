@@ -39,7 +39,7 @@ export const workerService = {
    * Fetch all workers with instant cache delivery and background revalidation
    */
   async getWorkers(params = {}, { forceRefresh = false } = {}) {
-    const isDefaultFetch = !params.search && (!params.status || params.status === 'all');
+    const isDefaultFetch = !params.search && (!params.status || params.status === 'all') && !params.startDate && !params.endDate;
     const now = Date.now();
 
     // 1. Instant Cache Hit: Return immediately in 0ms if cache is fresh
@@ -263,8 +263,8 @@ export const workerService = {
   /**
    * Get overall workshop-wide Khata summary
    */
-  async getWorkshopKhataSummary() {
-    const response = await axiosInstance.get(ENDPOINTS.WORKERS_KHATA_SUMMARY);
+  async getWorkshopKhataSummary(params = {}) {
+    const response = await axiosInstance.get(ENDPOINTS.WORKERS_KHATA_SUMMARY, { params });
     return response.data?.data;
   },
 };

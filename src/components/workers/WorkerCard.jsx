@@ -13,6 +13,9 @@ export const WorkerCard = React.memo(function WorkerCard({
   canDelete = canManage,
   canKhata = true,
   canAadhar = true,
+  periodFilter = 'running_month',
+  periodDateRange = null,
+  periodShortLabel = '',
 }) {
   const [showAadharModal, setShowAadharModal] = useState(false);
   const [showKhataModal, setShowKhataModal] = useState(false);
@@ -194,7 +197,14 @@ export const WorkerCard = React.memo(function WorkerCard({
                   </svg>
                 </span>
                 <div className="khata-card-title-text">
-                  <span className="khata-card-heading">Khata Ledger</span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap' }}>
+                    <span className="khata-card-heading">Khata Ledger</span>
+                    {periodShortLabel && (
+                      <span style={{ fontSize: '0.66rem', background: '#dbeafe', color: '#1e40af', padding: '0.1rem 0.45rem', borderRadius: '10px', fontWeight: 800 }}>
+                        {periodShortLabel}
+                      </span>
+                    )}
+                  </div>
                   <span className="khata-card-subheading">Debit & Credit Record</span>
                 </div>
               </div>
@@ -342,6 +352,9 @@ export const WorkerCard = React.memo(function WorkerCard({
           onClose={() => setShowKhataModal(false)}
           worker={worker}
           canManage={canManage}
+          initialFromDate={periodDateRange?.startDate || ''}
+          initialToDate={periodDateRange?.endDate || ''}
+          initialPeriod={periodFilter}
         />
       )}
     </>

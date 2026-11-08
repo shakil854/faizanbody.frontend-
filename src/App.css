@@ -21882,3 +21882,127 @@
 .backup-btn-restore:active {
   transform: scale(0.98);
 }
+
+
+/* ==========================================================================
+   Workers Khata Period Filter Bar (Running Month & History)
+   ========================================================================== */
+.khata-period-filter-bar {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  padding: 0.65rem 0.75rem;
+  margin: 0.65rem 0 0.85rem;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.03);
+}
+
+.khata-period-chips-row {
+  display: flex;
+  gap: 0.45rem;
+  overflow-x: auto;
+  padding-bottom: 0.25rem;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+.khata-period-chips-row::-webkit-scrollbar {
+  display: none;
+}
+
+.khata-period-chip {
+  flex-shrink: 0;
+  background: #f1f5f9;
+  color: #475569;
+  border: 1px solid #cbd5e1;
+  border-radius: 20px;
+  padding: 0.42rem 0.85rem;
+  font-size: 0.78rem;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.15s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.khata-period-chip:active {
+  transform: scale(0.96);
+}
+
+.khata-period-chip.active {
+  background: #2563eb;
+  color: #ffffff;
+  border-color: #1d4ed8;
+  box-shadow: 0 2px 6px rgba(37, 99, 235, 0.25);
+}
+
+.khata-custom-dates-box {
+  display: flex;
+  align-items: flex-end;
+  gap: 0.5rem;
+  margin-top: 0.65rem;
+  padding-top: 0.65rem;
+  border-top: 1px dashed #e2e8f0;
+  flex-wrap: wrap;
+}
+
+.khata-custom-date-field {
+  flex: 1;
+  min-width: 120px;
+}
+
+.khata-custom-date-field label {
+  display: block;
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: #64748b;
+  margin-bottom: 0.2rem;
+}
+
+.khata-custom-date-field input {
+  width: 100%;
+  padding: 0.45rem 0.6rem;
+  border: 1.5px solid #cbd5e1;
+  border-radius: 8px;
+  font-size: 0.82rem;
+  box-sizing: border-box;
+  color: #0f172a;
+}
+
+.khata-apply-date-btn {
+  background: #10b981;
+  color: #ffffff;
+  border: none;
+  border-radius: 8px;
+  padding: 0.5rem 0.9rem;
+  font-size: 0.82rem;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.khata-apply-date-btn:active {
+  background: #059669;
+}
+
+.khata-active-period-indicator {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin-top: 0.5rem;
+  font-size: 0.72rem;
+  color: #64748b;
+}
+
+.khata-indicator-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #2563eb;
+  display: inline-block;
+  flex-shrink: 0;
+}
+
+.khata-indicator-text strong {
+  color: #1e3a8a;
+  font-weight: 800;
+}
