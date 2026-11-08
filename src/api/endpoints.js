@@ -20,6 +20,7 @@ export const ENDPOINTS = {
   QUOTATION_CATALOG_ITEMS: '/quotations/catalog/items',
   QUOTATION_CATALOG_ITEM_DELETE: (id) => `/quotations/catalog/items/${id}`,
   STOCK_CATEGORIES: '/stock/categories',
+  STOCK_CATEGORY_UPDATE: (id) => `/stock/categories/${id}`,
   STOCK_CATEGORY_DELETE: (id) => `/stock/categories/${id}`,
   STOCK_ITEMS: '/stock/items',
   STOCK_ITEM_DETAIL: (id) => `/stock/items/${id}`,

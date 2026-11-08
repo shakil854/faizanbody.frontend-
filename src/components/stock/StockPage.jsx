@@ -155,6 +155,19 @@ export function StockPage({ onBackToHome }) {
     }
   };
 
+  // Update Category
+  const handleUpdateCategory = async (id, newName) => {
+    try {
+      await stockService.updateCategory(id, newName);
+      showSnackbar(`Category updated to "${newName}" successfully!`, 'success');
+      fetchData({ force: true });
+    } catch (err) {
+      const msg = err.response?.data?.message || err.message || 'Error updating category';
+      showSnackbar(msg, 'error');
+      throw err;
+    }
+  };
+
   // Delete Category
   const handleDeleteCategoryConfirm = async (catId) => {
     try {
@@ -738,6 +751,7 @@ export function StockPage({ onBackToHome }) {
         categories={categories}
         onClose={() => setIsCategoryModalOpen(false)}
         onAddCategory={handleAddCategory}
+        onUpdateCategory={handleUpdateCategory}
         onDeleteCategory={(cat) => setDeletingCategory(cat)}
       />
 

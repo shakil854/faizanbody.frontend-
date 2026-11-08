@@ -2,19 +2,25 @@ import React, { useState } from 'react';
 
 /**
  * Manage Categories Modal
- * Allows adding new categories (strictly only Category Name as requested)
- * and managing existing categories right from the Stock page.
+ * Allows adding new categories, editing existing categories, and deleting categories.
  */
 export function StockCategoryModal({
   isOpen,
   onClose,
   categories,
   onAddCategory,
+  onUpdateCategory,
   onDeleteCategory,
   isSubmitting,
 }) {
   const [newCategoryName, setNewCategoryName] = useState('');
   const [error, setError] = useState('');
+
+  // Inline editing state
+  const [editingId, setEditingId] = useState(null);
+  const [editName, setEditName] = useState('');
+  const [editError, setEditError] = useState('');
+  const [updatingId, setUpdatingId] = useState(null);
 
   if (!isOpen) return null;
 
@@ -35,6 +41,43 @@ export function StockCategoryModal({
     }
   };
 
+  const handleStartEdit = (cat) => {
+    setEditingId(cat.id || cat.name);
+    setEditName(cat.name);
+    setEditError('');
+  };
+
+  const handleCancelEdit = () => {
+    setEditingId(null);
+    setEditName('');
+    setEditError('');
+  };
+
+  const handleSaveEdit = async (cat) => {
+    const trimmed = editName.trim();
+    if (!trimmed) {
+      setEditError('Category name cannot be empty');
+      return;
+    }
+    if (trimmed.toLowerCase() === cat.name.toLowerCase()) {
+      handleCancelEdit();
+      return;
+    }
+
+    try {
+      setUpdatingId(cat.id || cat.name);
+      setEditError('');
+      if (onUpdateCategory) {
+        await onUpdateCategory(cat.id, trimmed);
+      }
+      handleCancelEdit();
+    } catch (err) {
+      setEditError(err.response?.data?.message || err.message || 'Error updating category');
+    } finally {
+      setUpdatingId(null);
+    }
+  };
+
   return (
     <div className="stock-modal-overlay" onClick={onClose}>
       <div
@@ -48,7 +91,7 @@ export function StockCategoryModal({
           <div className="stock-header-title-box">
             <span className="stock-header-badge">Categories</span>
             <h2 className="stock-header-title">Manage Categories</h2>
-            <p className="stock-header-subtitle">Add and organize material categories</p>
+            <p className="stock-header-subtitle">Add, edit, and organize material categories</p>
           </div>
           <button
             type="button"
@@ -108,62 +151,185 @@ export function StockCategoryModal({
                 No categories created yet. Type a category name above to create your first one.
               </div>
             ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', maxHeight: '280px', overflowY: 'auto' }}>
-                {categories.map((cat) => (
-                  <div
-                    key={cat.id || cat.name}
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'space-between',
-                      padding: '0.75rem 1rem',
-                      background: '#f8fafc',
-                      borderRadius: '8px',
-                      border: '1px solid #e2e8f0',
-                    }}
-                  >
-                    <div>
-                      <span style={{ fontWeight: 600, color: '#1e293b' }}>{cat.name}</span>
-                      <span
-                        style={{
-                          marginLeft: '0.6rem',
-                          fontSize: '0.75rem',
-                          background: '#e2e8f0',
-                          padding: '0.15rem 0.5rem',
-                          borderRadius: '12px',
-                          color: '#475569',
-                        }}
-                      >
-                        {cat.item_count || 0} items
-                      </span>
-                    </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', maxHeight: '300px', overflowY: 'auto', paddingRight: '2px' }}>
+                {categories.map((cat) => {
+                  const isEditingThis = editingId === (cat.id || cat.name);
+                  const isUpdatingThis = updatingId === (cat.id || cat.name);
 
-                    <button
-                      type="button"
-                      onClick={() => onDeleteCategory(cat)}
-                      disabled={isSubmitting}
+                  return (
+                    <div
+                      key={cat.id || cat.name}
                       style={{
-                        background: 'none',
-                        border: 'none',
-                        color: '#ef4444',
-                        cursor: 'pointer',
-                        padding: '0.25rem 0.5rem',
-                        fontSize: '0.85rem',
-                        borderRadius: '4px',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '4px',
+                        padding: '0.65rem 0.85rem',
+                        background: isEditingThis ? '#f0f9ff' : '#f8fafc',
+                        borderRadius: '8px',
+                        border: isEditingThis ? '1.5px solid #3b82f6' : '1px solid #e2e8f0',
+                        transition: 'all 0.15s ease',
                       }}
-                      title="Delete category"
                     >
-                      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                        <polyline points="3 6 5 6 21 6" />
-                        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
-                      </svg>
-                      Delete
-                    </button>
-                  </div>
-                ))}
+                      {isEditingThis ? (
+                        /* Inline Edit Form */
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem' }}>
+                            <input
+                              type="text"
+                              value={editName}
+                              onChange={(e) => {
+                                setEditName(e.target.value);
+                                if (editError) setEditError('');
+                              }}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter') {
+                                  e.preventDefault();
+                                  handleSaveEdit(cat);
+                                }
+                                if (e.key === 'Escape') {
+                                  e.preventDefault();
+                                  handleCancelEdit();
+                                }
+                              }}
+                              autoFocus
+                              disabled={isUpdatingThis}
+                              placeholder="Category name"
+                              style={{
+                                flex: 1,
+                                padding: '0.45rem 0.65rem',
+                                fontSize: '0.86rem',
+                                fontWeight: 600,
+                                background: '#ffffff',
+                                borderRadius: '6px',
+                                border: '1.5px solid #2563eb',
+                                outline: 'none',
+                                color: '#0f172a',
+                              }}
+                            />
+                            <button
+                              type="button"
+                              onClick={() => handleSaveEdit(cat)}
+                              disabled={isUpdatingThis || !editName.trim()}
+                              style={{
+                                background: '#2563eb',
+                                color: '#ffffff',
+                                border: 'none',
+                                borderRadius: '6px',
+                                padding: '0.45rem 0.75rem',
+                                fontSize: '0.82rem',
+                                fontWeight: 700,
+                                cursor: 'pointer',
+                                whiteSpace: 'nowrap',
+                              }}
+                            >
+                              {isUpdatingThis ? 'Saving...' : '✓ Save'}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={handleCancelEdit}
+                              disabled={isUpdatingThis}
+                              style={{
+                                background: '#ffffff',
+                                color: '#64748b',
+                                border: '1px solid #cbd5e1',
+                                borderRadius: '6px',
+                                padding: '0.45rem 0.65rem',
+                                fontSize: '0.82rem',
+                                fontWeight: 600,
+                                cursor: 'pointer',
+                                whiteSpace: 'nowrap',
+                              }}
+                            >
+                              Cancel
+                            </button>
+                          </div>
+                          {editError && (
+                            <span style={{ color: '#ef4444', fontSize: '0.78rem', fontWeight: 600 }}>
+                              {editError}
+                            </span>
+                          )}
+                        </div>
+                      ) : (
+                        /* Standard View Row */
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', minWidth: 0, flex: 1 }}>
+                            <span style={{ fontWeight: 600, color: '#1e293b', wordBreak: 'break-word', fontSize: '0.88rem' }}>
+                              {cat.name}
+                            </span>
+                            <span
+                              style={{
+                                marginLeft: '0.5rem',
+                                fontSize: '0.72rem',
+                                background: '#e2e8f0',
+                                padding: '0.15rem 0.45rem',
+                                borderRadius: '12px',
+                                color: '#475569',
+                                whiteSpace: 'nowrap',
+                                fontWeight: 600,
+                                flexShrink: 0,
+                              }}
+                            >
+                              {cat.item_count || 0} items
+                            </span>
+                          </div>
+
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', flexShrink: 0 }}>
+                            {/* Edit Button */}
+                            <button
+                              type="button"
+                              onClick={() => handleStartEdit(cat)}
+                              disabled={isSubmitting || updatingId !== null}
+                              style={{
+                                background: '#eff6ff',
+                                border: '1px solid #bfdbfe',
+                                color: '#2563eb',
+                                cursor: 'pointer',
+                                padding: '0.3rem 0.6rem',
+                                fontSize: '0.8rem',
+                                fontWeight: 700,
+                                borderRadius: '6px',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '4px',
+                              }}
+                              title="Edit category name"
+                            >
+                              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+                                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+                              </svg>
+                              Edit
+                            </button>
+
+                            {/* Delete Button */}
+                            <button
+                              type="button"
+                              onClick={() => onDeleteCategory(cat)}
+                              disabled={isSubmitting || updatingId !== null}
+                              style={{
+                                background: '#fef2f2',
+                                border: '1px solid #fecaca',
+                                color: '#ef4444',
+                                cursor: 'pointer',
+                                padding: '0.3rem 0.6rem',
+                                fontSize: '0.8rem',
+                                fontWeight: 700,
+                                borderRadius: '6px',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '4px',
+                              }}
+                              title="Delete category"
+                            >
+                              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                                <polyline points="3 6 5 6 21 6" />
+                                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                              </svg>
+                              Delete
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             )}
           </div>

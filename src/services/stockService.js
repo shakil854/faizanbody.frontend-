@@ -102,6 +102,30 @@ export const stockService = {
     return data;
   },
 
+  async updateCategory(id, name) {
+    const trimmed = (name || '').trim();
+    const response = await axiosInstance.put(ENDPOINTS.STOCK_CATEGORY_UPDATE(id), { name: trimmed });
+    const data = response.data;
+    if (data && data.data) {
+      const updatedCat = data.data;
+      if (cachedCategories) {
+        cachedCategories = cachedCategories.map((c) =>
+          c.id === id ? { ...c, name: updatedCat.name } : c
+        ).sort((a, b) => a.name.localeCompare(b.name));
+        notifyCategoryListeners();
+      }
+      if (cachedItems) {
+        cachedItems = cachedItems.map((i) =>
+          i.category_id === id || (updatedCat.old_name && i.category_name === updatedCat.old_name)
+            ? { ...i, category_name: updatedCat.name }
+            : i
+        );
+        notifyItemListeners();
+      }
+    }
+    return data;
+  },
+
   async deleteCategory(id) {
     const response = await axiosInstance.delete(ENDPOINTS.STOCK_CATEGORY_DELETE(id));
     if (cachedCategories) {
