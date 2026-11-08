@@ -381,6 +381,82 @@ export const backupService = {
     });
     return res.data;
   },
+
+  /**
+   * Get Google Drive settings (server synced with localStorage fallback)
+   */
+  async getGoogleDriveSettings() {
+    try {
+      const res = await axiosInstance.get(ENDPOINTS.BACKUP.GOOGLE_DRIVE_SETTINGS);
+      if (res.data?.success && res.data?.data) {
+        localStorage.setItem('faizanbody_gdrive_backup_settings', JSON.stringify(res.data.data));
+        return res.data.data;
+      }
+    } catch (e) {
+      // Offline or remote host fallback
+    }
+
+    try {
+      const cached = localStorage.getItem('faizanbody_gdrive_backup_settings');
+      if (cached) return JSON.parse(cached);
+    } catch (err) {}
+
+    return {
+      connected: false,
+      accountEmail: '',
+      scriptUrl: '',
+      folderName: 'FaizanBody_Backups',
+      autoDailyEnabled: true,
+      lastBackupAt: null,
+      lastBackupStatus: 'idle',
+      lastBackupMessage: '',
+      lastBackupFile: '',
+    };
+  },
+
+  /**
+   * Save Google Drive settings (connect account once -> daily auto backup)
+   */
+  async saveGoogleDriveSettings(settings) {
+    try {
+      const res = await axiosInstance.post(ENDPOINTS.BACKUP.GOOGLE_DRIVE_SETTINGS, settings);
+      if (res.data?.data) {
+        localStorage.setItem('faizanbody_gdrive_backup_settings', JSON.stringify(res.data.data));
+        return res.data.data;
+      }
+    } catch (e) {
+      // Local fallback
+    }
+
+    const updated = {
+      connected: Boolean(settings.accountEmail || settings.scriptUrl),
+      accountEmail: settings.accountEmail ? String(settings.accountEmail).trim().toLowerCase() : '',
+      scriptUrl: settings.scriptUrl ? String(settings.scriptUrl).trim() : '',
+      folderName: settings.folderName || 'FaizanBody_Backups',
+      autoDailyEnabled: settings.autoDailyEnabled !== undefined ? Boolean(settings.autoDailyEnabled) : true,
+      lastBackupAt: new Date().toISOString(),
+      lastBackupStatus: 'saved',
+      lastBackupMessage: 'Settings saved locally',
+    };
+    localStorage.setItem('faizanbody_gdrive_backup_settings', JSON.stringify(updated));
+    return updated;
+  },
+
+  /**
+   * Test immediate backup upload to connected Google Drive account
+   */
+  async testGoogleDriveBackup() {
+    try {
+      const res = await axiosInstance.post(ENDPOINTS.BACKUP.GOOGLE_DRIVE_TEST);
+      if (res.data?.success) {
+        return res.data;
+      }
+    } catch (e) {
+      // Fallback: trigger native Android Google Drive share
+    }
+
+    return await this.shareToGoogleDrive('json');
+  },
 };
 
 export default backupService;

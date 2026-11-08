@@ -13,6 +13,13 @@ export function BackupPage({ onBackToHome }) {
   const [toast, setToast] = useState({ show: false, message: '', type: 'success' });
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
 
+  // Google Drive automated backup state
+  const [driveSettings, setDriveSettings] = useState(null);
+  const [isEditingDriveAccount, setIsEditingDriveAccount] = useState(false);
+  const [inputEmail, setInputEmail] = useState('');
+  const [inputScriptUrl, setInputScriptUrl] = useState('');
+  const [showDriveHelper, setShowDriveHelper] = useState(false);
+
   const showToast = (message, type = 'success') => {
     setToast({ show: true, message, type });
     setTimeout(() => {
@@ -23,8 +30,23 @@ export function BackupPage({ onBackToHome }) {
   const loadData = async () => {
     try {
       setLoading(true);
-      const statsData = await backupService.getStats();
+      const [statsData, gdriveData] = await Promise.all([
+        backupService.getStats(),
+        backupService.getGoogleDriveSettings().catch(() => null),
+      ]);
       setStats(statsData);
+      if (gdriveData) {
+        setDriveSettings(gdriveData);
+        setInputEmail(gdriveData.accountEmail || '');
+        setInputScriptUrl(gdriveData.scriptUrl || '');
+        if (!gdriveData.connected) {
+          setIsEditingDriveAccount(true);
+        } else {
+          setIsEditingDriveAccount(false);
+        }
+      } else {
+        setIsEditingDriveAccount(true);
+      }
     } catch (err) {
       console.warn('Backup data load notice:', err);
     } finally {
@@ -38,7 +60,89 @@ export function BackupPage({ onBackToHome }) {
     }
   }, [isAdmin]);
 
-  // Handle file selection and read summary
+  // 1. Save Google Drive Account (Added Once -> Auto Daily Backups)
+  const handleSaveDriveAccount = async (e) => {
+    if (e) e.preventDefault();
+    const cleanEmail = inputEmail.trim();
+    const cleanScript = inputScriptUrl.trim();
+
+    if (!cleanEmail && !cleanScript) {
+      showToast('કૃપા કરીને Google એકાઉન્ટ (Gmail) અથવા Webhook URL દાખલ કરો', 'error');
+      return;
+    }
+
+    try {
+      setActionLoading(true);
+      const updated = await backupService.saveGoogleDriveSettings({
+        connected: true,
+        accountEmail: cleanEmail,
+        scriptUrl: cleanScript,
+        folderName: 'FaizanBody_Backups',
+        autoDailyEnabled: true,
+      });
+      setDriveSettings(updated);
+      setIsEditingDriveAccount(false);
+      showToast('✓ Google Drive એકાઉન્ટ સેટ થઈ ગયું! હવે દરરોજ આપમેળે ડેઇલી બેકઅપ લેવાશે.');
+    } catch (err) {
+      console.error(err);
+      showToast('Google Drive એકાઉન્ટ સેવ કરવામાં નિષ્ફળ', 'error');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  // Disconnect Google Drive
+  const handleDisconnectDrive = async () => {
+    try {
+      setActionLoading(true);
+      const updated = await backupService.saveGoogleDriveSettings({
+        connected: false,
+        accountEmail: '',
+        scriptUrl: '',
+        autoDailyEnabled: false,
+      });
+      setDriveSettings(updated);
+      setInputEmail('');
+      setInputScriptUrl('');
+      setIsEditingDriveAccount(true);
+      showToast('Google Drive એકાઉન્ટ ડિસ્કનેક્ટ કર્યું.');
+    } catch (err) {
+      showToast('ડિસ્કનેક્ટ કરવામાં નિષ્ફળ', 'error');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  // Immediate Test Sync / Run Backup Now
+  const handleTestDriveBackup = async () => {
+    try {
+      setActionLoading(true);
+      const res = await backupService.testGoogleDriveBackup();
+      showToast(res.message || '✓ સફળતાપૂર્વક Google Drive બેકઅપ મોકલી દેવાયો છે!');
+      await loadData();
+    } catch (err) {
+      console.error(err);
+      showToast('Google Drive બેકઅપ મોકલવામાં નિષ્ફળ', 'error');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  // 2. Manual Backup Download (.json ONLY)
+  const handleDownloadBackup = async () => {
+    try {
+      setActionLoading(true);
+      await backupService.downloadBackup('json');
+      showToast('✓ સિંગલ બેકઅપ ફાઈલ (.json) ડાઉનલોડ થઈ ગઈ છે!');
+    } catch (err) {
+      console.error(err);
+      showToast('મેન્યુઅલ બેકઅપ ડાઉનલોડ કરવામાં નિષ્ફળ', 'error');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  // 3. Restore from Uploaded File (Only restores rows inside tables; NEVER drops tables)
   const handleFileChange = async (e) => {
     const file = e.target.files?.[0];
     if (!file) {
@@ -68,35 +172,6 @@ export function BackupPage({ onBackToHome }) {
     }
   };
 
-  // 1. Save / Upload to Google Drive (30-day backup)
-  const handleShareToDrive = async () => {
-    try {
-      setActionLoading(true);
-      await backupService.shareToGoogleDrive('json');
-      showToast('✓ Google Drive શેર વિન્ડો ખૂલી ગઈ છે! તમારા Drive ફોલ્ડરમાં સેવ કરો.');
-    } catch (err) {
-      console.error(err);
-      showToast('Google Drive અપલોડ કરવામાં નિષ્ફળ', 'error');
-    } finally {
-      setActionLoading(false);
-    }
-  };
-
-  // 2. Manual Backup Download (.json and .sql)
-  const handleDownloadBackup = async (format = 'json') => {
-    try {
-      setActionLoading(true);
-      await backupService.downloadBackup(format);
-      showToast(`✓ સિંગલ બેકઅપ ફાઈલ (.${format}) ડાઉનલોડ થઈ ગઈ છે!`);
-    } catch (err) {
-      console.error(err);
-      showToast('મેન્યુઅલ બેકઅપ ડાઉનલોડ કરવામાં નિષ્ફળ', 'error');
-    } finally {
-      setActionLoading(false);
-    }
-  };
-
-  // 3. Restore from Uploaded File (Only restores rows inside tables; NEVER drops tables)
   const handleExecuteRestore = async () => {
     if (!selectedFile) {
       showToast('કૃપા કરીને બેકઅપ ફાઇલ પસંદ કરો', 'error');
@@ -229,36 +304,218 @@ export function BackupPage({ onBackToHome }) {
         </div>
       </div>
 
-      {/* 3. OPTION 1: Google Drive Backup (30-Day Rolling Cloud Backup) */}
+      {/* 3. OPTION 1: Google Drive Automated Daily Backup (Connect Once -> Auto Daily Backups) */}
       <div className="backup-card backup-card-highlight">
         <div className="backup-card-header">
           <div className="backup-card-icon" style={{ background: '#dcfce7', color: '#16a34a' }}>
             ☁️
           </div>
-          <div>
-            <h2 className="backup-card-title">૧. Google Drive માં બેકઅપ (Drive Backup)</h2>
+          <div style={{ flex: 1 }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem', flexWrap: 'wrap' }}>
+              <h2 className="backup-card-title">૧. Google Drive ડેઇલી ઓટો-બેકઅપ</h2>
+              {driveSettings?.connected && !isEditingDriveAccount && (
+                <span style={{ fontSize: '0.68rem', background: '#dcfce7', color: '#15803d', padding: '0.15rem 0.5rem', borderRadius: '12px', fontWeight: 800, border: '1px solid #86efac' }}>
+                  ● સક્રિય (Active)
+                </span>
+              )}
+            </div>
             <span style={{ fontSize: '0.7rem', color: '#15803d', fontWeight: 800 }}>
-              ★ ૩૦ દિવસનો બેકઅપ તમારા Google Drive માં સાચવશે
+              ★ ૧ વાર એકાઉન્ટ જોડો &bull; દરરોજ આપમેળે ૩૦ દિવસનો રોલિંગ બેકઅપ
             </span>
           </div>
         </div>
 
-        <p className="backup-card-desc">
-          આ બટન દબાવવાથી તમારા અંગત <strong>Google Drive</strong> માં તમામ ૧૨ ટેબલની સિંગલ બેકઅપ ફાઈલ અપલોડ થઈ જશે. દરરોજ ૧ ફાઈલ સેવ થશે અને ૩૦ દિવસ જૂની ફાઈલ ઓટોમેટિક સાફ રહેશે.
-        </p>
+        {/* State A: Account Connected & Auto-Backup Active */}
+        {driveSettings?.connected && !isEditingDriveAccount ? (
+          <div>
+            <div
+              style={{
+                margin: '0.75rem 0',
+                padding: '0.85rem',
+                background: '#ffffff',
+                border: '1.5px solid #bbf7d0',
+                borderRadius: '10px',
+                fontSize: '0.78rem',
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', marginBottom: '0.4rem' }}>
+                <span style={{ fontSize: '1.05rem' }}>📧</span>
+                <span style={{ color: '#64748b' }}>Google એકાઉન્ટ:</span>
+                <strong style={{ color: '#0f172a' }}>{driveSettings.accountEmail || 'Google Apps Script Webhook'}</strong>
+              </div>
 
-        <button
-          type="button"
-          className="backup-btn-drive"
-          onClick={handleShareToDrive}
-          disabled={actionLoading}
-        >
-          <span style={{ fontSize: '1.2rem' }}>☁️</span>
-          <span>{actionLoading ? 'પ્રોસેસિંગ...' : 'Google Drive માં સેવ કરો (Upload to Drive)'}</span>
-        </button>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', marginBottom: '0.4rem' }}>
+                <span style={{ fontSize: '1.05rem' }}>📁</span>
+                <span style={{ color: '#64748b' }}>Drive ફોલ્ડર:</span>
+                <strong style={{ color: '#15803d' }}>{driveSettings.folderName || 'FaizanBody_Backups'} (૩૦ દિવસ રોલિંગ)</strong>
+              </div>
+
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', marginBottom: '0.4rem' }}>
+                <span style={{ fontSize: '1.05rem' }}>⚡</span>
+                <span style={{ color: '#64748b' }}>ડેઇલી શિડ્યુલ:</span>
+                <span style={{ color: '#047857', fontWeight: 700 }}>
+                  દરરોજ રાત્રે આપમેળે .json બેકઅપ Google Drive માં સેવ થાય છે
+                </span>
+              </div>
+
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', paddingTop: '0.35rem', borderTop: '1px dashed #e2e8f0' }}>
+                <span style={{ fontSize: '0.95rem' }}>🕒</span>
+                <span style={{ color: '#64748b' }}>છેલ્લો ઓટો-બેકઅપ:</span>
+                <span style={{ color: '#334155', fontWeight: 700 }}>
+                  {driveSettings.lastBackupAt ? new Date(driveSettings.lastBackupAt).toLocaleString('gu-IN') : 'આજે રાત્રે ૦૨:૦૦ વાગ્યે શિડ્યુલ થયેલ છે'}
+                </span>
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+              <button
+                type="button"
+                className="backup-btn-drive"
+                onClick={handleTestDriveBackup}
+                disabled={actionLoading}
+                style={{ flex: 1, minWidth: '180px' }}
+              >
+                <span>🚀</span>
+                <span>{actionLoading ? 'મોકલી રહ્યાં છીએ...' : 'હમણાં ટેસ્ટ બેકઅપ મોકલો'}</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setIsEditingDriveAccount(true)}
+                disabled={actionLoading}
+                style={{
+                  background: '#f1f5f9',
+                  border: '1px solid #cbd5e1',
+                  borderRadius: '10px',
+                  padding: '0.6rem 0.85rem',
+                  fontSize: '0.78rem',
+                  fontWeight: 700,
+                  color: '#334155',
+                  cursor: 'pointer',
+                }}
+              >
+                ✏️ એકાઉન્ટ બદલો
+              </button>
+
+              <button
+                type="button"
+                onClick={handleDisconnectDrive}
+                disabled={actionLoading}
+                style={{
+                  background: '#fef2f2',
+                  border: '1px solid #fecaca',
+                  borderRadius: '10px',
+                  padding: '0.6rem 0.75rem',
+                  fontSize: '0.78rem',
+                  fontWeight: 700,
+                  color: '#dc2626',
+                  cursor: 'pointer',
+                }}
+              >
+                ડિસ્કનેક્ટ
+              </button>
+            </div>
+          </div>
+        ) : (
+          /* State B: Connect / Add Account Form */
+          <form onSubmit={handleSaveDriveAccount} style={{ marginTop: '0.65rem' }}>
+            <p className="backup-card-desc">
+              તમારું <strong>Google એકાઉન્ટ (Gmail)</strong> એકવાર અહીં જોડી દો. ત્યારબાદ દરરોજ આપમેળે તમામ ૧૨ ટેબલનો ૩૦ દિવસનો રોલિંગ બેકઅપ Google Drive માં સેવ થતો રહેશે (મેન્યુઅલ કંઈ કરવું નહીં પડે).
+            </p>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', marginBottom: '0.85rem' }}>
+              <div>
+                <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 800, color: '#0f172a', marginBottom: '0.25rem' }}>
+                  📧 Google એકાઉન્ટ (Gmail ID):
+                </label>
+                <input
+                  type="email"
+                  placeholder="તમારું Gmail દાખલ કરો e.g. faizanbody@gmail.com"
+                  value={inputEmail}
+                  onChange={(e) => setInputEmail(e.target.value)}
+                  style={{
+                    width: '100%',
+                    padding: '0.65rem 0.8rem',
+                    border: '1.5px solid #cbd5e1',
+                    borderRadius: '8px',
+                    fontSize: '0.84rem',
+                    boxSizing: 'border-box',
+                  }}
+                />
+              </div>
+
+              <div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.25rem' }}>
+                  <label style={{ fontSize: '0.74rem', fontWeight: 700, color: '#475569' }}>
+                    🔗 Google Drive Webhook URL (ઓપ્શનલ - સીધા Drive ફોલ્ડર માટે):
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => setShowDriveHelper(!showDriveHelper)}
+                    style={{ background: 'none', border: 'none', color: '#16a34a', fontSize: '0.7rem', fontWeight: 700, cursor: 'pointer', textDecoration: 'underline' }}
+                  >
+                    {showDriveHelper ? 'માહિતી છુપાવો' : 'કેવી રીતે મેળવવું?'}
+                  </button>
+                </div>
+                <input
+                  type="url"
+                  placeholder="https://script.google.com/macros/s/.../exec (ઓપ્શનલ)"
+                  value={inputScriptUrl}
+                  onChange={(e) => setInputScriptUrl(e.target.value)}
+                  style={{
+                    width: '100%',
+                    padding: '0.55rem 0.8rem',
+                    border: '1px solid #cbd5e1',
+                    borderRadius: '8px',
+                    fontSize: '0.76rem',
+                    boxSizing: 'border-box',
+                    background: '#f8fafc',
+                  }}
+                />
+              </div>
+
+              {showDriveHelper && (
+                <div style={{ background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: '8px', padding: '0.65rem 0.85rem', fontSize: '0.72rem', color: '#166534', lineHeight: 1.5 }}>
+                  💡 <strong>Google Apps Script ટિપ:</strong> script.google.com પર જઈને નવો પ્રોજેક્ટ બનાવી Web App તરીકે ડીપ્લોય કરવાથી મેળવેલ URL અહીં નાખવાથી બેકઅપ સીધું Drive ફોલ્ડરમાં અપલોડ થાય છે. માત્ર Gmail ID નાખવાથી પણ ઈમેલ દ્વારા સુરક્ષિત બેકઅપ દરરોજ મળતો રહેશે.
+                </div>
+              )}
+            </div>
+
+            <div style={{ display: 'flex', gap: '0.5rem' }}>
+              <button
+                type="submit"
+                className="backup-btn-drive"
+                disabled={actionLoading}
+                style={{ flex: 1 }}
+              >
+                <span>✓</span>
+                <span>{actionLoading ? 'સેવ કરી રહ્યાં છીએ...' : 'એકાઉન્ટ સેવ કરો અને ડેઇલી બેકઅપ ચાલુ કરો'}</span>
+              </button>
+
+              {driveSettings?.connected && (
+                <button
+                  type="button"
+                  onClick={() => setIsEditingDriveAccount(false)}
+                  style={{
+                    background: '#f1f5f9',
+                    border: '1px solid #cbd5e1',
+                    borderRadius: '10px',
+                    padding: '0.6rem 0.85rem',
+                    fontSize: '0.8rem',
+                    fontWeight: 700,
+                    color: '#475569',
+                    cursor: 'pointer',
+                  }}
+                >
+                  રદ કરો
+                </button>
+              )}
+            </div>
+          </form>
+        )}
       </div>
 
-      {/* 4. OPTION 2: Manual Backup Download (Single File JSON & SQL) */}
+      {/* 4. OPTION 2: Manual Backup Download (Single File JSON ONLY - as requested) */}
       <div className="backup-card">
         <div className="backup-card-header">
           <div className="backup-card-icon" style={{ background: '#dbeafe', color: '#1e3a8a' }}>
@@ -273,29 +530,19 @@ export function BackupPage({ onBackToHome }) {
         </div>
 
         <p className="backup-card-desc">
-          તમામ ટેબલ (ઓર્ડર્સ, કારીગરો, ખાતા, સ્ટોક વગેરે) <strong>એક જ સિંગલ ફાઈલમાં</strong> ડાઉનલોડ થશે.
+          તમામ ૧૨ ટેબલ (ઓર્ડર્સ, કારીગરો, ખાતા, સ્ટોક વગેરે) <strong>એક જ સિંગલ ફાઈલ (.json)</strong> માં ડાઉનલોડ થશે.
         </p>
 
         <div className="backup-manual-btn-group">
           <button
             type="button"
             className="backup-btn-download"
-            onClick={() => handleDownloadBackup('json')}
+            onClick={handleDownloadBackup}
             disabled={actionLoading}
+            style={{ width: '100%' }}
           >
             <span>📥</span>
             <span>ડાઉનલોડ સિંગલ ફાઈલ (.json)</span>
-          </button>
-
-          <button
-            type="button"
-            className="backup-btn-sql"
-            onClick={() => handleDownloadBackup('sql')}
-            disabled={actionLoading}
-            title="MySQL Dump સ્ક્રિપ્ટ ડાઉનલોડ કરો"
-          >
-            <span>💾</span>
-            <span>SQL Dump (.sql)</span>
           </button>
         </div>
       </div>

@@ -53,5 +53,7 @@ export const ENDPOINTS = {
     RESTORE_FILE: '/backup/restore-file',
     RESTORE_SERVER: '/backup/restore-server',
     MANUAL_NOW: '/backup/manual-now',
+    GOOGLE_DRIVE_SETTINGS: '/backup/google-drive-settings',
+    GOOGLE_DRIVE_TEST: '/backup/google-drive-test',
   },
 };
