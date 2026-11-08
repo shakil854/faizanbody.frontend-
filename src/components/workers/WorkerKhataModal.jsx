@@ -1,7 +1,12 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { workerService } from '../../services/workerService';
 import { sharePdfFile, downloadPdfFile } from '../../utils/pdfGenerator';
-import { getPeriodDateRange } from '../../utils/khataPeriodHelper';
+import {
+  getPeriodDateRange,
+  getAvailableKhataMonths,
+  calculateMonthKhataVahi,
+  getGujaratiMonthName,
+} from '../../utils/khataPeriodHelper';
 
 export function WorkerKhataModal({
   isOpen,
@@ -21,16 +26,36 @@ export function WorkerKhataModal({
     balance: 0,
   });
 
-  // Date Range Filter state for PDF & Ledger list
+  // View Mode: 'vahi_page' (Authentic Gujarati Monthly Notebook Page) or 'all_history' (Flat List)
+  const [viewMode, setViewMode] = useState('vahi_page');
+
+  // Mobile Column Tab Filter: 'both' | 'jama' | 'udhar' (ensures 100% responsiveness on mobile phones)
+  const [mobileTab, setMobileTab] = useState('both');
+
+  // Selected Month for the Khata Vahi Page (e.g. '2026-09', '2026-10')
+  const currentMonthKey = useMemo(() => {
+    const now = new Date();
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+  }, []);
+
+  const [selectedMonthKey, setSelectedMonthKey] = useState(() => {
+    if (initialFromDate && /^\d{4}-\d{2}/.test(initialFromDate)) {
+      return initialFromDate.slice(0, 7);
+    }
+    const now = new Date();
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+  });
+
+  // Date Range Filter state for All History mode & PDF
   const [fromDate, setFromDate] = useState('');
   const [toDate, setToDate] = useState('');
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
   const [pdfToast, setPdfToast] = useState('');
 
-  // Add Entry Form state
+  // Add / Edit Entry Form state
   const [showAddForm, setShowAddForm] = useState(false);
   const [editingTx, setEditingTx] = useState(null);
-  const [entryType, setEntryType] = useState('upad'); // 'upad', 'payment', 'salary'
+  const [entryType, setEntryType] = useState('upad'); // 'salary' (કામ), 'upad' (ઉપાડ), 'payment' (ચુકવણી)
   const [amount, setAmount] = useState('');
   const [date, setDate] = useState(() => new Date().toISOString().split('T')[0]);
   const [notes, setNotes] = useState('');
@@ -61,7 +86,7 @@ export function WorkerKhataModal({
   // Filter state for history list
   const [filterType, setFilterType] = useState('all'); // 'all', 'upad', 'payment', 'salary'
 
-  // Fetch transactions
+  // Fetch transactions from backend
   const fetchKhata = useCallback(async () => {
     if (!worker?.id) return;
     try {
@@ -91,8 +116,78 @@ export function WorkerKhataModal({
       setPdfToast('');
       setFromDate(initialFromDate || '');
       setToDate(initialToDate || '');
+      if (initialFromDate && /^\d{4}-\d{2}/.test(initialFromDate)) {
+        setSelectedMonthKey(initialFromDate.slice(0, 7));
+      }
     }
   }, [isOpen, worker?.id, fetchKhata, initialFromDate, initialToDate]);
+
+  // Available Months for Month Selector
+  const availableMonths = useMemo(() => {
+    return getAvailableKhataMonths(transactions, selectedMonthKey);
+  }, [transactions, selectedMonthKey]);
+
+  // Current Month's Authentic 2-Column Khata Vahi Ledger
+  const vahiData = useMemo(() => {
+    return calculateMonthKhataVahi(transactions, selectedMonthKey);
+  }, [transactions, selectedMonthKey]);
+
+  // Month Navigation Handlers
+  const handlePrevMonth = () => {
+    const idx = availableMonths.findIndex((m) => m.monthKey === selectedMonthKey);
+    if (idx > 0) {
+      setSelectedMonthKey(availableMonths[idx - 1].monthKey);
+    } else {
+      const [y, m] = selectedMonthKey.split('-').map(Number);
+      const prev = new Date(y, m - 2, 1);
+      setSelectedMonthKey(`${prev.getFullYear()}-${String(prev.getMonth() + 1).padStart(2, '0')}`);
+    }
+  };
+
+  const handleNextMonth = () => {
+    const idx = availableMonths.findIndex((m) => m.monthKey === selectedMonthKey);
+    if (idx >= 0 && idx < availableMonths.length - 1) {
+      setSelectedMonthKey(availableMonths[idx + 1].monthKey);
+    } else {
+      const [y, m] = selectedMonthKey.split('-').map(Number);
+      const next = new Date(y, m, 1);
+      setSelectedMonthKey(`${next.getFullYear()}-${String(next.getMonth() + 1).padStart(2, '0')}`);
+    }
+  };
+
+  const handleJumpCurrentMonth = () => {
+    setSelectedMonthKey(currentMonthKey);
+  };
+
+  // Quick Open Add Jama (Work / મજૂરી)
+  const handleOpenAddJama = () => {
+    setEditingTx(null);
+    setEntryType('salary');
+    setAmount('');
+    setNotes('');
+    const nowStr = new Date().toISOString().split('T')[0];
+    if (nowStr.startsWith(selectedMonthKey)) {
+      setDate(nowStr);
+    } else {
+      setDate(`${selectedMonthKey}-01`);
+    }
+    setShowAddForm(true);
+  };
+
+  // Quick Open Add Udhar (Upad / Advance / ઉપાડ)
+  const handleOpenAddUdhar = () => {
+    setEditingTx(null);
+    setEntryType('upad');
+    setAmount('');
+    setNotes('');
+    const nowStr = new Date().toISOString().split('T')[0];
+    if (nowStr.startsWith(selectedMonthKey)) {
+      setDate(nowStr);
+    } else {
+      setDate(`${selectedMonthKey}-01`);
+    }
+    setShowAddForm(true);
+  };
 
   // 1. Filter all transactions by Date Range (From Date -> To Date)
   const dateFilteredTransactions = useMemo(() => {
@@ -112,7 +207,7 @@ export function WorkerKhataModal({
     return dateFilteredTransactions.filter((t) => t && t.type === filterType);
   }, [dateFilteredTransactions, filterType]);
 
-  // Guaranteed safe summary numbers (HOOK MUST BE BEFORE ANY EARLY RETURN)
+  // Guaranteed safe summary numbers
   const safeSummary = useMemo(() => ({
     total_salary: Number(summary?.total_salary) || 0,
     total_upad: Number(summary?.total_upad) || 0,
@@ -260,22 +355,17 @@ export function WorkerKhataModal({
     }
   };
 
-  // Helper to chunk transactions into pages for the printable PDF
+  // Helper to chunk transactions into pages for the printable PDF (All history view)
   const getPdfPagesData = () => {
     const list = dateFilteredTransactions;
-    // Page 1 with brand header, meta card, 4 KPI cards and settlement callout can fit up to 12 rows comfortably on 1 page
     if (list.length <= 12) {
       return [{ pageNum: 1, totalPages: 1, rows: list, isFirst: true, isLast: true, startIndex: 0 }];
     }
     const pages = [];
-    // Page 1 gets 10 rows when multi-page
     pages.push({ pageNum: 1, rows: list.slice(0, 10), isFirst: true, isLast: false, startIndex: 0 });
     let remaining = list.slice(10);
     let currentIdx = 10;
     while (remaining.length > 0) {
-      // Continuation pages have a compact top strip (no banner, no meta box, no KPIs).
-      // If final page with settlement callout + signatures, fit up to 14 rows.
-      // If middle page, fit up to 18 rows.
       const isNextLast = remaining.length <= 14;
       const rowsCount = isNextLast ? remaining.length : 18;
       const pageRows = remaining.slice(0, rowsCount);
@@ -299,35 +389,34 @@ export function WorkerKhataModal({
     if (isGeneratingPdf) return;
     try {
       setIsGeneratingPdf(true);
-      setPdfToast('⏳ PDF तैयार हो रही है, WhatsApp खुल रहा है...');
+      setPdfToast('⏳ PDF તૈયાર થઈ રહી છે, WhatsApp ખુલી રહ્યું છે...');
       await new Promise((r) => setTimeout(r, 200));
 
       const cleanName = (worker.name || 'Worker').replace(/[^a-zA-Z0-9_-]/g, '_');
-      const datePart = fromDate || toDate
-        ? `_${fromDate || 'Start'}_to_${toDate || 'Today'}`
-        : '_Full';
-      const fileName = `FaizanBody_Khata_${cleanName}${datePart}.pdf`;
-      const title = `Faizan Body Works - ${worker.name}'s Khata Statement`;
+      const targetElementId = viewMode === 'vahi_page' ? 'printableKhataVahiSheet' : 'printableKhataSheet';
+      const fileSuffix = viewMode === 'vahi_page' ? `_Month_${vahiData.accountNo}` : `_Full`;
+      const fileName = `FaizanBody_Khata_${cleanName}${fileSuffix}.pdf`;
+      const title = `Faizan Body Works - ${worker.name}'s Khata (${vahiData.accountNo})`;
 
       const result = await sharePdfFile({
-        elementId: 'printableKhataSheet',
+        elementId: targetElementId,
         fileName,
         title,
-        text: `Khata Statement PDF: ${worker.name} (${fromDate ? `${fromDate} to ${toDate || 'Today'}` : 'Complete Ledger'}) - Faizan Body Works`,
+        text: `Khata Statement PDF: ${worker.name} (A/c No: ${vahiData.accountNo} • પાનું ${vahiData.pageNo}) - Faizan Body Works`,
       });
 
       if (result?.method === 'downloaded') {
-        setPdfToast('✅ PDF डाउनलोड हो गई है! आप इसे WhatsApp पर भेज सकते हैं।');
+        setPdfToast('✅ PDF ડાઉનલોડ થઈ ગઈ છે! તમે તેને WhatsApp પર મોકલી શકો છો.');
         setTimeout(() => setPdfToast(''), 5000);
       } else if (result?.success) {
-        setPdfToast('✅ PDF WhatsApp पर शेयर हो गई!');
+        setPdfToast('✅ PDF WhatsApp પર શેર થઈ ગઈ!');
         setTimeout(() => setPdfToast(''), 4000);
       } else {
         setPdfToast('');
       }
     } catch (err) {
       console.error('Error sharing Khata PDF:', err);
-      setPdfToast('⚠️ PDF शेयर करने में समस्या आई।');
+      setPdfToast('⚠️ PDF શેર કરવામાં સમસ્યા આવી.');
       setTimeout(() => setPdfToast(''), 4000);
     } finally {
       setIsGeneratingPdf(false);
@@ -339,25 +428,24 @@ export function WorkerKhataModal({
     if (isGeneratingPdf) return;
     try {
       setIsGeneratingPdf(true);
-      setPdfToast('⏳ PDF डाउनलोड हो रही है...');
+      setPdfToast('⏳ PDF ડાઉનલોડ થઈ રહી છે...');
       await new Promise((r) => setTimeout(r, 200));
 
       const cleanName = (worker.name || 'Worker').replace(/[^a-zA-Z0-9_-]/g, '_');
-      const datePart = fromDate || toDate
-        ? `_${fromDate || 'Start'}_to_${toDate || 'Today'}`
-        : '_Full';
-      const fileName = `FaizanBody_Khata_${cleanName}${datePart}.pdf`;
+      const targetElementId = viewMode === 'vahi_page' ? 'printableKhataVahiSheet' : 'printableKhataSheet';
+      const fileSuffix = viewMode === 'vahi_page' ? `_Month_${vahiData.accountNo}` : `_Full`;
+      const fileName = `FaizanBody_Khata_${cleanName}${fileSuffix}.pdf`;
 
       await downloadPdfFile({
-        elementId: 'printableKhataSheet',
+        elementId: targetElementId,
         fileName,
       });
 
-      setPdfToast('✅ PDF सफलतापूर्वक सेव हो गई!');
+      setPdfToast('✅ PDF સફળતાપૂર્વક સેવ થઈ ગઈ!');
       setTimeout(() => setPdfToast(''), 4000);
     } catch (err) {
       console.error('Error downloading Khata PDF:', err);
-      setPdfToast('⚠️ PDF डाउनलोड करने में समस्या आई।');
+      setPdfToast('⚠️ PDF ડાઉનલોડ કરવામાં સમસ્યા આવી.');
       setTimeout(() => setPdfToast(''), 4000);
     } finally {
       setIsGeneratingPdf(false);
@@ -392,7 +480,7 @@ export function WorkerKhataModal({
               <div>
                 <h3 className="sheet-title">{worker.name}'s Khata</h3>
                 <p className="sheet-subtitle">
-                  {worker.mobile ? `Mobile: ${worker.mobile} • ` : ''}Debit & Credit Ledger
+                  {worker.mobile ? `Mobile: ${worker.mobile} • ` : ''}કારીગર ખાતાવહી (દેશી નામા)
                 </p>
               </div>
             </div>
@@ -410,37 +498,22 @@ export function WorkerKhataModal({
             </button>
           </div>
 
-          {/* 4 Summary KPIs Grid (Reflects filtered date range if active) */}
-          <div className="khata-kpi-grid">
-            {/* Card 1: Total Salary / Earned */}
-            <div className="khata-kpi-card card-salary">
-              <span className="kpi-label">TOTAL WORK</span>
-              <span className="kpi-amount">₹{effectiveSummary.total_salary.toLocaleString('en-IN')}</span>
-              <span className="kpi-tag">{isDateFilterActive ? 'In Selected Period' : 'Total Earned'}</span>
-            </div>
-
-            {/* Card 2: Total Upaad (Advance) */}
-            <div className="khata-kpi-card card-upad">
-              <span className="kpi-label">UPAD (ADVANCE)</span>
-              <span className="kpi-amount">₹{effectiveSummary.total_upad.toLocaleString('en-IN')}</span>
-              <span className="kpi-tag">{isDateFilterActive ? 'In Selected Period' : 'Total Advance'}</span>
-            </div>
-
-            {/* Card 3: Total Paid */}
-            <div className="khata-kpi-card card-payment">
-              <span className="kpi-label">TOTAL PAID</span>
-              <span className="kpi-amount">₹{effectiveSummary.total_paid.toLocaleString('en-IN')}</span>
-              <span className="kpi-tag">{isDateFilterActive ? 'In Selected Period' : 'Payment Settled'}</span>
-            </div>
-
-            {/* Card 4: Net Balance */}
-            <div className={`khata-kpi-card card-balance ${balanceColorClass}`}>
-              <span className="kpi-label">NET BALANCE</span>
-              <span className="kpi-amount">₹{Math.abs(effectiveSummary.balance).toLocaleString('en-IN')}</span>
-              <span className="kpi-tag">
-                {effectiveSummary.balance > 0 ? 'Due to Pay' : effectiveSummary.balance < 0 ? 'Advance Due' : 'All Clear'}
-              </span>
-            </div>
+          {/* View Mode Selector Tabs */}
+          <div className="khata-view-mode-tabs">
+            <button
+              type="button"
+              className={`khata-view-tab ${viewMode === 'vahi_page' ? 'active' : ''}`}
+              onClick={() => setViewMode('vahi_page')}
+            >
+              📖 મહિનાવાર ખાતાવહી પાનું (Khata Vahi Page)
+            </button>
+            <button
+              type="button"
+              className={`khata-view-tab ${viewMode === 'all_history' ? 'active' : ''}`}
+              onClick={() => setViewMode('all_history')}
+            >
+              📋 તમામ લેજર હિસ્ટ્રી (All-Time List)
+            </button>
           </div>
 
           {/* Toast Banner for PDF Generation / Feedback */}
@@ -450,501 +523,1075 @@ export function WorkerKhataModal({
             </div>
           )}
 
-          {/* Statement Date Range Selector for PDF & Ledger List */}
-          <div className="khata-date-range-card">
-            <div className="date-range-header">
-              <div className="date-range-title">
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#2563eb" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
-                  <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
-                  <line x1="16" y1="2" x2="16" y2="6" />
-                  <line x1="8" y1="2" x2="8" y2="6" />
-                  <line x1="3" y1="10" x2="21" y2="10" />
-                </svg>
-                <span>Date Range Filter (तारीख से तारीख तक फ़िल्टर)</span>
-              </div>
-              {isDateFilterActive && (
-                <button
-                  type="button"
-                  className="btn-clear-date-filter"
-                  onClick={() => { setFromDate(''); setToDate(''); }}
-                  title="Show all time transactions"
-                >
-                  ✕ Show All Time
-                </button>
-              )}
-            </div>
-
-            {/* Quick Preset Buttons */}
-            <div style={{ display: 'flex', gap: '0.4rem', margin: '0.45rem 0 0.65rem', flexWrap: 'wrap' }}>
-              <button
-                type="button"
-                onClick={() => {
-                  const r = getPeriodDateRange('running_month');
-                  setFromDate(r.startDate);
-                  setToDate(r.endDate);
-                }}
-                style={{
-                  padding: '0.3rem 0.65rem',
-                  borderRadius: '16px',
-                  fontSize: '0.74rem',
-                  fontWeight: 700,
-                  background: '#eff6ff',
-                  color: '#2563eb',
-                  border: '1px solid #bfdbfe',
-                  cursor: 'pointer',
-                }}
-              >
-                📅 ચાલુ મહિનો
-              </button>
-
-              <button
-                type="button"
-                onClick={() => {
-                  const r = getPeriodDateRange('last_month');
-                  setFromDate(r.startDate);
-                  setToDate(r.endDate);
-                }}
-                style={{
-                  padding: '0.3rem 0.65rem',
-                  borderRadius: '16px',
-                  fontSize: '0.74rem',
-                  fontWeight: 700,
-                  background: '#f8fafc',
-                  color: '#475569',
-                  border: '1px solid #cbd5e1',
-                  cursor: 'pointer',
-                }}
-              >
-                ⏮️ ગયેલ મહિનો
-              </button>
-
-              <button
-                type="button"
-                onClick={() => { setFromDate(''); setToDate(''); }}
-                style={{
-                  padding: '0.3rem 0.65rem',
-                  borderRadius: '16px',
-                  fontSize: '0.74rem',
-                  fontWeight: 700,
-                  background: '#f8fafc',
-                  color: '#475569',
-                  border: '1px solid #cbd5e1',
-                  cursor: 'pointer',
-                }}
-              >
-                🌐 તમામ હિસાબ
-              </button>
-            </div>
-
-            <div className="date-range-fields-row">
-              <div className="date-range-col">
-                <label className="date-range-label">From Date (तारीख से):</label>
-                <input
-                  type="date"
-                  className="date-range-input"
-                  value={fromDate}
-                  onChange={(e) => setFromDate(e.target.value)}
-                />
-              </div>
-
-              <div className="date-range-col">
-                <label className="date-range-label">To Date (तारीख तक):</label>
-                <input
-                  type="date"
-                  className="date-range-input"
-                  value={toDate}
-                  onChange={(e) => setToDate(e.target.value)}
-                />
-              </div>
-            </div>
-
-            {isDateFilterActive && (
-              <div className="date-range-info-pill">
-                <span>
-                  📅 <strong>{fromDate || 'Beginning'}</strong> से <strong>{toDate || 'Today'}</strong> तक के <strong>{dateFilteredTransactions.length}</strong> लेन-देन चुने गए हैं (PDF में यही शामिल होंगे)।
-                </span>
-              </div>
-            )}
-          </div>
-
-          {/* Quick Action Buttons Bar */}
-          <div className="khata-action-bar">
-            {canManage && (
-              <button
-                type="button"
-                className={`btn ${showAddForm ? 'btn-secondary' : 'btn-primary'} btn-add-entry-toggle`}
-                onClick={() => {
-                  if (showAddForm) {
-                    handleCancelForm();
-                  } else {
-                    setEditingTx(null);
-                    setAmount('');
-                    setNotes('');
-                    setDate(new Date().toISOString().split('T')[0]);
-                    setShowAddForm(true);
-                  }
-                }}
-              >
-                {showAddForm ? (
-                  <>
-                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
-                      <line x1="18" y1="6" x2="6" y2="18" />
-                      <line x1="6" y1="6" x2="18" y2="18" />
-                    </svg>
-                    Close Form
-                  </>
-                ) : (
-                  <>
-                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
-                      <line x1="12" y1="5" x2="12" y2="19" />
-                      <line x1="5" y1="12" x2="19" y2="12" />
-                    </svg>
-                    + Add New Entry
-                  </>
-                )}
-              </button>
-            )}
-
-            {/* Share PDF on WhatsApp */}
-            <button
-              type="button"
-              className="btn btn-whatsapp-share"
-              onClick={handleShareKhataPdf}
-              disabled={isGeneratingPdf}
-              title="Share PDF statement on WhatsApp"
-            >
-              {isGeneratingPdf ? (
-                <>
-                  <span className="mini-spinner" style={{ width: '13px', height: '13px' }}></span>
-                  <span>Generating PDF...</span>
-                </>
-              ) : (
-                <>
-                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" />
-                  </svg>
-                  <span>Share on WhatsApp</span>
-                </>
-              )}
-            </button>
-
-            {/* Direct Download PDF Button */}
-            <button
-              type="button"
-              className="btn btn-download-pdf-icon"
-              onClick={handleDownloadKhataPdf}
-              disabled={isGeneratingPdf}
-              title="Download PDF statement (PDF सेव करें)"
-              aria-label="Download PDF statement"
-            >
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-                <polyline points="7 10 12 15 17 10" />
-                <line x1="12" y1="15" x2="12" y2="3" />
-              </svg>
-            </button>
-          </div>
-
-          {/* Expandable Add / Edit Entry Form */}
-          {showAddForm && (
-            <div className="khata-add-entry-box">
-              <h4 className="entry-box-title">
-                {editingTx ? '✏️ Edit Transaction' : 'Record New Transaction'}
-              </h4>
-
-              {formError && (
-                <div className="form-alert-error" style={{ marginBottom: '0.65rem' }}>
-                  <span>{formError}</span>
-                </div>
-              )}
-
-              <form onSubmit={handleSaveEntry} className="khata-entry-form">
-                {/* 3 Entry Type Tabs */}
-                <div className="entry-type-selector">
+          {/* ========================================================
+              VIEW 1: AUTHENTIC GUJARATI KHATA VAHI MONTHLY PAGE
+              ======================================================== */}
+          {viewMode === 'vahi_page' ? (
+            <>
+              {/* Month Navigation Ribbon */}
+              <div className="khata-month-nav-ribbon">
+                <div className="month-nav-main-row">
                   <button
                     type="button"
-                    className={`entry-type-tab tab-salary ${entryType === 'salary' ? 'active' : ''}`}
-                    onClick={() => setEntryType('salary')}
+                    className="btn-month-nav-arrow"
+                    onClick={handlePrevMonth}
+                    title="પાછલો મહિનો જુઓ"
                   >
-                    💰 Total Work
+                    <span>◀</span>
+                    <span className="arrow-text-full">પાછલો મહિનો</span>
+                    <span className="arrow-text-short">પાછલો</span>
                   </button>
-                  <button
-                    type="button"
-                    className={`entry-type-tab tab-upad ${entryType === 'upad' ? 'active' : ''}`}
-                    onClick={() => setEntryType('upad')}
-                  >
-                    ⚡ Advance (Upad)
-                  </button>
-                  <button
-                    type="button"
-                    className={`entry-type-tab tab-payment ${entryType === 'payment' ? 'active' : ''}`}
-                    onClick={() => setEntryType('payment')}
-                  >
-                    💳 Payment Paid
-                  </button>
-                </div>
 
-                {/* Amount & Date Grid */}
-                <div className="entry-inputs-grid">
-                  <div className="form-group">
-                    <label className="form-label">Amount (₹) *</label>
-                    <div className="input-with-icon">
-                      <span className="field-icon rupee-icon">₹</span>
-                      <input
-                        ref={amountInputRef}
-                        type="number"
-                        className="form-input amount-input"
-                        placeholder="e.g. 1500"
-                        value={amount}
-                        onChange={(e) => setAmount(e.target.value)}
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter') {
-                            e.preventDefault();
-                            dateInputRef.current?.focus();
-                          }
-                        }}
-                        autoFocus
-                        required
-                        min="1"
-                        step="any"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="form-group">
-                    <label className="form-label">Date *</label>
-                    <input
-                      ref={dateInputRef}
-                      type="date"
-                      className="form-input date-input"
-                      value={date}
-                      onChange={(e) => setDate(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter') {
-                          e.preventDefault();
-                          notesInputRef.current?.focus();
-                        }
-                      }}
-                      required
-                    />
-                  </div>
-                </div>
-
-                {/* Notes & Mode Grid */}
-                <div className="entry-inputs-grid">
-                  <div className="form-group">
-                    <label className="form-label">Notes / Description (Optional)</label>
-                    <input
-                      ref={notesInputRef}
-                      type="text"
-                      className="form-input"
-                      placeholder="e.g. Body work wage / Ration advance / Cash paid"
-                      value={notes}
-                      onChange={(e) => setNotes(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter') {
-                          e.preventDefault();
-                          paymentModeRef.current?.focus();
-                        }
-                      }}
-                    />
-                  </div>
-
-                  <div className="form-group">
-                    <label className="form-label">Payment Mode</label>
+                  <div className="month-nav-center">
                     <select
-                      ref={paymentModeRef}
-                      className="form-input select-mode"
-                      value={paymentMode}
-                      onChange={(e) => setPaymentMode(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter') {
-                          e.preventDefault();
-                          handleSaveEntry(e);
-                        }
-                      }}
+                      className="khata-month-select-dropdown"
+                      value={selectedMonthKey}
+                      onChange={(e) => setSelectedMonthKey(e.target.value)}
                     >
-                      <option value="Cash">Cash</option>
-                      <option value="Online/UPI">Online / PhonePe / GPay</option>
-                      <option value="Bank">Bank Transfer (NEFT/RTGS)</option>
+                      {availableMonths.map((m) => (
+                        <option key={m.monthKey} value={m.monthKey}>
+                          {m.label}
+                        </option>
+                      ))}
                     </select>
                   </div>
-                </div>
 
-                {/* Form Submit Actions */}
-                <div className="entry-form-actions">
                   <button
                     type="button"
-                    className="btn btn-secondary"
-                    onClick={handleCancelForm}
-                    disabled={isSubmitting}
+                    className="btn-month-nav-arrow"
+                    onClick={handleNextMonth}
+                    title="આગલો મહિનો જુઓ"
                   >
-                    Cancel
-                  </button>
-                  <button
-                    type="submit"
-                    className="btn btn-primary"
-                    disabled={isSubmitting}
-                  >
-                    {isSubmitting
-                      ? (editingTx ? 'Updating...' : 'Saving...')
-                      : (editingTx ? 'Update Entry' : 'Save Entry')}
+                    <span className="arrow-text-full">આગલો મહિનો</span>
+                    <span className="arrow-text-short">આગલો</span>
+                    <span>▶</span>
                   </button>
                 </div>
-              </form>
-            </div>
-          )}
 
-          {/* History Filters & Section Title */}
-          <div className="khata-history-header">
-            <h4 className="history-title">Transaction History ({filteredTransactions.length})</h4>
-
-            <div className="khata-filter-chips">
-              <button
-                type="button"
-                className={`filter-chip ${filterType === 'all' ? 'active' : ''}`}
-                onClick={() => setFilterType('all')}
-              >
-                All
-              </button>
-              <button
-                type="button"
-                className={`filter-chip chip-salary ${filterType === 'salary' ? 'active' : ''}`}
-                onClick={() => setFilterType('salary')}
-              >
-                Total Work
-              </button>
-              <button
-                type="button"
-                className={`filter-chip chip-upad ${filterType === 'upad' ? 'active' : ''}`}
-                onClick={() => setFilterType('upad')}
-              >
-                Upad (Adv)
-              </button>
-              <button
-                type="button"
-                className={`filter-chip chip-payment ${filterType === 'payment' ? 'active' : ''}`}
-                onClick={() => setFilterType('payment')}
-              >
-                Paid
-              </button>
-            </div>
-          </div>
-
-          {/* Transaction History List */}
-          <div className="khata-history-list">
-            {loading ? (
-              <div className="khata-loading-spinner">
-                <span className="spinner-dots">Loading Khata history...</span>
+                <div className="month-nav-badge-strip">
+                  <span className="month-nav-badge">
+                    ખાતા નં.: <strong>{vahiData.accountNo}</strong>
+                  </span>
+                  <span className="month-nav-badge">
+                    પાનું નં.: <strong>{vahiData.pageNo}</strong>
+                  </span>
+                  {selectedMonthKey !== currentMonthKey && (
+                    <button
+                      type="button"
+                      className="btn-jump-current-month"
+                      onClick={handleJumpCurrentMonth}
+                    >
+                      📌 ચાલુ મહિનો
+                    </button>
+                  )}
+                </div>
               </div>
-            ) : filteredTransactions.length === 0 ? (
-              <div className="empty-workers-state khata-empty-state">
-                <div className="empty-luxury-illustration">
-                  <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#2563eb" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                    <rect x="2" y="5" width="20" height="14" rx="2" />
-                    <line x1="2" y1="10" x2="22" y2="10" />
-                  </svg>
-                </div>
-                <h3>No transactions found</h3>
-                <p>
-                  {filterType !== 'all'
-                    ? 'No entries found in this filter category.'
-                    : 'No transaction recorded for this worker yet. Tap above to add an entry.'}
-                </p>
-                {canManage && filterType === 'all' && (
-                  <button
-                    type="button"
-                    className="btn btn-primary btn-empty-cta"
-                    onClick={() => setShowAddForm(true)}
-                  >
-                    + Add First Entry
-                  </button>
+
+              {/* Action Buttons: Add Jama, Add Udhar, WhatsApp Share */}
+              <div className="khata-action-bar">
+                {canManage && (
+                  <>
+                    <button
+                      type="button"
+                      className="btn btn-add-entry-toggle btn-vahi-action-jama"
+                      onClick={handleOpenAddJama}
+                    >
+                      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+                        <line x1="12" y1="5" x2="12" y2="19" />
+                        <line x1="5" y1="12" x2="19" y2="12" />
+                      </svg>
+                      <span>જમા (કામ ઉમેરો)</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      className="btn btn-add-entry-toggle btn-vahi-action-udhar"
+                      onClick={handleOpenAddUdhar}
+                    >
+                      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+                        <line x1="12" y1="5" x2="12" y2="19" />
+                        <line x1="5" y1="12" x2="19" y2="12" />
+                      </svg>
+                      <span>ઉધાર (ઉપાડ આપો)</span>
+                    </button>
+                  </>
                 )}
-              </div>
-            ) : (
-              filteredTransactions.map((tx) => {
-                const isSalary = tx.type === 'salary';
-                const isUpad = tx.type === 'upad';
-                const isPayment = tx.type === 'payment';
 
-                return (
-                  <div key={tx.id} className={`khata-tx-card tx-${tx.type}`}>
-                    <div className="tx-left">
-                      <div className={`tx-icon-pill icon-${tx.type}`}>
-                        {isSalary ? (
-                          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#16a34a" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                            <line x1="12" y1="19" x2="12" y2="5" />
-                            <polyline points="5 12 12 5 19 12" />
-                          </svg>
-                        ) : isUpad ? (
-                          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#d97706" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                            <line x1="12" y1="5" x2="12" y2="19" />
-                            <polyline points="19 12 12 19 5 12" />
-                          </svg>
-                        ) : (
-                          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#2563eb" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                            <polyline points="20 6 9 17 4 12" />
-                          </svg>
-                        )}
+                <button
+                  type="button"
+                  className="btn btn-whatsapp-share"
+                  onClick={handleShareKhataPdf}
+                  disabled={isGeneratingPdf}
+                  title="વ્હોટ્સએપ પર પાનું શેર કરો"
+                >
+                  {isGeneratingPdf ? (
+                    <span>તૈયાર થાય છે...</span>
+                  ) : (
+                    <>
+                      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" />
+                      </svg>
+                      <span>Share PDF</span>
+                    </>
+                  )}
+                </button>
+
+                <button
+                  type="button"
+                  className="btn btn-download-pdf-icon"
+                  onClick={handleDownloadKhataPdf}
+                  disabled={isGeneratingPdf}
+                  title="PDF ડાઉનલોડ કરો"
+                >
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                    <polyline points="7 10 12 15 17 10" />
+                    <line x1="12" y1="15" x2="12" y2="3" />
+                  </svg>
+                </button>
+              </div>
+
+              {/* Mobile Column View Switcher (Only visible on Mobile screens < 768px) */}
+              <div className="vahi-mobile-tabs-bar">
+                <button
+                  type="button"
+                  className={`vahi-mob-tab ${mobileTab === 'both' ? 'active' : ''}`}
+                  onClick={() => setMobileTab('both')}
+                >
+                  📜 બંને (જમા + ઉધાર)
+                </button>
+                <button
+                  type="button"
+                  className={`vahi-mob-tab tab-mob-jama ${mobileTab === 'jama' ? 'active' : ''}`}
+                  onClick={() => setMobileTab('jama')}
+                >
+                  💰 જમા ({vahiData.jamaRows.length})
+                </button>
+                <button
+                  type="button"
+                  className={`vahi-mob-tab tab-mob-udhar ${mobileTab === 'udhar' ? 'active' : ''}`}
+                  onClick={() => setMobileTab('udhar')}
+                >
+                  ⚡ ઉધાર ({(vahiData.openingUdharRow ? 1 : 0) + vahiData.udharRows.length})
+                </button>
+              </div>
+
+              {/* Expandable Add / Edit Entry Form */}
+              {showAddForm && (
+                <div className="khata-add-entry-box" style={{ marginBottom: '0.85rem' }}>
+                  <h4 className="entry-box-title">
+                    {editingTx
+                      ? '✏️ એન્ટ્રી એડિટ કરો'
+                      : entryType === 'salary'
+                      ? '💰 નવી જમા (કામ / મજૂરી) એન્ટ્રી'
+                      : '⚡ નવી ઉધાર (ઉપાડ / ચુકવણી) એન્ટ્રી'}
+                  </h4>
+
+                  {formError && (
+                    <div className="form-alert-error" style={{ marginBottom: '0.65rem' }}>
+                      <span>{formError}</span>
+                    </div>
+                  )}
+
+                  <form onSubmit={handleSaveEntry} className="khata-entry-form">
+                    {/* 3 Entry Type Tabs */}
+                    <div className="entry-type-selector">
+                      <button
+                        type="button"
+                        className={`entry-type-tab tab-salary ${entryType === 'salary' ? 'active' : ''}`}
+                        onClick={() => setEntryType('salary')}
+                      >
+                        💰 જમા (મજૂરી કામ)
+                      </button>
+                      <button
+                        type="button"
+                        className={`entry-type-tab tab-upad ${entryType === 'upad' ? 'active' : ''}`}
+                        onClick={() => setEntryType('upad')}
+                      >
+                        ⚡ ઉધાર (ઉપાડ / Advance)
+                      </button>
+                      <button
+                        type="button"
+                        className={`entry-type-tab tab-payment ${entryType === 'payment' ? 'active' : ''}`}
+                        onClick={() => setEntryType('payment')}
+                      >
+                        💳 ઉધાર (ચુકવણી / Payment)
+                      </button>
+                    </div>
+
+                    {/* Amount & Date Grid */}
+                    <div className="entry-inputs-grid">
+                      <div className="form-group">
+                        <label className="form-label">રકમ (રૂપિયા ₹) *</label>
+                        <div className="input-with-icon">
+                          <span className="field-icon rupee-icon">₹</span>
+                          <input
+                            ref={amountInputRef}
+                            type="number"
+                            className="form-input amount-input"
+                            placeholder="e.g. 45000"
+                            value={amount}
+                            onChange={(e) => setAmount(e.target.value)}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') {
+                                e.preventDefault();
+                                dateInputRef.current?.focus();
+                              }
+                            }}
+                            autoFocus
+                            required
+                            min="1"
+                            step="any"
+                          />
+                        </div>
                       </div>
 
-                      <div className="tx-info">
-                        <div className="tx-title-row">
-                          <span className={`tx-type-badge badge-${tx.type}`}>
-                            {isSalary ? '💰 Total Work' : isUpad ? '⚡ Upad (Advance)' : '💳 Payment Paid'}
-                          </span>
-                          <span className="tx-date-text">{tx.date}</span>
-                        </div>
-                        {tx.notes && <p className="tx-notes-text">{tx.notes}</p>}
-                        <span className="tx-mode-tag">
-                          {tx.payment_mode || 'Cash'}
-                        </span>
+                      <div className="form-group">
+                        <label className="form-label">તારીખ *</label>
+                        <input
+                          ref={dateInputRef}
+                          type="date"
+                          className="form-input date-input"
+                          value={date}
+                          onChange={(e) => setDate(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') {
+                              e.preventDefault();
+                              notesInputRef.current?.focus();
+                            }
+                          }}
+                          required
+                        />
                       </div>
                     </div>
 
-                    <div className="tx-right">
-                      <span className={`tx-amount amount-${tx.type}`}>
-                        {isSalary ? '+' : '-'}₹{(Number(tx?.amount) || 0).toLocaleString('en-IN')}
-                      </span>
+                    {/* Notes & Mode Grid */}
+                    <div className="entry-inputs-grid">
+                      <div className="form-group">
+                        <label className="form-label">વિગત / કામ / વિવરણ (Notes)</label>
+                        <input
+                          ref={notesInputRef}
+                          type="text"
+                          className="form-input"
+                          placeholder={entryType === 'salary' ? 'દા.ત. નુરાની ટ્રાન્સપોર્ટ કેબીન કામ' : 'દા.ત. રોકડા જાફરબાપુ / મકાન હપ્તો'}
+                          value={notes}
+                          onChange={(e) => setNotes(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') {
+                              e.preventDefault();
+                              paymentModeRef.current?.focus();
+                            }
+                          }}
+                        />
+                      </div>
 
+                      <div className="form-group">
+                        <label className="form-label">ચુકવણી મોડ</label>
+                        <select
+                          ref={paymentModeRef}
+                          className="form-input select-mode"
+                          value={paymentMode}
+                          onChange={(e) => setPaymentMode(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') {
+                              e.preventDefault();
+                              handleSaveEntry(e);
+                            }
+                          }}
+                        >
+                          <option value="Cash">રોકડા (Cash)</option>
+                          <option value="Online/UPI">Online / PhonePe / GPay</option>
+                          <option value="Bank">Bank A/c ટ્રાન્સફર</option>
+                        </select>
+                      </div>
+                    </div>
+
+                    {/* Form Submit Actions */}
+                    <div className="entry-form-actions">
+                      <button
+                        type="button"
+                        className="btn btn-secondary"
+                        onClick={handleCancelForm}
+                        disabled={isSubmitting}
+                      >
+                        રદ કરો
+                      </button>
+                      <button
+                        type="submit"
+                        className="btn btn-primary"
+                        disabled={isSubmitting}
+                      >
+                        {isSubmitting
+                          ? (editingTx ? 'અપડેટ થાય છે...' : 'સેવ થાય છે...')
+                          : (editingTx ? 'એન્ટ્રી અપડેટ કરો' : 'એન્ટ્રી સેવ કરો')}
+                      </button>
+                    </div>
+                  </form>
+                </div>
+              )}
+
+              {/* 2-COLUMN AUTHENTIC KHATA VAHI NOTEBOOK SHEET */}
+              <div className="khata-vahi-sheet-container">
+                {/* Notebook Header Strip */}
+                <div className="khata-vahi-header-strip">
+                  <div className="vahi-header-left">
+                    <span className="vahi-worker-title">નામ: {worker.name}</span>
+                    <span className="vahi-ac-subtitle">
+                      A/c No. / ખાતા નં.: <strong>{vahiData.accountNo}</strong> ({vahiData.monthName} {vahiData.year})
+                    </span>
+                  </div>
+
+                  <div className="vahi-page-stamp">
+                    <span className="vahi-page-stamp-lbl">PAGE</span>
+                    <span className="vahi-page-stamp-num">{vahiData.pageNo}</span>
+                  </div>
+                </div>
+
+                {/* 2 Columns Grid: Left = જમા (કામ) | Right = ઉધાર (ઉપાડ) */}
+                <div className="khata-vahi-grid">
+                  {/* LEFT COLUMN: જમા (કામ - મજૂરી) */}
+                  <div className={`khata-vahi-col col-jama ${mobileTab === 'udhar' ? 'mobile-hidden' : ''}`}>
+                    <div className="vahi-col-top">
+                      <div className="vahi-col-title-group">
+                        <span className="vahi-col-heading">જમા (કામ - મજૂરી)</span>
+                        <span className="vahi-col-count-badge">{vahiData.jamaRows.length} કામ</span>
+                      </div>
                       {canManage && (
-                        <div className="tx-actions-btn-group">
-                          <button
-                            type="button"
-                            className="tx-action-btn tx-edit-btn"
-                            onClick={() => handleStartEdit(tx)}
-                            title="Edit entry"
-                            aria-label="Edit entry"
-                          >
-                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                              <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
-                              <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
-                            </svg>
-                          </button>
-                          <button
-                            type="button"
-                            className="tx-action-btn tx-delete-btn"
-                            onClick={() => setDeletingTx(tx)}
-                            title="Delete entry"
-                            aria-label="Delete entry"
-                          >
-                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                              <polyline points="3 6 5 6 21 6" />
-                              <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
-                            </svg>
-                          </button>
-                        </div>
+                        <button
+                          type="button"
+                          className="btn-vahi-add-entry"
+                          onClick={handleOpenAddJama}
+                        >
+                          + ઉમેરો
+                        </button>
                       )}
                     </div>
+
+                    <div className="vahi-table-wrap">
+                      <table className="vahi-table">
+                        <thead>
+                          <tr>
+                            <th style={{ width: '26px', textAlign: 'center' }}>#</th>
+                            <th style={{ width: '52px' }}>તારીખ</th>
+                            <th>વિગત (કામ / વાહન)</th>
+                            <th style={{ width: '80px', textAlign: 'right' }}>રૂપિયા ₹</th>
+                            {canManage && <th style={{ width: '40px', textAlign: 'center' }}>ક્રિયા</th>}
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {/* Rare: Opening Jama B/F if worker had positive salary credit */}
+                          {vahiData.openingJamaRow && (
+                            <tr className="vahi-bf-row">
+                              <td style={{ textAlign: 'center' }}>
+                                <span className="vahi-bf-badge">B/F</span>
+                              </td>
+                              <td style={{ fontWeight: 600 }}>01/{vahiData.month}</td>
+                              <td>
+                                <div className="vahi-bf-desc">
+                                  <span className="vahi-bf-main-text">{vahiData.openingJamaRow.label}</span>
+                                  <span className="vahi-bf-sub-text">{vahiData.openingJamaRow.sublabel}</span>
+                                </div>
+                              </td>
+                              <td style={{ textAlign: 'right' }} className="vahi-bf-amount">
+                                ₹{vahiData.openingJamaRow.amount.toLocaleString('en-IN')}/-
+                              </td>
+                              {canManage && <td></td>}
+                            </tr>
+                          )}
+
+                          {vahiData.jamaRows.length === 0 && !vahiData.openingJamaRow ? (
+                            <tr>
+                              <td colSpan={canManage ? 5 : 4} className="vahi-empty-column-box">
+                                આ મહિનામાં હજુ કોઈ કામ (જમા) નોંધાયેલ નથી.
+                              </td>
+                            </tr>
+                          ) : (
+                            vahiData.jamaRows.map((tx, idx) => (
+                              <tr key={tx.id || idx}>
+                                <td style={{ textAlign: 'center', color: '#64748b', fontWeight: 700 }}>
+                                  {idx + 1}
+                                </td>
+                                <td style={{ fontWeight: 600, color: '#1e293b' }}>
+                                  {tx.date ? String(tx.date).slice(8, 10) + '/' + String(tx.date).slice(5, 7) : '—'}
+                                </td>
+                                <td>
+                                  <span style={{ fontWeight: 600, color: '#0f172a' }}>{tx.notes || 'મજૂરી કામ'}</span>
+                                </td>
+                                <td style={{ textAlign: 'right' }} className="vahi-amt-jama">
+                                  ₹{(Number(tx.amount) || 0).toLocaleString('en-IN')}/-
+                                </td>
+                                {canManage && (
+                                  <td style={{ textAlign: 'center' }}>
+                                    <div className="tx-actions-btn-group" style={{ justifyContent: 'center' }}>
+                                      <button
+                                        type="button"
+                                        className="tx-action-btn tx-edit-btn"
+                                        onClick={() => handleStartEdit(tx)}
+                                        title="એડિટ કરો"
+                                      >
+                                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                                          <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+                                          <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+                                        </svg>
+                                      </button>
+                                      <button
+                                        type="button"
+                                        className="tx-action-btn tx-delete-btn"
+                                        onClick={() => setDeletingTx(tx)}
+                                        title="ડિલીટ કરો"
+                                      >
+                                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                                          <polyline points="3 6 5 6 21 6" />
+                                          <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                                        </svg>
+                                      </button>
+                                    </div>
+                                  </td>
+                                )}
+                              </tr>
+                            ))
+                          )}
+                        </tbody>
+                      </table>
+                    </div>
+
+                    {/* Left Column Bottom Footer: Total Work Done */}
+                    <div className="vahi-col-footer">
+                      <div className="vahi-total-row">
+                        <span>ટોટલ મજૂરી કામ :</span>
+                        <span className="vahi-total-jama-val">₹{vahiData.totalJama.toLocaleString('en-IN')}/-</span>
+                      </div>
+                    </div>
                   </div>
-                );
-              })
-            )}
-          </div>
+
+                  {/* RIGHT COLUMN: ઉધાર (ઉપાડ - એડવાન્સ - રોકડા) */}
+                  <div className={`khata-vahi-col col-udhar ${mobileTab === 'jama' ? 'mobile-hidden' : ''}`}>
+                    <div className="vahi-col-top">
+                      <div className="vahi-col-title-group">
+                        <span className="vahi-col-heading">ઉધાર (ઉપાડ - એડવાન્સ)</span>
+                        <span className="vahi-col-count-badge">
+                          {(vahiData.openingUdharRow ? 1 : 0) + vahiData.udharRows.length} એન્ટ્રી
+                        </span>
+                      </div>
+                      {canManage && (
+                        <button
+                          type="button"
+                          className="btn-vahi-add-entry"
+                          onClick={handleOpenAddUdhar}
+                        >
+                          + ઉપાડ આપો
+                        </button>
+                      )}
+                    </div>
+
+                    <div className="vahi-table-wrap">
+                      <table className="vahi-table">
+                        <thead>
+                          <tr>
+                            <th style={{ width: '26px', textAlign: 'center' }}>#</th>
+                            <th style={{ width: '52px' }}>તારીખ</th>
+                            <th>વિગત (ઉપાડ / ચુકવણી)</th>
+                            <th style={{ width: '80px', textAlign: 'right' }}>રૂપિયા ₹</th>
+                            {canManage && <th style={{ width: '40px', textAlign: 'center' }}>ક્રિયા</th>}
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {/* CRITICAL ROW 1: આગળ નો બાકી રહેલ ઉપાડ (Carried Forward B/F) */}
+                          {vahiData.openingUdharRow && (
+                            <tr className="vahi-bf-row">
+                              <td style={{ textAlign: 'center' }}>
+                                <span className="vahi-bf-badge">B/F</span>
+                              </td>
+                              <td style={{ fontWeight: 600 }}>01/{vahiData.month}</td>
+                              <td>
+                                <div className="vahi-bf-desc">
+                                  <span className="vahi-bf-main-text">{vahiData.openingUdharRow.label}</span>
+                                  <span className="vahi-bf-sub-text">{vahiData.openingUdharRow.sublabel}</span>
+                                </div>
+                              </td>
+                              <td style={{ textAlign: 'right' }} className="vahi-bf-amount">
+                                ₹{vahiData.openingUdharRow.amount.toLocaleString('en-IN')}/-
+                              </td>
+                              {canManage && (
+                                <td style={{ textAlign: 'center', fontSize: '0.62rem', color: '#94a3b8' }}>
+                                  Auto
+                                </td>
+                              )}
+                            </tr>
+                          )}
+
+                          {vahiData.udharRows.length === 0 && !vahiData.openingUdharRow ? (
+                            <tr>
+                              <td colSpan={canManage ? 5 : 4} className="vahi-empty-column-box">
+                                આ મહિનામાં કોઈ ઉપાડ નોંધાયેલ નથી.
+                              </td>
+                            </tr>
+                          ) : (
+                            vahiData.udharRows.map((tx, idx) => (
+                              <tr key={tx.id || idx}>
+                                <td style={{ textAlign: 'center', color: '#64748b', fontWeight: 700 }}>
+                                  {(vahiData.openingUdharRow ? 1 : 0) + idx + 1}
+                                </td>
+                                <td style={{ fontWeight: 600, color: '#1e293b' }}>
+                                  {tx.date ? String(tx.date).slice(8, 10) + '/' + String(tx.date).slice(5, 7) : '—'}
+                                </td>
+                                <td>
+                                  <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                                    <span style={{ fontWeight: 600, color: '#0f172a' }}>
+                                      {tx.notes || (tx.type === 'payment' ? 'ચુકવણી' : 'ઉપાડ')}
+                                    </span>
+                                    {tx.payment_mode && tx.payment_mode !== 'Cash' && (
+                                      <span className="vahi-mode-badge">{tx.payment_mode}</span>
+                                    )}
+                                  </div>
+                                </td>
+                                <td style={{ textAlign: 'right' }} className="vahi-amt-udhar">
+                                  ₹{(Number(tx.amount) || 0).toLocaleString('en-IN')}/-
+                                </td>
+                                {canManage && (
+                                  <td style={{ textAlign: 'center' }}>
+                                    <div className="tx-actions-btn-group" style={{ justifyContent: 'center' }}>
+                                      <button
+                                        type="button"
+                                        className="tx-action-btn tx-edit-btn"
+                                        onClick={() => handleStartEdit(tx)}
+                                        title="એડિટ કરો"
+                                      >
+                                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                                          <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+                                          <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+                                        </svg>
+                                      </button>
+                                      <button
+                                        type="button"
+                                        className="tx-action-btn tx-delete-btn"
+                                        onClick={() => setDeletingTx(tx)}
+                                        title="ડિલીટ કરો"
+                                      >
+                                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                                          <polyline points="3 6 5 6 21 6" />
+                                          <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                                        </svg>
+                                      </button>
+                                    </div>
+                                  </td>
+                                )}
+                              </tr>
+                            ))
+                          )}
+                        </tbody>
+                      </table>
+                    </div>
+
+                    {/* Right Column Bottom Footer: Full Notebook Calculation Box */}
+                    <div className="vahi-col-footer">
+                      <div className="vahi-closing-calc-box">
+                        <div className="vahi-calc-row calc-subtotal">
+                          <span>ટોટલ ઉપાડ :</span>
+                          <span className="vahi-total-udhar-val">₹{vahiData.totalUdhar.toLocaleString('en-IN')}/-</span>
+                        </div>
+
+                        <div className="vahi-calc-row">
+                          <span>- ટોટલ મજૂરી કામ :</span>
+                          <span>- ₹{vahiData.totalJama.toLocaleString('en-IN')}/-</span>
+                        </div>
+
+                        <div className="vahi-calc-row calc-final">
+                          <span>
+                            {vahiData.closingAdvance > 0
+                              ? 'બાકી રહેલ ઉપાડ :'
+                              : vahiData.closingAdvance < 0
+                              ? 'ચૂકવવાપાત્ર બાકી :'
+                              : 'હિસાબ સરભર :'}
+                          </span>
+                          <span
+                            className={`calc-final-val ${
+                              vahiData.closingAdvance > 0
+                                ? 'val-advance'
+                                : vahiData.closingAdvance < 0
+                                ? 'val-due'
+                                : ''
+                            }`}
+                          >
+                            ₹{Math.abs(vahiData.closingAdvance).toLocaleString('en-IN')}/-
+                          </span>
+                        </div>
+
+                        <p className="calc-forward-note">
+                          {vahiData.closingAdvance > 0
+                            ? '➜ આ રકમ આપોઆપ આવતા મહિનાના પાના પર "આગળ નો બાકી રહેલ ઉપાડ" બનશે.'
+                            : vahiData.closingAdvance < 0
+                            ? '➜ કારીગરને આપવાની બાકી રકમ આવતા મહિને જમા તરીકે જશે.'
+                            : '➜ ખાતું સંપૂર્ણ સરભર (નીલ) છે.'}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </>
+          ) : (
+            /* ========================================================
+               VIEW 2: ALL-TIME FLAT TRANSACTION HISTORY LIST
+               ======================================================== */
+            <>
+              {/* 4 Summary KPIs Grid */}
+              <div className="khata-kpi-grid">
+                <div className="khata-kpi-card card-salary">
+                  <span className="kpi-label">TOTAL WORK</span>
+                  <span className="kpi-amount">₹{effectiveSummary.total_salary.toLocaleString('en-IN')}</span>
+                  <span className="kpi-tag">{isDateFilterActive ? 'In Selected Period' : 'Total Earned'}</span>
+                </div>
+
+                <div className="khata-kpi-card card-upad">
+                  <span className="kpi-label">UPAD (ADVANCE)</span>
+                  <span className="kpi-amount">₹{effectiveSummary.total_upad.toLocaleString('en-IN')}</span>
+                  <span className="kpi-tag">{isDateFilterActive ? 'In Selected Period' : 'Total Advance'}</span>
+                </div>
+
+                <div className="khata-kpi-card card-payment">
+                  <span className="kpi-label">TOTAL PAID</span>
+                  <span className="kpi-amount">₹{effectiveSummary.total_paid.toLocaleString('en-IN')}</span>
+                  <span className="kpi-tag">{isDateFilterActive ? 'In Selected Period' : 'Payment Settled'}</span>
+                </div>
+
+                <div className={`khata-kpi-card card-balance ${balanceColorClass}`}>
+                  <span className="kpi-label">NET BALANCE</span>
+                  <span className="kpi-amount">₹{Math.abs(effectiveSummary.balance).toLocaleString('en-IN')}</span>
+                  <span className="kpi-tag">
+                    {effectiveSummary.balance > 0 ? 'Due to Pay' : effectiveSummary.balance < 0 ? 'Advance Due' : 'All Clear'}
+                  </span>
+                </div>
+              </div>
+
+              {/* Date Range Filter Box */}
+              <div className="khata-date-range-card">
+                <div className="date-range-header">
+                  <div className="date-range-title">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#2563eb" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+                      <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
+                      <line x1="16" y1="2" x2="16" y2="6" />
+                      <line x1="8" y1="2" x2="8" y2="6" />
+                      <line x1="3" y1="10" x2="21" y2="10" />
+                    </svg>
+                    <span>Date Range Filter (તારીખ થી તારીખ સુધી)</span>
+                  </div>
+                  {isDateFilterActive && (
+                    <button
+                      type="button"
+                      className="btn-clear-date-filter"
+                      onClick={() => { setFromDate(''); setToDate(''); }}
+                    >
+                      ✕ Show All Time
+                    </button>
+                  )}
+                </div>
+
+                <div style={{ display: 'flex', gap: '0.4rem', margin: '0.45rem 0 0.65rem', flexWrap: 'wrap' }}>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const r = getPeriodDateRange('running_month');
+                      setFromDate(r.startDate);
+                      setToDate(r.endDate);
+                    }}
+                    style={{
+                      padding: '0.3rem 0.65rem',
+                      borderRadius: '16px',
+                      fontSize: '0.74rem',
+                      fontWeight: 700,
+                      background: '#eff6ff',
+                      color: '#2563eb',
+                      border: '1px solid #bfdbfe',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    📅 ચાલુ મહિનો
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const r = getPeriodDateRange('last_month');
+                      setFromDate(r.startDate);
+                      setToDate(r.endDate);
+                    }}
+                    style={{
+                      padding: '0.3rem 0.65rem',
+                      borderRadius: '16px',
+                      fontSize: '0.74rem',
+                      fontWeight: 700,
+                      background: '#f8fafc',
+                      color: '#475569',
+                      border: '1px solid #cbd5e1',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    ⏮️ ગયેલ મહિનો
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => { setFromDate(''); setToDate(''); }}
+                    style={{
+                      padding: '0.3rem 0.65rem',
+                      borderRadius: '16px',
+                      fontSize: '0.74rem',
+                      fontWeight: 700,
+                      background: '#f8fafc',
+                      color: '#475569',
+                      border: '1px solid #cbd5e1',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    🌐 તમામ હિસાબ
+                  </button>
+                </div>
+
+                <div className="date-range-fields-row">
+                  <div className="date-range-col">
+                    <label className="date-range-label">From Date (તારીખ થી):</label>
+                    <input
+                      type="date"
+                      className="date-range-input"
+                      value={fromDate}
+                      onChange={(e) => setFromDate(e.target.value)}
+                    />
+                  </div>
+
+                  <div className="date-range-col">
+                    <label className="date-range-label">To Date (તારીખ સુધી):</label>
+                    <input
+                      type="date"
+                      className="date-range-input"
+                      value={toDate}
+                      onChange={(e) => setToDate(e.target.value)}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Action Bar */}
+              <div className="khata-action-bar">
+                {canManage && (
+                  <button
+                    type="button"
+                    className={`btn ${showAddForm ? 'btn-secondary' : 'btn-primary'} btn-add-entry-toggle`}
+                    onClick={() => {
+                      if (showAddForm) {
+                        handleCancelForm();
+                      } else {
+                        setEditingTx(null);
+                        setAmount('');
+                        setNotes('');
+                        setDate(new Date().toISOString().split('T')[0]);
+                        setShowAddForm(true);
+                      }
+                    }}
+                  >
+                    {showAddForm ? 'Close Form' : '+ Add New Entry'}
+                  </button>
+                )}
+
+                <button
+                  type="button"
+                  className="btn btn-whatsapp-share"
+                  onClick={handleShareKhataPdf}
+                  disabled={isGeneratingPdf}
+                >
+                  {isGeneratingPdf ? <span>Generating...</span> : <span>Share on WhatsApp</span>}
+                </button>
+
+                <button
+                  type="button"
+                  className="btn btn-download-pdf-icon"
+                  onClick={handleDownloadKhataPdf}
+                  disabled={isGeneratingPdf}
+                >
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                    <polyline points="7 10 12 15 17 10" />
+                    <line x1="12" y1="15" x2="12" y2="3" />
+                  </svg>
+                </button>
+              </div>
+
+              {/* Expandable Add Form */}
+              {showAddForm && (
+                <div className="khata-add-entry-box">
+                  <h4 className="entry-box-title">
+                    {editingTx ? '✏️ Edit Transaction' : 'Record New Transaction'}
+                  </h4>
+
+                  {formError && (
+                    <div className="form-alert-error" style={{ marginBottom: '0.65rem' }}>
+                      <span>{formError}</span>
+                    </div>
+                  )}
+
+                  <form onSubmit={handleSaveEntry} className="khata-entry-form">
+                    <div className="entry-type-selector">
+                      <button
+                        type="button"
+                        className={`entry-type-tab tab-salary ${entryType === 'salary' ? 'active' : ''}`}
+                        onClick={() => setEntryType('salary')}
+                      >
+                        💰 Total Work
+                      </button>
+                      <button
+                        type="button"
+                        className={`entry-type-tab tab-upad ${entryType === 'upad' ? 'active' : ''}`}
+                        onClick={() => setEntryType('upad')}
+                      >
+                        ⚡ Advance (Upad)
+                      </button>
+                      <button
+                        type="button"
+                        className={`entry-type-tab tab-payment ${entryType === 'payment' ? 'active' : ''}`}
+                        onClick={() => setEntryType('payment')}
+                      >
+                        💳 Payment Paid
+                      </button>
+                    </div>
+
+                    <div className="entry-inputs-grid">
+                      <div className="form-group">
+                        <label className="form-label">Amount (₹) *</label>
+                        <div className="input-with-icon">
+                          <span className="field-icon rupee-icon">₹</span>
+                          <input
+                            ref={amountInputRef}
+                            type="number"
+                            className="form-input amount-input"
+                            placeholder="e.g. 1500"
+                            value={amount}
+                            onChange={(e) => setAmount(e.target.value)}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') {
+                                e.preventDefault();
+                                dateInputRef.current?.focus();
+                              }
+                            }}
+                            autoFocus
+                            required
+                            min="1"
+                            step="any"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="form-group">
+                        <label className="form-label">Date *</label>
+                        <input
+                          ref={dateInputRef}
+                          type="date"
+                          className="form-input date-input"
+                          value={date}
+                          onChange={(e) => setDate(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') {
+                              e.preventDefault();
+                              notesInputRef.current?.focus();
+                            }
+                          }}
+                          required
+                        />
+                      </div>
+                    </div>
+
+                    <div className="entry-inputs-grid">
+                      <div className="form-group">
+                        <label className="form-label">Notes / Description (Optional)</label>
+                        <input
+                          ref={notesInputRef}
+                          type="text"
+                          className="form-input"
+                          placeholder="e.g. Body work wage / Cash paid"
+                          value={notes}
+                          onChange={(e) => setNotes(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') {
+                              e.preventDefault();
+                              paymentModeRef.current?.focus();
+                            }
+                          }}
+                        />
+                      </div>
+
+                      <div className="form-group">
+                        <label className="form-label">Payment Mode</label>
+                        <select
+                          ref={paymentModeRef}
+                          className="form-input select-mode"
+                          value={paymentMode}
+                          onChange={(e) => setPaymentMode(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') {
+                              e.preventDefault();
+                              handleSaveEntry(e);
+                            }
+                          }}
+                        >
+                          <option value="Cash">Cash</option>
+                          <option value="Online/UPI">Online / PhonePe / GPay</option>
+                          <option value="Bank">Bank Transfer (NEFT/RTGS)</option>
+                        </select>
+                      </div>
+                    </div>
+
+                    <div className="entry-form-actions">
+                      <button
+                        type="button"
+                        className="btn btn-secondary"
+                        onClick={handleCancelForm}
+                        disabled={isSubmitting}
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        type="submit"
+                        className="btn btn-primary"
+                        disabled={isSubmitting}
+                      >
+                        {isSubmitting
+                          ? (editingTx ? 'Updating...' : 'Saving...')
+                          : (editingTx ? 'Update Entry' : 'Save Entry')}
+                      </button>
+                    </div>
+                  </form>
+                </div>
+              )}
+
+              {/* History Filters & Section Title */}
+              <div className="khata-history-header">
+                <h4 className="history-title">Transaction History ({filteredTransactions.length})</h4>
+
+                <div className="khata-filter-chips">
+                  <button
+                    type="button"
+                    className={`filter-chip ${filterType === 'all' ? 'active' : ''}`}
+                    onClick={() => setFilterType('all')}
+                  >
+                    All
+                  </button>
+                  <button
+                    type="button"
+                    className={`filter-chip chip-salary ${filterType === 'salary' ? 'active' : ''}`}
+                    onClick={() => setFilterType('salary')}
+                  >
+                    Total Work
+                  </button>
+                  <button
+                    type="button"
+                    className={`filter-chip chip-upad ${filterType === 'upad' ? 'active' : ''}`}
+                    onClick={() => setFilterType('upad')}
+                  >
+                    Upad (Adv)
+                  </button>
+                  <button
+                    type="button"
+                    className={`filter-chip chip-payment ${filterType === 'payment' ? 'active' : ''}`}
+                    onClick={() => setFilterType('payment')}
+                  >
+                    Paid
+                  </button>
+                </div>
+              </div>
+
+              {/* Transaction History List */}
+              <div className="khata-history-list">
+                {loading ? (
+                  <div className="khata-loading-spinner">
+                    <span className="spinner-dots">Loading Khata history...</span>
+                  </div>
+                ) : filteredTransactions.length === 0 ? (
+                  <div className="empty-workers-state khata-empty-state">
+                    <h3>No transactions found</h3>
+                    <p>No transaction recorded for this worker yet.</p>
+                  </div>
+                ) : (
+                  filteredTransactions.map((tx) => {
+                    const isSalary = tx.type === 'salary';
+                    const isUpad = tx.type === 'upad';
+
+                    return (
+                      <div key={tx.id} className={`khata-tx-card tx-${tx.type}`}>
+                        <div className="tx-left">
+                          <div className={`tx-icon-pill icon-${tx.type}`}>
+                            {isSalary ? (
+                              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#16a34a" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                <line x1="12" y1="19" x2="12" y2="5" />
+                                <polyline points="5 12 12 5 19 12" />
+                              </svg>
+                            ) : isUpad ? (
+                              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#d97706" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                <line x1="12" y1="5" x2="12" y2="19" />
+                                <polyline points="19 12 12 19 5 12" />
+                              </svg>
+                            ) : (
+                              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#2563eb" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                <polyline points="20 6 9 17 4 12" />
+                              </svg>
+                            )}
+                          </div>
+
+                          <div className="tx-info">
+                            <div className="tx-title-row">
+                              <span className={`tx-type-badge badge-${tx.type}`}>
+                                {isSalary ? '💰 Total Work' : isUpad ? '⚡ Upad (Advance)' : '💳 Payment Paid'}
+                              </span>
+                              <span className="tx-date-text">{tx.date}</span>
+                            </div>
+                            {tx.notes && <p className="tx-notes-text">{tx.notes}</p>}
+                            <span className="tx-mode-tag">
+                              {tx.payment_mode || 'Cash'}
+                            </span>
+                          </div>
+                        </div>
+
+                        <div className="tx-right">
+                          <span className={`tx-amount amount-${tx.type}`}>
+                            {isSalary ? '+' : '-'}₹{(Number(tx?.amount) || 0).toLocaleString('en-IN')}
+                          </span>
+
+                          {canManage && (
+                            <div className="tx-actions-btn-group">
+                              <button
+                                type="button"
+                                className="tx-action-btn tx-edit-btn"
+                                onClick={() => handleStartEdit(tx)}
+                                title="Edit entry"
+                              >
+                                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                                  <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+                                  <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+                                </svg>
+                              </button>
+                              <button
+                                type="button"
+                                className="tx-action-btn tx-delete-btn"
+                                onClick={() => setDeletingTx(tx)}
+                                title="Delete entry"
+                              >
+                                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                                  <polyline points="3 6 5 6 21 6" />
+                                  <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                                </svg>
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+            </>
+          )}
         </div>
       </div>
 
-      {/* Delete Transaction Confirmation Dialog (Strict Luxury Android Dialog pattern) */}
+      {/* Delete Transaction Confirmation Dialog */}
       {deletingTx && (
         <div className="modal-backdrop" onClick={() => setDeletingTx(null)}>
           <div
@@ -963,7 +1610,7 @@ export function WorkerKhataModal({
             </div>
             <h3 className="dialog-title">Delete Transaction?</h3>
             <p className="dialog-message">
-              Are you sure you want to delete this ₹{(Number(deletingTx?.amount) || 0).toLocaleString('en-IN')} entry? The account balance will adjust automatically.
+              Are you sure you want to delete this ₹{(Number(deletingTx?.amount) || 0).toLocaleString('en-IN')} entry?
             </p>
             <div className="dialog-actions">
               <button
@@ -988,8 +1635,213 @@ export function WorkerKhataModal({
       )}
 
       {/* ========================================================
-          BACKGROUND PRINTABLE WORKER KHATA STATEMENT
-          A4 High-Resolution Canvas for WhatsApp & PDF Export
+          BACKGROUND PRINTABLE 1: 2-COLUMN GUJARATI KHATA VAHI
+          For WhatsApp Share & Monthly Page PDF Export
+          ======================================================== */}
+      <div
+        style={{
+          position: 'fixed',
+          top: '0px',
+          left: '-9999px',
+          width: '720px',
+          zIndex: -1,
+          pointerEvents: 'none',
+          visibility: 'visible',
+          opacity: 1,
+          backgroundColor: '#ffffff',
+        }}
+        aria-hidden="true"
+      >
+        <div id="printableKhataVahiSheet" className="khata-pdf-vahi-paper">
+          {/* Top Banner */}
+          <div className="khata-pdf-top-banner">
+            <div className="khata-pdf-brand-col">
+              <h1 className="khata-pdf-main-brand">FAIZAN BODY WORKS</h1>
+              <p className="khata-pdf-sub-brand">Truck Body Builders & Commercial Fabricators</p>
+              <p className="khata-pdf-brand-extra">Specialist in Cabin, Platform, Dumper & All Body Repair Work</p>
+            </div>
+            <div className="khata-pdf-badge-col">
+              <div className="khata-pdf-statement-badge">
+                <span className="badge-eng">WORKER KHATA VAHI</span>
+                <span className="badge-hin">કારીગર ખાતાવહી પાનું</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Notebook Header Strip */}
+          <div className="khata-pdf-notebook-header">
+            <div>
+              <div className="pdf-notebook-title">નામ: {worker.name}</div>
+              <div className="pdf-notebook-meta">
+                મોબાઈલ: {worker.mobile || '—'} • A/c No. / ખાતા નં.: <strong>{vahiData.accountNo}</strong> ({vahiData.monthName} {vahiData.year})
+              </div>
+            </div>
+            <div className="pdf-page-stamp-box">
+              <div>PAGE</div>
+              <div style={{ fontSize: '18px' }}>{vahiData.pageNo}</div>
+            </div>
+          </div>
+
+          {/* 2-Column Ledger Grid */}
+          <div className="khata-pdf-two-col-grid">
+            {/* Left Column: જમા (કામ - મજૂરી) */}
+            <div className="pdf-vahi-col-jama">
+              <div className="pdf-col-hdr">
+                <span>જમા (કામ - મજૂરી)</span>
+                <span>{vahiData.jamaRows.length} Entries</span>
+              </div>
+
+              <table className="pdf-vahi-table">
+                <thead>
+                  <tr>
+                    <th style={{ width: '24px', textAlign: 'center' }}>#</th>
+                    <th style={{ width: '50px' }}>તારીખ</th>
+                    <th>વિગત (કામ / વિવરણ)</th>
+                    <th style={{ width: '80px', textAlign: 'right' }}>રૂપિયા ₹</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {vahiData.openingJamaRow && (
+                    <tr className="pdf-vahi-bf-tr">
+                      <td style={{ textAlign: 'center' }}>B/F</td>
+                      <td>01/{vahiData.month}</td>
+                      <td>{vahiData.openingJamaRow.label}</td>
+                      <td style={{ textAlign: 'right' }}>₹{vahiData.openingJamaRow.amount.toLocaleString('en-IN')}/-</td>
+                    </tr>
+                  )}
+                  {vahiData.jamaRows.length === 0 && !vahiData.openingJamaRow ? (
+                    <tr>
+                      <td colSpan="4" style={{ textAlign: 'center', padding: '12px', color: '#64748b' }}>
+                        આ મહિનામાં કોઈ કામ નથી
+                      </td>
+                    </tr>
+                  ) : (
+                    vahiData.jamaRows.map((tx, idx) => (
+                      <tr key={tx.id || idx}>
+                        <td style={{ textAlign: 'center', color: '#64748b' }}>{idx + 1}</td>
+                        <td>{tx.date ? String(tx.date).slice(8, 10) + '/' + String(tx.date).slice(5, 7) : '—'}</td>
+                        <td style={{ fontWeight: 600 }}>{tx.notes || 'મજૂરી કામ'}</td>
+                        <td style={{ textAlign: 'right', fontWeight: 700, color: '#16a34a' }}>
+                          ₹{(Number(tx.amount) || 0).toLocaleString('en-IN')}/-
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+
+              <div className="pdf-col-footer">
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 900, fontSize: '11px', color: '#166534' }}>
+                  <span>ટોટલ મજૂરી કામ :</span>
+                  <span>₹{vahiData.totalJama.toLocaleString('en-IN')}/-</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Right Column: ઉધાર (ઉપાડ - એડવાન્સ - રોકડા) */}
+            <div className="pdf-vahi-col-udhar">
+              <div className="pdf-col-hdr">
+                <span>ઉધાર (ઉપાડ - એડવાન્સ - રોકડા)</span>
+                <span>{(vahiData.openingUdharRow ? 1 : 0) + vahiData.udharRows.length} Entries</span>
+              </div>
+
+              <table className="pdf-vahi-table">
+                <thead>
+                  <tr>
+                    <th style={{ width: '24px', textAlign: 'center' }}>#</th>
+                    <th style={{ width: '50px' }}>તારીખ</th>
+                    <th>વિગત (ઉપાડ / ચુકવણી)</th>
+                    <th style={{ width: '80px', textAlign: 'right' }}>રૂપિયા ₹</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {/* Row 1: આગળ નો બાકી રહેલ ઉપાડ */}
+                  {vahiData.openingUdharRow && (
+                    <tr className="pdf-vahi-bf-tr">
+                      <td style={{ textAlign: 'center' }}>B/F</td>
+                      <td>01/{vahiData.month}</td>
+                      <td>{vahiData.openingUdharRow.label}</td>
+                      <td style={{ textAlign: 'right', fontWeight: 900, color: '#b45309' }}>
+                        ₹{vahiData.openingUdharRow.amount.toLocaleString('en-IN')}/-
+                      </td>
+                    </tr>
+                  )}
+                  {vahiData.udharRows.length === 0 && !vahiData.openingUdharRow ? (
+                    <tr>
+                      <td colSpan="4" style={{ textAlign: 'center', padding: '12px', color: '#64748b' }}>
+                        આ મહિનામાં કોઈ ઉપાડ નથી
+                      </td>
+                    </tr>
+                  ) : (
+                    vahiData.udharRows.map((tx, idx) => (
+                      <tr key={tx.id || idx}>
+                        <td style={{ textAlign: 'center', color: '#64748b' }}>
+                          {(vahiData.openingUdharRow ? 1 : 0) + idx + 1}
+                        </td>
+                        <td>{tx.date ? String(tx.date).slice(8, 10) + '/' + String(tx.date).slice(5, 7) : '—'}</td>
+                        <td style={{ fontWeight: 600 }}>
+                          {tx.notes || (tx.type === 'payment' ? 'ચુકવણી' : 'ઉપાડ')}
+                          {tx.payment_mode && tx.payment_mode !== 'Cash' ? ` (${tx.payment_mode})` : ''}
+                        </td>
+                        <td style={{ textAlign: 'right', fontWeight: 700, color: '#d97706' }}>
+                          ₹{(Number(tx.amount) || 0).toLocaleString('en-IN')}/-
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+
+              <div className="pdf-col-footer">
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '3px', fontSize: '10.5px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 800 }}>
+                    <span>ટોટલ ઉપાડ :</span>
+                    <span style={{ color: '#b45309' }}>₹{vahiData.totalUdhar.toLocaleString('en-IN')}/-</span>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', color: '#64748b' }}>
+                    <span>- ટોટલ મજૂરી કામ :</span>
+                    <span>- ₹{vahiData.totalJama.toLocaleString('en-IN')}/-</span>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 900, fontSize: '12px', borderTop: '1px solid #cbd5e1', paddingTop: '3px' }}>
+                    <span>
+                      {vahiData.closingAdvance > 0
+                        ? 'બાકી રહેલ ઉપાડ :'
+                        : vahiData.closingAdvance < 0
+                        ? 'ચૂકવવાપાત્ર બાકી :'
+                        : 'હિસાબ સરભર :'}
+                    </span>
+                    <span style={{ color: vahiData.closingAdvance > 0 ? '#dc2626' : '#16a34a' }}>
+                      ₹{Math.abs(vahiData.closingAdvance).toLocaleString('en-IN')}/-
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Signatures */}
+          <div className="khata-pdf-sign-row" style={{ marginTop: '14px' }}>
+            <div className="sign-col left-sign">
+              <div className="sign-draw-line"></div>
+              <span className="sign-owner-lbl">કારીગર સહી / અંગૂઠો</span>
+              <span className="sign-sub-lbl">({worker.name})</span>
+            </div>
+            <div className="sign-col right-sign">
+              <div className="sign-draw-line"></div>
+              <span className="sign-owner-lbl">ઓથોરાઇઝ્ડ સહી</span>
+              <span className="sign-sub-lbl">Faizan Body Works</span>
+            </div>
+          </div>
+
+          <div className="khata-pdf-bottom-notice" style={{ marginTop: '10px' }}>
+            <span>Faizan Body Works • કારીગર ખાતાવહી • કમ્પ્યુટરાઇઝ્ડ લેજર સ્ટેટમેન્ટ</span>
+            <span className="pdf-page-num-tag">પાનું {vahiData.pageNo}</span>
+          </div>
+        </div>
+      </div>
+
+      {/* ========================================================
+          BACKGROUND PRINTABLE 2: ALL TIME TABULAR STATEMENT
           ======================================================== */}
       <div
         style={{
@@ -1012,7 +1864,6 @@ export function WorkerKhataModal({
               id={page.totalPages === 1 ? 'pdf-single-page' : undefined}
               className="pdf-page khata-pdf-sheet-page"
             >
-              {/* Header: Full brand header on Page 1, compact continuation header on Page 2+ */}
               {page.isFirst ? (
                 <>
                   <div className="khata-pdf-top-banner">
@@ -1024,64 +1875,60 @@ export function WorkerKhataModal({
                     <div className="khata-pdf-badge-col">
                       <div className="khata-pdf-statement-badge">
                         <span className="badge-eng">WORKER KHATA STATEMENT</span>
-                        <span className="badge-hin">कर्मचारी खाता बही (लेजर)</span>
+                        <span className="badge-hin">કારીગર ખાતાવહી લેજર</span>
                       </div>
                     </div>
                   </div>
 
-                  {/* Worker & Statement Meta Info Box */}
                   <div className="khata-pdf-meta-card">
                     <div className="khata-meta-grid">
                       <div className="meta-item">
-                        <span className="meta-lbl">Worker Name (कर्मचारी):</span>
+                        <span className="meta-lbl">Worker Name (કારીગર):</span>
                         <span className="meta-val meta-worker-name">{worker.name}</span>
                       </div>
                       <div className="meta-item">
-                        <span className="meta-lbl">Mobile (मोबाइल नंबर):</span>
+                        <span className="meta-lbl">Mobile (મોબાઈલ):</span>
                         <span className="meta-val">{worker.mobile || '—'}</span>
                       </div>
                       <div className="meta-item">
-                        <span className="meta-lbl">Statement Period (अवधि):</span>
+                        <span className="meta-lbl">Statement Period (અવધિ):</span>
                         <span className="meta-val meta-period-val">
                           {fromDate || toDate
-                            ? `${fromDate || 'Beginning'} से ${toDate || 'आज तक'}`
-                            : 'All Transactions (शुरू से अब तक)'}
+                            ? `${fromDate || 'Beginning'} થી ${toDate || 'આજ સુધી'}`
+                            : 'All Transactions (શરૂઆતથી આજ સુધી)'}
                         </span>
                       </div>
                       <div className="meta-item">
-                        <span className="meta-lbl">Generated On (दिनांक):</span>
+                        <span className="meta-lbl">Generated On (તારીખ):</span>
                         <span className="meta-val">
-                          {new Date().toLocaleDateString('en-IN', {
+                          {new Date().toLocaleDateString('gu-IN', {
                             day: 'numeric',
                             month: 'short',
                             year: 'numeric',
-                            hour: '2-digit',
-                            minute: '2-digit',
                           })}
                         </span>
                       </div>
                     </div>
                   </div>
 
-                  {/* 4 Summary KPI Cards */}
                   <div className="khata-pdf-kpi-row">
                     <div className="pdf-kpi-box box-salary">
-                      <span className="kpi-hdr">TOTAL WORK (कुल काम)</span>
+                      <span className="kpi-hdr">TOTAL WORK (કુલ કામ)</span>
                       <span className="kpi-val">₹{effectiveSummary.total_salary.toLocaleString('en-IN')}</span>
                       <span className="kpi-desc">Total Earned</span>
                     </div>
                     <div className="pdf-kpi-box box-upad">
-                      <span className="kpi-hdr">TOTAL UPAD (उपाड़)</span>
+                      <span className="kpi-hdr">TOTAL UPAD (ઉપાડ)</span>
                       <span className="kpi-val">₹{effectiveSummary.total_upad.toLocaleString('en-IN')}</span>
                       <span className="kpi-desc">Total Advance</span>
                     </div>
                     <div className="pdf-kpi-box box-payment">
-                      <span className="kpi-hdr">TOTAL PAID (भुगतान)</span>
+                      <span className="kpi-hdr">TOTAL PAID (ચુકવણી)</span>
                       <span className="kpi-val">₹{effectiveSummary.total_paid.toLocaleString('en-IN')}</span>
                       <span className="kpi-desc">Payment Settled</span>
                     </div>
                     <div className={`pdf-kpi-box box-balance ${effectiveSummary.balance >= 0 ? 'due-pay' : 'due-adv'}`}>
-                      <span className="kpi-hdr">NET BALANCE (बाकी)</span>
+                      <span className="kpi-hdr">NET BALANCE (બાકી)</span>
                       <span className="kpi-val">₹{Math.abs(effectiveSummary.balance).toLocaleString('en-IN')}</span>
                       <span className="kpi-desc">
                         {effectiveSummary.balance > 0 ? 'Due to Worker' : effectiveSummary.balance < 0 ? 'Advance Due' : 'All Settled'}
@@ -1096,7 +1943,6 @@ export function WorkerKhataModal({
                 </div>
               )}
 
-              {/* Transaction Table */}
               <div className="khata-pdf-table-container">
                 <div className="khata-pdf-section-title">
                   <span>
@@ -1121,7 +1967,7 @@ export function WorkerKhataModal({
                     {page.rows.length === 0 ? (
                       <tr>
                         <td colSpan="8" style={{ textAlign: 'center', padding: '16px', color: '#64748b' }}>
-                          कोई लेन-देन दर्ज नहीं मिला (No transactions found)
+                          કોઈ એન્ટ્રી મળી નથી (No transactions found)
                         </td>
                       </tr>
                     ) : (
@@ -1182,18 +2028,17 @@ export function WorkerKhataModal({
                 </table>
               </div>
 
-              {/* On Last Page: Final Balance Settlement Callout, Signatures, and Footer */}
-              {page.isLast ? (
+              {page.isLast && (
                 <>
                   <div className="khata-pdf-settlement-callout">
                     <div className="settle-left">
-                      <span className="settle-title">Net Balance Status (अंतिम हिसाब):</span>
+                      <span className="settle-title">Net Balance Status (અંતિમ હિસાબ):</span>
                       <span className="settle-desc">
                         {effectiveSummary.balance > 0
-                          ? `₹${effectiveSummary.balance.toLocaleString('en-IN')} कारीगर को देना बाकी है (Due to Worker)`
+                          ? `₹${effectiveSummary.balance.toLocaleString('en-IN')} કારીગરને આપવાના બાકી છે`
                           : effectiveSummary.balance < 0
-                          ? `₹${Math.abs(effectiveSummary.balance).toLocaleString('en-IN')} एडवांस कारीगर पर बाकी है (Advance on Worker)`
-                          : 'खाता पूर्ण चुकता है (Account Settled - All Clear)'}
+                          ? `₹${Math.abs(effectiveSummary.balance).toLocaleString('en-IN')} એડવાન્સ કારીગર પર બાકી છે`
+                          : 'ખાતું પૂર્ણ સરભર છે (All Clear)'}
                       </span>
                     </div>
                     <div className="settle-right">
@@ -1204,12 +2049,12 @@ export function WorkerKhataModal({
                   <div className="khata-pdf-sign-row">
                     <div className="sign-col left-sign">
                       <div className="sign-draw-line"></div>
-                      <span className="sign-owner-lbl">Worker Signature / अंगूठा</span>
+                      <span className="sign-owner-lbl">કારીગર સહી / અંગૂઠો</span>
                       <span className="sign-sub-lbl">({worker.name})</span>
                     </div>
                     <div className="sign-col right-sign">
                       <div className="sign-draw-line"></div>
-                      <span className="sign-owner-lbl">Authorized Signatory</span>
+                      <span className="sign-owner-lbl">ઓથોરાઇઝ્ડ સહી</span>
                       <span className="sign-sub-lbl">Faizan Body Works</span>
                     </div>
                   </div>
@@ -1219,11 +2064,6 @@ export function WorkerKhataModal({
                     <span className="pdf-page-num-tag">Page {page.pageNum} of {page.totalPages}</span>
                   </div>
                 </>
-              ) : (
-                <div className="khata-pdf-page-footer-cont">
-                  <span className="cont-text">Continued on Page {page.pageNum + 1}...</span>
-                  <span className="pdf-page-num-tag">Page {page.pageNum} of {page.totalPages}</span>
-                </div>
               )}
             </div>
           ))}
