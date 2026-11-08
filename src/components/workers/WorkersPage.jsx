@@ -78,7 +78,7 @@ export function WorkersPage({ onBackToHome, onAlertCountChange }) {
 
   const handleApplyCustomDates = () => {
     if (!customFrom || !customTo) {
-      showSnackbar('કૃપા કરીને શરૂઆત અને અંત બંને તારીખ પસંદ કરો', 'error');
+      showSnackbar('Please select both start and end dates', 'error');
       return;
     }
     fetchWorkers({ force: true, filter: 'custom', from: customFrom, to: customTo });
@@ -210,7 +210,7 @@ export function WorkersPage({ onBackToHome, onAlertCountChange }) {
                 className={`khata-period-chip ${periodFilter === 'running_month' ? 'active' : ''}`}
                 onClick={() => handlePeriodChange('running_month')}
               >
-                📅 ચાલુ મહિનો
+                📅 Running Month
               </button>
 
               <button
@@ -218,7 +218,7 @@ export function WorkersPage({ onBackToHome, onAlertCountChange }) {
                 className={`khata-period-chip ${periodFilter === 'last_month' ? 'active' : ''}`}
                 onClick={() => handlePeriodChange('last_month')}
               >
-                ⏮️ ગયેલ મહિનો
+                ⏮️ Last Month
               </button>
 
               <button
@@ -226,7 +226,7 @@ export function WorkersPage({ onBackToHome, onAlertCountChange }) {
                 className={`khata-period-chip ${periodFilter === 'all_time' ? 'active' : ''}`}
                 onClick={() => handlePeriodChange('all_time')}
               >
-                🌐 તમામ હિસાબ
+                🌐 All Time
               </button>
 
               <button
@@ -234,7 +234,7 @@ export function WorkersPage({ onBackToHome, onAlertCountChange }) {
                 className={`khata-period-chip ${periodFilter === 'custom' ? 'active' : ''}`}
                 onClick={() => handlePeriodChange('custom')}
               >
-                🔍 કસ્ટમ તારીખ
+                🔍 Custom
               </button>
             </div>
 
@@ -242,7 +242,7 @@ export function WorkersPage({ onBackToHome, onAlertCountChange }) {
             {periodFilter === 'custom' && (
               <div className="khata-custom-dates-box">
                 <div className="khata-custom-date-field">
-                  <label>From Date (તારીખથી):</label>
+                  <label>From Date:</label>
                   <input
                     type="date"
                     value={customFrom}
@@ -250,7 +250,7 @@ export function WorkersPage({ onBackToHome, onAlertCountChange }) {
                   />
                 </div>
                 <div className="khata-custom-date-field">
-                  <label>To Date (તારીખ સુધી):</label>
+                  <label>To Date:</label>
                   <input
                     type="date"
                     value={customTo}
@@ -262,7 +262,7 @@ export function WorkersPage({ onBackToHome, onAlertCountChange }) {
                   className="khata-apply-date-btn"
                   onClick={handleApplyCustomDates}
                 >
-                  લાગુ કરો
+                  Apply
                 </button>
               </div>
             )}
@@ -271,7 +271,7 @@ export function WorkersPage({ onBackToHome, onAlertCountChange }) {
             <div className="khata-active-period-indicator">
               <span className="khata-indicator-dot"></span>
               <span className="khata-indicator-text">
-                ખાતા હિસાબ સમયગાળો: <strong>{activePeriodInfo.label}</strong>
+                Khata Period: <strong>{activePeriodInfo.label}</strong>
               </span>
             </div>
           </div>

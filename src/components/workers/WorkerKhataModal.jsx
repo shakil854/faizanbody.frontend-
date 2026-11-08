@@ -5,7 +5,7 @@ import {
   getPeriodDateRange,
   getAvailableKhataMonths,
   calculateMonthKhataVahi,
-  getGujaratiMonthName,
+  getMonthName,
 } from '../../utils/khataPeriodHelper';
 
 export function WorkerKhataModal({
@@ -26,10 +26,10 @@ export function WorkerKhataModal({
     balance: 0,
   });
 
-  // View Mode: 'vahi_page' (Authentic Gujarati Monthly Notebook Page) or 'all_history' (Flat List)
+  // View Mode: 'vahi_page' (Authentic Monthly Khata Page) or 'all_history' (Flat List)
   const [viewMode, setViewMode] = useState('vahi_page');
 
-  // Mobile Column Tab Filter: 'both' | 'jama' | 'udhar' (ensures 100% responsiveness on mobile phones)
+  // Mobile Column Tab Filter: 'both' | 'jama' | 'udhar'
   const [mobileTab, setMobileTab] = useState('both');
 
   // Selected Month for the Khata Vahi Page (e.g. '2026-09', '2026-10')
@@ -52,10 +52,10 @@ export function WorkerKhataModal({
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
   const [pdfToast, setPdfToast] = useState('');
 
-  // Add / Edit Entry Form state
+  // Add / Edit Entry Form state (ONLY 2 TYPES: 'salary' [Jama] & 'upad' [Udhar])
   const [showAddForm, setShowAddForm] = useState(false);
   const [editingTx, setEditingTx] = useState(null);
-  const [entryType, setEntryType] = useState('upad'); // 'salary' (કામ), 'upad' (ઉપાડ), 'payment' (ચુકવણી)
+  const [entryType, setEntryType] = useState('upad'); // 'salary' (Jama / Work) or 'upad' (Udhar / Advance)
   const [amount, setAmount] = useState('');
   const [date, setDate] = useState(() => new Date().toISOString().split('T')[0]);
   const [notes, setNotes] = useState('');
@@ -63,7 +63,7 @@ export function WorkerKhataModal({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formError, setFormError] = useState('');
 
-  // Refs for seamless Enter key field navigation
+  // Refs for Enter key field navigation
   const amountInputRef = useRef(null);
   const dateInputRef = useRef(null);
   const notesInputRef = useRef(null);
@@ -84,7 +84,7 @@ export function WorkerKhataModal({
   const [isDeleting, setIsDeleting] = useState(false);
 
   // Filter state for history list
-  const [filterType, setFilterType] = useState('all'); // 'all', 'upad', 'payment', 'salary'
+  const [filterType, setFilterType] = useState('all'); // 'all', 'salary', 'upad'
 
   // Fetch transactions from backend
   const fetchKhata = useCallback(async () => {
@@ -159,7 +159,7 @@ export function WorkerKhataModal({
     setSelectedMonthKey(currentMonthKey);
   };
 
-  // Quick Open Add Jama (Work / મજૂરી)
+  // Quick Open Add Jama (Work Done)
   const handleOpenAddJama = () => {
     setEditingTx(null);
     setEntryType('salary');
@@ -174,7 +174,7 @@ export function WorkerKhataModal({
     setShowAddForm(true);
   };
 
-  // Quick Open Add Udhar (Upad / Advance / ઉપાડ)
+  // Quick Open Add Udhar (Upad / Advance)
   const handleOpenAddUdhar = () => {
     setEditingTx(null);
     setEntryType('upad');
@@ -201,16 +201,18 @@ export function WorkerKhataModal({
     });
   }, [transactions, fromDate, toDate]);
 
-  // 2. Filter by category tab (All / Work / Upad / Paid) for onscreen list
+  // 2. Filter by category tab (All / Jama / Udhar) for onscreen list
   const filteredTransactions = useMemo(() => {
     if (filterType === 'all') return dateFilteredTransactions;
-    return dateFilteredTransactions.filter((t) => t && t.type === filterType);
+    if (filterType === 'salary') return dateFilteredTransactions.filter((t) => t && t.type === 'salary');
+    if (filterType === 'upad') return dateFilteredTransactions.filter((t) => t && (t.type === 'upad' || t.type === 'payment'));
+    return dateFilteredTransactions;
   }, [dateFilteredTransactions, filterType]);
 
   // Guaranteed safe summary numbers
   const safeSummary = useMemo(() => ({
     total_salary: Number(summary?.total_salary) || 0,
-    total_upad: Number(summary?.total_upad) || 0,
+    total_upad: (Number(summary?.total_upad) || 0) + (Number(summary?.total_paid) || 0),
     total_paid: Number(summary?.total_paid) || 0,
     balance: Number(summary?.balance) || 0,
   }), [summary]);
@@ -224,17 +226,14 @@ export function WorkerKhataModal({
       .filter((t) => t?.type === 'salary')
       .reduce((sum, t) => sum + (Number(t.amount) || 0), 0);
     const totalUpad = dateFilteredTransactions
-      .filter((t) => t?.type === 'upad')
+      .filter((t) => t?.type === 'upad' || t?.type === 'payment')
       .reduce((sum, t) => sum + (Number(t.amount) || 0), 0);
-    const totalPaid = dateFilteredTransactions
-      .filter((t) => t?.type === 'payment')
-      .reduce((sum, t) => sum + (Number(t.amount) || 0), 0);
-    const balance = totalSalary - (totalUpad + totalPaid);
+    const balance = totalSalary - totalUpad;
 
     return {
       total_salary: totalSalary,
       total_upad: totalUpad,
-      total_paid: totalPaid,
+      total_paid: 0,
       balance,
     };
   }, [dateFilteredTransactions, isDateFilterActive, safeSummary]);
@@ -253,7 +252,8 @@ export function WorkerKhataModal({
   // Start editing an existing transaction
   const handleStartEdit = (tx) => {
     setEditingTx(tx);
-    setEntryType(tx.type || 'upad');
+    // Strict 2 options: salary -> salary (Jama), anything else -> upad (Udhar)
+    setEntryType(tx.type === 'salary' ? 'salary' : 'upad');
     setAmount(String(tx.amount || ''));
     setDate(tx.date ? String(tx.date).slice(0, 10) : new Date().toISOString().split('T')[0]);
     setNotes(tx.notes || '');
@@ -276,7 +276,7 @@ export function WorkerKhataModal({
     setFormError('');
   };
 
-  // Handle Save New Entry or Update Existing Entry
+  // Handle Save Entry (Only Jama [salary] or Udhar [upad])
   const handleSaveEntry = async (e) => {
     if (e && e.preventDefault) e.preventDefault();
     if (isSubmitting) return;
@@ -293,7 +293,7 @@ export function WorkerKhataModal({
       setIsSubmitting(true);
       if (editingTx) {
         const res = await workerService.updateWorkerTransaction(worker.id, editingTx.id, {
-          type: entryType,
+          type: entryType, // 'salary' or 'upad'
           amount: numAmount,
           date: date || new Date().toISOString().split('T')[0],
           notes: notes.trim(),
@@ -310,7 +310,7 @@ export function WorkerKhataModal({
         }
       } else {
         const res = await workerService.addWorkerTransaction(worker.id, {
-          type: entryType,
+          type: entryType, // 'salary' or 'upad'
           amount: numAmount,
           date: date || new Date().toISOString().split('T')[0],
           notes: notes.trim(),
@@ -355,7 +355,7 @@ export function WorkerKhataModal({
     }
   };
 
-  // Helper to chunk transactions into pages for the printable PDF (All history view)
+  // Helper to chunk transactions for printable PDF
   const getPdfPagesData = () => {
     const list = dateFilteredTransactions;
     if (list.length <= 12) {
@@ -389,7 +389,7 @@ export function WorkerKhataModal({
     if (isGeneratingPdf) return;
     try {
       setIsGeneratingPdf(true);
-      setPdfToast('⏳ PDF તૈયાર થઈ રહી છે, WhatsApp ખુલી રહ્યું છે...');
+      setPdfToast('⏳ Generating PDF, opening WhatsApp...');
       await new Promise((r) => setTimeout(r, 200));
 
       const cleanName = (worker.name || 'Worker').replace(/[^a-zA-Z0-9_-]/g, '_');
@@ -402,21 +402,21 @@ export function WorkerKhataModal({
         elementId: targetElementId,
         fileName,
         title,
-        text: `Khata Statement PDF: ${worker.name} (A/c No: ${vahiData.accountNo} • પાનું ${vahiData.pageNo}) - Faizan Body Works`,
+        text: `Khata Statement PDF: ${worker.name} (A/c No: ${vahiData.accountNo} • Page ${vahiData.pageNo}) - Faizan Body Works`,
       });
 
       if (result?.method === 'downloaded') {
-        setPdfToast('✅ PDF ડાઉનલોડ થઈ ગઈ છે! તમે તેને WhatsApp પર મોકલી શકો છો.');
+        setPdfToast('✅ PDF downloaded successfully! You can share it on WhatsApp.');
         setTimeout(() => setPdfToast(''), 5000);
       } else if (result?.success) {
-        setPdfToast('✅ PDF WhatsApp પર શેર થઈ ગઈ!');
+        setPdfToast('✅ PDF shared on WhatsApp!');
         setTimeout(() => setPdfToast(''), 4000);
       } else {
         setPdfToast('');
       }
     } catch (err) {
       console.error('Error sharing Khata PDF:', err);
-      setPdfToast('⚠️ PDF શેર કરવામાં સમસ્યા આવી.');
+      setPdfToast('⚠️ Issue sharing PDF.');
       setTimeout(() => setPdfToast(''), 4000);
     } finally {
       setIsGeneratingPdf(false);
@@ -428,7 +428,7 @@ export function WorkerKhataModal({
     if (isGeneratingPdf) return;
     try {
       setIsGeneratingPdf(true);
-      setPdfToast('⏳ PDF ડાઉનલોડ થઈ રહી છે...');
+      setPdfToast('⏳ Downloading PDF...');
       await new Promise((r) => setTimeout(r, 200));
 
       const cleanName = (worker.name || 'Worker').replace(/[^a-zA-Z0-9_-]/g, '_');
@@ -441,11 +441,11 @@ export function WorkerKhataModal({
         fileName,
       });
 
-      setPdfToast('✅ PDF સફળતાપૂર્વક સેવ થઈ ગઈ!');
+      setPdfToast('✅ PDF saved successfully!');
       setTimeout(() => setPdfToast(''), 4000);
     } catch (err) {
       console.error('Error downloading Khata PDF:', err);
-      setPdfToast('⚠️ PDF ડાઉનલોડ કરવામાં સમસ્યા આવી.');
+      setPdfToast('⚠️ Issue downloading PDF.');
       setTimeout(() => setPdfToast(''), 4000);
     } finally {
       setIsGeneratingPdf(false);
@@ -480,7 +480,7 @@ export function WorkerKhataModal({
               <div>
                 <h3 className="sheet-title">{worker.name}'s Khata</h3>
                 <p className="sheet-subtitle">
-                  {worker.mobile ? `Mobile: ${worker.mobile} • ` : ''}કારીગર ખાતાવહી (દેશી નામા)
+                  {worker.mobile ? `Mobile: ${worker.mobile} • ` : ''}Worker Khata Ledger (Desi Nama)
                 </p>
               </div>
             </div>
@@ -498,21 +498,21 @@ export function WorkerKhataModal({
             </button>
           </div>
 
-          {/* View Mode Selector Tabs */}
+          {/* View Mode Selector Tabs - Short & 100% Mobile Responsive */}
           <div className="khata-view-mode-tabs">
             <button
               type="button"
               className={`khata-view-tab ${viewMode === 'vahi_page' ? 'active' : ''}`}
               onClick={() => setViewMode('vahi_page')}
             >
-              📖 મહિનાવાર ખાતાવહી પાનું (Khata Vahi Page)
+              📖 Monthly Page
             </button>
             <button
               type="button"
               className={`khata-view-tab ${viewMode === 'all_history' ? 'active' : ''}`}
               onClick={() => setViewMode('all_history')}
             >
-              📋 તમામ લેજર હિસ્ટ્રી (All-Time List)
+              📋 All History
             </button>
           </div>
 
@@ -524,7 +524,7 @@ export function WorkerKhataModal({
           )}
 
           {/* ========================================================
-              VIEW 1: AUTHENTIC GUJARATI KHATA VAHI MONTHLY PAGE
+              VIEW 1: AUTHENTIC MONTHLY KHATA VAHI PAGE
               ======================================================== */}
           {viewMode === 'vahi_page' ? (
             <>
@@ -535,11 +535,11 @@ export function WorkerKhataModal({
                     type="button"
                     className="btn-month-nav-arrow"
                     onClick={handlePrevMonth}
-                    title="પાછલો મહિનો જુઓ"
+                    title="View Previous Month"
                   >
                     <span>◀</span>
-                    <span className="arrow-text-full">પાછલો મહિનો</span>
-                    <span className="arrow-text-short">પાછલો</span>
+                    <span className="arrow-text-full">Prev Month</span>
+                    <span className="arrow-text-short">Prev</span>
                   </button>
 
                   <div className="month-nav-center">
@@ -560,20 +560,20 @@ export function WorkerKhataModal({
                     type="button"
                     className="btn-month-nav-arrow"
                     onClick={handleNextMonth}
-                    title="આગલો મહિનો જુઓ"
+                    title="View Next Month"
                   >
-                    <span className="arrow-text-full">આગલો મહિનો</span>
-                    <span className="arrow-text-short">આગલો</span>
+                    <span className="arrow-text-full">Next Month</span>
+                    <span className="arrow-text-short">Next</span>
                     <span>▶</span>
                   </button>
                 </div>
 
                 <div className="month-nav-badge-strip">
                   <span className="month-nav-badge">
-                    ખાતા નં.: <strong>{vahiData.accountNo}</strong>
+                    A/c No.: <strong>{vahiData.accountNo}</strong>
                   </span>
                   <span className="month-nav-badge">
-                    પાનું નં.: <strong>{vahiData.pageNo}</strong>
+                    Page No.: <strong>{vahiData.pageNo}</strong>
                   </span>
                   {selectedMonthKey !== currentMonthKey && (
                     <button
@@ -581,13 +581,13 @@ export function WorkerKhataModal({
                       className="btn-jump-current-month"
                       onClick={handleJumpCurrentMonth}
                     >
-                      📌 ચાલુ મહિનો
+                      📌 Current Month
                     </button>
                   )}
                 </div>
               </div>
 
-              {/* Action Buttons: Add Jama, Add Udhar, WhatsApp Share */}
+              {/* Action Buttons: Add Jama, Add Udhar, WhatsApp Share, Download */}
               <div className="khata-action-bar">
                 {canManage && (
                   <>
@@ -600,7 +600,7 @@ export function WorkerKhataModal({
                         <line x1="12" y1="5" x2="12" y2="19" />
                         <line x1="5" y1="12" x2="19" y2="12" />
                       </svg>
-                      <span>જમા (કામ ઉમેરો)</span>
+                      <span>Jama (Add Work)</span>
                     </button>
 
                     <button
@@ -612,7 +612,7 @@ export function WorkerKhataModal({
                         <line x1="12" y1="5" x2="12" y2="19" />
                         <line x1="5" y1="12" x2="19" y2="12" />
                       </svg>
-                      <span>ઉધાર (ઉપાડ આપો)</span>
+                      <span>Udhar (Add Upad)</span>
                     </button>
                   </>
                 )}
@@ -622,10 +622,10 @@ export function WorkerKhataModal({
                   className="btn btn-whatsapp-share"
                   onClick={handleShareKhataPdf}
                   disabled={isGeneratingPdf}
-                  title="વ્હોટ્સએપ પર પાનું શેર કરો"
+                  title="Share Month Page on WhatsApp"
                 >
                   {isGeneratingPdf ? (
-                    <span>તૈયાર થાય છે...</span>
+                    <span>Generating...</span>
                   ) : (
                     <>
                       <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
@@ -641,7 +641,7 @@ export function WorkerKhataModal({
                   className="btn btn-download-pdf-icon"
                   onClick={handleDownloadKhataPdf}
                   disabled={isGeneratingPdf}
-                  title="PDF ડાઉનલોડ કરો"
+                  title="Download PDF"
                 >
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
                     <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
@@ -658,33 +658,33 @@ export function WorkerKhataModal({
                   className={`vahi-mob-tab ${mobileTab === 'both' ? 'active' : ''}`}
                   onClick={() => setMobileTab('both')}
                 >
-                  📜 બંને (જમા + ઉધાર)
+                  📜 Both (Jama + Udhar)
                 </button>
                 <button
                   type="button"
                   className={`vahi-mob-tab tab-mob-jama ${mobileTab === 'jama' ? 'active' : ''}`}
                   onClick={() => setMobileTab('jama')}
                 >
-                  💰 જમા ({vahiData.jamaRows.length})
+                  💰 Jama ({vahiData.jamaRows.length})
                 </button>
                 <button
                   type="button"
                   className={`vahi-mob-tab tab-mob-udhar ${mobileTab === 'udhar' ? 'active' : ''}`}
                   onClick={() => setMobileTab('udhar')}
                 >
-                  ⚡ ઉધાર ({(vahiData.openingUdharRow ? 1 : 0) + vahiData.udharRows.length})
+                  ⚡ Udhar ({(vahiData.openingUdharRow ? 1 : 0) + vahiData.udharRows.length})
                 </button>
               </div>
 
-              {/* Expandable Add / Edit Entry Form */}
+              {/* Expandable Add / Edit Entry Form (STRICTLY 2 OPTIONS: Jama & Udhar) */}
               {showAddForm && (
                 <div className="khata-add-entry-box" style={{ marginBottom: '0.85rem' }}>
                   <h4 className="entry-box-title">
                     {editingTx
-                      ? '✏️ એન્ટ્રી એડિટ કરો'
+                      ? '✏️ Edit Transaction'
                       : entryType === 'salary'
-                      ? '💰 નવી જમા (કામ / મજૂરી) એન્ટ્રી'
-                      : '⚡ નવી ઉધાર (ઉપાડ / ચુકવણી) એન્ટ્રી'}
+                      ? '💰 New Jama Entry (Work / Earning)'
+                      : '⚡ New Udhar Entry (Upad / Advance)'}
                   </h4>
 
                   {formError && (
@@ -694,35 +694,28 @@ export function WorkerKhataModal({
                   )}
 
                   <form onSubmit={handleSaveEntry} className="khata-entry-form">
-                    {/* 3 Entry Type Tabs */}
-                    <div className="entry-type-selector">
+                    {/* STRICT 2 TABS ONLY: JAMA & UDHAR */}
+                    <div className="entry-type-selector" style={{ gridTemplateColumns: '1fr 1fr' }}>
                       <button
                         type="button"
                         className={`entry-type-tab tab-salary ${entryType === 'salary' ? 'active' : ''}`}
                         onClick={() => setEntryType('salary')}
                       >
-                        💰 જમા (મજૂરી કામ)
+                        💰 Jama (Work Done)
                       </button>
                       <button
                         type="button"
                         className={`entry-type-tab tab-upad ${entryType === 'upad' ? 'active' : ''}`}
                         onClick={() => setEntryType('upad')}
                       >
-                        ⚡ ઉધાર (ઉપાડ / Advance)
-                      </button>
-                      <button
-                        type="button"
-                        className={`entry-type-tab tab-payment ${entryType === 'payment' ? 'active' : ''}`}
-                        onClick={() => setEntryType('payment')}
-                      >
-                        💳 ઉધાર (ચુકવણી / Payment)
+                        ⚡ Udhar (Upad / Advance)
                       </button>
                     </div>
 
                     {/* Amount & Date Grid */}
                     <div className="entry-inputs-grid">
                       <div className="form-group">
-                        <label className="form-label">રકમ (રૂપિયા ₹) *</label>
+                        <label className="form-label">Amount (₹) *</label>
                         <div className="input-with-icon">
                           <span className="field-icon rupee-icon">₹</span>
                           <input
@@ -747,7 +740,7 @@ export function WorkerKhataModal({
                       </div>
 
                       <div className="form-group">
-                        <label className="form-label">તારીખ *</label>
+                        <label className="form-label">Date *</label>
                         <input
                           ref={dateInputRef}
                           type="date"
@@ -765,15 +758,15 @@ export function WorkerKhataModal({
                       </div>
                     </div>
 
-                    {/* Notes & Mode Grid */}
+                    {/* Description / Notes & Payment Mode */}
                     <div className="entry-inputs-grid">
                       <div className="form-group">
-                        <label className="form-label">વિગત / કામ / વિવરણ (Notes)</label>
+                        <label className="form-label">Description / Work Details (Optional)</label>
                         <input
                           ref={notesInputRef}
                           type="text"
                           className="form-input"
-                          placeholder={entryType === 'salary' ? 'દા.ત. નુરાની ટ્રાન્સપોર્ટ કેબીન કામ' : 'દા.ત. રોકડા જાફરબાપુ / મકાન હપ્તો'}
+                          placeholder={entryType === 'salary' ? 'e.g. Nurani Transport cabin work' : 'e.g. Cash upad / House installment'}
                           value={notes}
                           onChange={(e) => setNotes(e.target.value)}
                           onKeyDown={(e) => {
@@ -786,7 +779,7 @@ export function WorkerKhataModal({
                       </div>
 
                       <div className="form-group">
-                        <label className="form-label">ચુકવણી મોડ</label>
+                        <label className="form-label">Payment Mode</label>
                         <select
                           ref={paymentModeRef}
                           className="form-input select-mode"
@@ -799,9 +792,9 @@ export function WorkerKhataModal({
                             }
                           }}
                         >
-                          <option value="Cash">રોકડા (Cash)</option>
+                          <option value="Cash">Cash</option>
                           <option value="Online/UPI">Online / PhonePe / GPay</option>
-                          <option value="Bank">Bank A/c ટ્રાન્સફર</option>
+                          <option value="Bank">Bank Transfer (NEFT/RTGS)</option>
                         </select>
                       </div>
                     </div>
@@ -814,7 +807,7 @@ export function WorkerKhataModal({
                         onClick={handleCancelForm}
                         disabled={isSubmitting}
                       >
-                        રદ કરો
+                        Cancel
                       </button>
                       <button
                         type="submit"
@@ -822,8 +815,8 @@ export function WorkerKhataModal({
                         disabled={isSubmitting}
                       >
                         {isSubmitting
-                          ? (editingTx ? 'અપડેટ થાય છે...' : 'સેવ થાય છે...')
-                          : (editingTx ? 'એન્ટ્રી અપડેટ કરો' : 'એન્ટ્રી સેવ કરો')}
+                          ? (editingTx ? 'Updating...' : 'Saving...')
+                          : (editingTx ? 'Update Entry' : 'Save Entry')}
                       </button>
                     </div>
                   </form>
@@ -835,9 +828,9 @@ export function WorkerKhataModal({
                 {/* Notebook Header Strip */}
                 <div className="khata-vahi-header-strip">
                   <div className="vahi-header-left">
-                    <span className="vahi-worker-title">નામ: {worker.name}</span>
+                    <span className="vahi-worker-title">Name: {worker.name}</span>
                     <span className="vahi-ac-subtitle">
-                      A/c No. / ખાતા નં.: <strong>{vahiData.accountNo}</strong> ({vahiData.monthName} {vahiData.year})
+                      A/c No.: <strong>{vahiData.accountNo}</strong> ({vahiData.monthName} {vahiData.year})
                     </span>
                   </div>
 
@@ -847,14 +840,14 @@ export function WorkerKhataModal({
                   </div>
                 </div>
 
-                {/* 2 Columns Grid: Left = જમા (કામ) | Right = ઉધાર (ઉપાડ) */}
+                {/* 2 Columns Grid: Left = JAMA (Work) | Right = UDHAR (Upad) */}
                 <div className="khata-vahi-grid">
-                  {/* LEFT COLUMN: જમા (કામ - મજૂરી) */}
+                  {/* LEFT COLUMN: JAMA (Work Done) */}
                   <div className={`khata-vahi-col col-jama ${mobileTab === 'udhar' ? 'mobile-hidden' : ''}`}>
                     <div className="vahi-col-top">
                       <div className="vahi-col-title-group">
-                        <span className="vahi-col-heading">જમા (કામ - મજૂરી)</span>
-                        <span className="vahi-col-count-badge">{vahiData.jamaRows.length} કામ</span>
+                        <span className="vahi-col-heading">JAMA (Work Done)</span>
+                        <span className="vahi-col-count-badge">{vahiData.jamaRows.length} items</span>
                       </div>
                       {canManage && (
                         <button
@@ -862,7 +855,7 @@ export function WorkerKhataModal({
                           className="btn-vahi-add-entry"
                           onClick={handleOpenAddJama}
                         >
-                          + ઉમેરો
+                          + Add Work
                         </button>
                       )}
                     </div>
@@ -872,10 +865,10 @@ export function WorkerKhataModal({
                         <thead>
                           <tr>
                             <th style={{ width: '26px', textAlign: 'center' }}>#</th>
-                            <th style={{ width: '52px' }}>તારીખ</th>
-                            <th>વિગત (કામ / વાહન)</th>
-                            <th style={{ width: '80px', textAlign: 'right' }}>રૂપિયા ₹</th>
-                            {canManage && <th style={{ width: '40px', textAlign: 'center' }}>ક્રિયા</th>}
+                            <th style={{ width: '52px' }}>Date</th>
+                            <th>Work / Vehicle Details</th>
+                            <th style={{ width: '80px', textAlign: 'right' }}>Amount ₹</th>
+                            {canManage && <th style={{ width: '40px', textAlign: 'center' }}>Action</th>}
                           </tr>
                         </thead>
                         <tbody>
@@ -902,7 +895,7 @@ export function WorkerKhataModal({
                           {vahiData.jamaRows.length === 0 && !vahiData.openingJamaRow ? (
                             <tr>
                               <td colSpan={canManage ? 5 : 4} className="vahi-empty-column-box">
-                                આ મહિનામાં હજુ કોઈ કામ (જમા) નોંધાયેલ નથી.
+                                No work (Jama) recorded for this month yet.
                               </td>
                             </tr>
                           ) : (
@@ -915,7 +908,7 @@ export function WorkerKhataModal({
                                   {tx.date ? String(tx.date).slice(8, 10) + '/' + String(tx.date).slice(5, 7) : '—'}
                                 </td>
                                 <td>
-                                  <span style={{ fontWeight: 600, color: '#0f172a' }}>{tx.notes || 'મજૂરી કામ'}</span>
+                                  <span style={{ fontWeight: 600, color: '#0f172a' }}>{tx.notes || 'Work Done'}</span>
                                 </td>
                                 <td style={{ textAlign: 'right' }} className="vahi-amt-jama">
                                   ₹{(Number(tx.amount) || 0).toLocaleString('en-IN')}/-
@@ -927,7 +920,7 @@ export function WorkerKhataModal({
                                         type="button"
                                         className="tx-action-btn tx-edit-btn"
                                         onClick={() => handleStartEdit(tx)}
-                                        title="એડિટ કરો"
+                                        title="Edit Entry"
                                       >
                                         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
                                           <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
@@ -938,7 +931,7 @@ export function WorkerKhataModal({
                                         type="button"
                                         className="tx-action-btn tx-delete-btn"
                                         onClick={() => setDeletingTx(tx)}
-                                        title="ડિલીટ કરો"
+                                        title="Delete Entry"
                                       >
                                         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
                                           <polyline points="3 6 5 6 21 6" />
@@ -958,19 +951,19 @@ export function WorkerKhataModal({
                     {/* Left Column Bottom Footer: Total Work Done */}
                     <div className="vahi-col-footer">
                       <div className="vahi-total-row">
-                        <span>ટોટલ મજૂરી કામ :</span>
+                        <span>Total Work (Jama):</span>
                         <span className="vahi-total-jama-val">₹{vahiData.totalJama.toLocaleString('en-IN')}/-</span>
                       </div>
                     </div>
                   </div>
 
-                  {/* RIGHT COLUMN: ઉધાર (ઉપાડ - એડવાન્સ - રોકડા) */}
+                  {/* RIGHT COLUMN: UDHAR (Upad / Advance) */}
                   <div className={`khata-vahi-col col-udhar ${mobileTab === 'jama' ? 'mobile-hidden' : ''}`}>
                     <div className="vahi-col-top">
                       <div className="vahi-col-title-group">
-                        <span className="vahi-col-heading">ઉધાર (ઉપાડ - એડવાન્સ)</span>
+                        <span className="vahi-col-heading">UDHAR (Upad / Advance)</span>
                         <span className="vahi-col-count-badge">
-                          {(vahiData.openingUdharRow ? 1 : 0) + vahiData.udharRows.length} એન્ટ્રી
+                          {(vahiData.openingUdharRow ? 1 : 0) + vahiData.udharRows.length} entries
                         </span>
                       </div>
                       {canManage && (
@@ -979,7 +972,7 @@ export function WorkerKhataModal({
                           className="btn-vahi-add-entry"
                           onClick={handleOpenAddUdhar}
                         >
-                          + ઉપાડ આપો
+                          + Add Upad
                         </button>
                       )}
                     </div>
@@ -989,14 +982,14 @@ export function WorkerKhataModal({
                         <thead>
                           <tr>
                             <th style={{ width: '26px', textAlign: 'center' }}>#</th>
-                            <th style={{ width: '52px' }}>તારીખ</th>
-                            <th>વિગત (ઉપાડ / ચુકવણી)</th>
-                            <th style={{ width: '80px', textAlign: 'right' }}>રૂપિયા ₹</th>
-                            {canManage && <th style={{ width: '40px', textAlign: 'center' }}>ક્રિયા</th>}
+                            <th style={{ width: '52px' }}>Date</th>
+                            <th>Description</th>
+                            <th style={{ width: '80px', textAlign: 'right' }}>Amount ₹</th>
+                            {canManage && <th style={{ width: '40px', textAlign: 'center' }}>Action</th>}
                           </tr>
                         </thead>
                         <tbody>
-                          {/* CRITICAL ROW 1: આગળ નો બાકી રહેલ ઉપાડ (Carried Forward B/F) */}
+                          {/* CRITICAL ROW 1: Previous Advance (Carried Forward B/F) */}
                           {vahiData.openingUdharRow && (
                             <tr className="vahi-bf-row">
                               <td style={{ textAlign: 'center' }}>
@@ -1023,7 +1016,7 @@ export function WorkerKhataModal({
                           {vahiData.udharRows.length === 0 && !vahiData.openingUdharRow ? (
                             <tr>
                               <td colSpan={canManage ? 5 : 4} className="vahi-empty-column-box">
-                                આ મહિનામાં કોઈ ઉપાડ નોંધાયેલ નથી.
+                                No upad recorded for this month yet.
                               </td>
                             </tr>
                           ) : (
@@ -1038,7 +1031,7 @@ export function WorkerKhataModal({
                                 <td>
                                   <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
                                     <span style={{ fontWeight: 600, color: '#0f172a' }}>
-                                      {tx.notes || (tx.type === 'payment' ? 'ચુકવણી' : 'ઉપાડ')}
+                                      {tx.notes || (tx.type === 'payment' ? 'Payment' : 'Upad (Advance)')}
                                     </span>
                                     {tx.payment_mode && tx.payment_mode !== 'Cash' && (
                                       <span className="vahi-mode-badge">{tx.payment_mode}</span>
@@ -1055,7 +1048,7 @@ export function WorkerKhataModal({
                                         type="button"
                                         className="tx-action-btn tx-edit-btn"
                                         onClick={() => handleStartEdit(tx)}
-                                        title="એડિટ કરો"
+                                        title="Edit Entry"
                                       >
                                         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
                                           <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
@@ -1066,7 +1059,7 @@ export function WorkerKhataModal({
                                         type="button"
                                         className="tx-action-btn tx-delete-btn"
                                         onClick={() => setDeletingTx(tx)}
-                                        title="ડિલીટ કરો"
+                                        title="Delete Entry"
                                       >
                                         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
                                           <polyline points="3 6 5 6 21 6" />
@@ -1083,26 +1076,26 @@ export function WorkerKhataModal({
                       </table>
                     </div>
 
-                    {/* Right Column Bottom Footer: Full Notebook Calculation Box */}
+                    {/* Right Column Bottom Footer: Calculation Box */}
                     <div className="vahi-col-footer">
                       <div className="vahi-closing-calc-box">
                         <div className="vahi-calc-row calc-subtotal">
-                          <span>ટોટલ ઉપાડ :</span>
+                          <span>Total Upad:</span>
                           <span className="vahi-total-udhar-val">₹{vahiData.totalUdhar.toLocaleString('en-IN')}/-</span>
                         </div>
 
                         <div className="vahi-calc-row">
-                          <span>- ટોટલ મજૂરી કામ :</span>
+                          <span>- Total Work (Jama):</span>
                           <span>- ₹{vahiData.totalJama.toLocaleString('en-IN')}/-</span>
                         </div>
 
                         <div className="vahi-calc-row calc-final">
                           <span>
                             {vahiData.closingAdvance > 0
-                              ? 'બાકી રહેલ ઉપાડ :'
+                              ? 'Net Advance Due:'
                               : vahiData.closingAdvance < 0
-                              ? 'ચૂકવવાપાત્ર બાકી :'
-                              : 'હિસાબ સરભર :'}
+                              ? 'Due to Worker:'
+                              : 'Account Settled:'}
                           </span>
                           <span
                             className={`calc-final-val ${
@@ -1119,10 +1112,10 @@ export function WorkerKhataModal({
 
                         <p className="calc-forward-note">
                           {vahiData.closingAdvance > 0
-                            ? '➜ આ રકમ આપોઆપ આવતા મહિનાના પાના પર "આગળ નો બાકી રહેલ ઉપાડ" બનશે.'
+                            ? '➜ Automatically carried forward as opening B/F next month.'
                             : vahiData.closingAdvance < 0
-                            ? '➜ કારીગરને આપવાની બાકી રકમ આવતા મહિને જમા તરીકે જશે.'
-                            : '➜ ખાતું સંપૂર્ણ સરભર (નીલ) છે.'}
+                            ? '➜ Due amount to worker carried forward as credit next month.'
+                            : '➜ All settled.'}
                         </p>
                       </div>
                     </div>
@@ -1135,24 +1128,18 @@ export function WorkerKhataModal({
                VIEW 2: ALL-TIME FLAT TRANSACTION HISTORY LIST
                ======================================================== */
             <>
-              {/* 4 Summary KPIs Grid */}
-              <div className="khata-kpi-grid">
+              {/* 3 Summary KPIs Grid */}
+              <div className="khata-kpi-grid" style={{ gridTemplateColumns: 'repeat(3, 1fr)' }}>
                 <div className="khata-kpi-card card-salary">
-                  <span className="kpi-label">TOTAL WORK</span>
+                  <span className="kpi-label">TOTAL WORK (JAMA)</span>
                   <span className="kpi-amount">₹{effectiveSummary.total_salary.toLocaleString('en-IN')}</span>
                   <span className="kpi-tag">{isDateFilterActive ? 'In Selected Period' : 'Total Earned'}</span>
                 </div>
 
                 <div className="khata-kpi-card card-upad">
-                  <span className="kpi-label">UPAD (ADVANCE)</span>
+                  <span className="kpi-label">TOTAL UPAD (UDHAR)</span>
                   <span className="kpi-amount">₹{effectiveSummary.total_upad.toLocaleString('en-IN')}</span>
                   <span className="kpi-tag">{isDateFilterActive ? 'In Selected Period' : 'Total Advance'}</span>
-                </div>
-
-                <div className="khata-kpi-card card-payment">
-                  <span className="kpi-label">TOTAL PAID</span>
-                  <span className="kpi-amount">₹{effectiveSummary.total_paid.toLocaleString('en-IN')}</span>
-                  <span className="kpi-tag">{isDateFilterActive ? 'In Selected Period' : 'Payment Settled'}</span>
                 </div>
 
                 <div className={`khata-kpi-card card-balance ${balanceColorClass}`}>
@@ -1174,7 +1161,7 @@ export function WorkerKhataModal({
                       <line x1="8" y1="2" x2="8" y2="6" />
                       <line x1="3" y1="10" x2="21" y2="10" />
                     </svg>
-                    <span>Date Range Filter (તારીખ થી તારીખ સુધી)</span>
+                    <span>Date Range Filter</span>
                   </div>
                   {isDateFilterActive && (
                     <button
@@ -1206,7 +1193,7 @@ export function WorkerKhataModal({
                       cursor: 'pointer',
                     }}
                   >
-                    📅 ચાલુ મહિનો
+                    📅 Running Month
                   </button>
 
                   <button
@@ -1227,7 +1214,7 @@ export function WorkerKhataModal({
                       cursor: 'pointer',
                     }}
                   >
-                    ⏮️ ગયેલ મહિનો
+                    ⏮️ Last Month
                   </button>
 
                   <button
@@ -1244,13 +1231,13 @@ export function WorkerKhataModal({
                       cursor: 'pointer',
                     }}
                   >
-                    🌐 તમામ હિસાબ
+                    🌐 All Time
                   </button>
                 </div>
 
                 <div className="date-range-fields-row">
                   <div className="date-range-col">
-                    <label className="date-range-label">From Date (તારીખ થી):</label>
+                    <label className="date-range-label">From Date:</label>
                     <input
                       type="date"
                       className="date-range-input"
@@ -1260,7 +1247,7 @@ export function WorkerKhataModal({
                   </div>
 
                   <div className="date-range-col">
-                    <label className="date-range-label">To Date (તારીખ સુધી):</label>
+                    <label className="date-range-label">To Date:</label>
                     <input
                       type="date"
                       className="date-range-input"
@@ -1316,11 +1303,15 @@ export function WorkerKhataModal({
                 </button>
               </div>
 
-              {/* Expandable Add Form */}
+              {/* Expandable Add Form (2 TABS: Jama & Udhar) */}
               {showAddForm && (
                 <div className="khata-add-entry-box">
                   <h4 className="entry-box-title">
-                    {editingTx ? '✏️ Edit Transaction' : 'Record New Transaction'}
+                    {editingTx
+                      ? '✏️ Edit Transaction'
+                      : entryType === 'salary'
+                      ? '💰 New Jama Entry (Work)'
+                      : '⚡ New Udhar Entry (Upad)'}
                   </h4>
 
                   {formError && (
@@ -1330,27 +1321,20 @@ export function WorkerKhataModal({
                   )}
 
                   <form onSubmit={handleSaveEntry} className="khata-entry-form">
-                    <div className="entry-type-selector">
+                    <div className="entry-type-selector" style={{ gridTemplateColumns: '1fr 1fr' }}>
                       <button
                         type="button"
                         className={`entry-type-tab tab-salary ${entryType === 'salary' ? 'active' : ''}`}
                         onClick={() => setEntryType('salary')}
                       >
-                        💰 Total Work
+                        💰 Jama (Work Done)
                       </button>
                       <button
                         type="button"
                         className={`entry-type-tab tab-upad ${entryType === 'upad' ? 'active' : ''}`}
                         onClick={() => setEntryType('upad')}
                       >
-                        ⚡ Advance (Upad)
-                      </button>
-                      <button
-                        type="button"
-                        className={`entry-type-tab tab-payment ${entryType === 'payment' ? 'active' : ''}`}
-                        onClick={() => setEntryType('payment')}
-                      >
-                        💳 Payment Paid
+                        ⚡ Udhar (Upad / Advance)
                       </button>
                     </div>
 
@@ -1401,12 +1385,12 @@ export function WorkerKhataModal({
 
                     <div className="entry-inputs-grid">
                       <div className="form-group">
-                        <label className="form-label">Notes / Description (Optional)</label>
+                        <label className="form-label">Description / Work Details (Optional)</label>
                         <input
                           ref={notesInputRef}
                           type="text"
                           className="form-input"
-                          placeholder="e.g. Body work wage / Cash paid"
+                          placeholder="e.g. Body work wage / Cash advance"
                           value={notes}
                           onChange={(e) => setNotes(e.target.value)}
                           onKeyDown={(e) => {
@@ -1479,21 +1463,14 @@ export function WorkerKhataModal({
                     className={`filter-chip chip-salary ${filterType === 'salary' ? 'active' : ''}`}
                     onClick={() => setFilterType('salary')}
                   >
-                    Total Work
+                    Jama (Work)
                   </button>
                   <button
                     type="button"
                     className={`filter-chip chip-upad ${filterType === 'upad' ? 'active' : ''}`}
                     onClick={() => setFilterType('upad')}
                   >
-                    Upad (Adv)
-                  </button>
-                  <button
-                    type="button"
-                    className={`filter-chip chip-payment ${filterType === 'payment' ? 'active' : ''}`}
-                    onClick={() => setFilterType('payment')}
-                  >
-                    Paid
+                    Udhar (Upad)
                   </button>
                 </div>
               </div>
@@ -1512,7 +1489,6 @@ export function WorkerKhataModal({
                 ) : (
                   filteredTransactions.map((tx) => {
                     const isSalary = tx.type === 'salary';
-                    const isUpad = tx.type === 'upad';
 
                     return (
                       <div key={tx.id} className={`khata-tx-card tx-${tx.type}`}>
@@ -1523,14 +1499,10 @@ export function WorkerKhataModal({
                                 <line x1="12" y1="19" x2="12" y2="5" />
                                 <polyline points="5 12 12 5 19 12" />
                               </svg>
-                            ) : isUpad ? (
+                            ) : (
                               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#d97706" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                                 <line x1="12" y1="5" x2="12" y2="19" />
                                 <polyline points="19 12 12 19 5 12" />
-                              </svg>
-                            ) : (
-                              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#2563eb" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                                <polyline points="20 6 9 17 4 12" />
                               </svg>
                             )}
                           </div>
@@ -1538,7 +1510,7 @@ export function WorkerKhataModal({
                           <div className="tx-info">
                             <div className="tx-title-row">
                               <span className={`tx-type-badge badge-${tx.type}`}>
-                                {isSalary ? '💰 Total Work' : isUpad ? '⚡ Upad (Advance)' : '💳 Payment Paid'}
+                                {isSalary ? '💰 Jama (Work Done)' : '⚡ Udhar (Upad / Advance)'}
                               </span>
                               <span className="tx-date-text">{tx.date}</span>
                             </div>
@@ -1560,7 +1532,7 @@ export function WorkerKhataModal({
                                 type="button"
                                 className="tx-action-btn tx-edit-btn"
                                 onClick={() => handleStartEdit(tx)}
-                                title="Edit entry"
+                                title="Edit Entry"
                               >
                                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
                                   <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
@@ -1571,7 +1543,7 @@ export function WorkerKhataModal({
                                 type="button"
                                 className="tx-action-btn tx-delete-btn"
                                 onClick={() => setDeletingTx(tx)}
-                                title="Delete entry"
+                                title="Delete Entry"
                               >
                                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
                                   <polyline points="3 6 5 6 21 6" />
@@ -1635,7 +1607,7 @@ export function WorkerKhataModal({
       )}
 
       {/* ========================================================
-          BACKGROUND PRINTABLE 1: 2-COLUMN GUJARATI KHATA VAHI
+          BACKGROUND PRINTABLE 1: 2-COLUMN KHATA VAHI
           For WhatsApp Share & Monthly Page PDF Export
           ======================================================== */}
       <div
@@ -1663,7 +1635,7 @@ export function WorkerKhataModal({
             <div className="khata-pdf-badge-col">
               <div className="khata-pdf-statement-badge">
                 <span className="badge-eng">WORKER KHATA VAHI</span>
-                <span className="badge-hin">કારીગર ખાતાવહી પાનું</span>
+                <span className="badge-hin">MONTHLY LEDGER PAGE</span>
               </div>
             </div>
           </div>
@@ -1671,9 +1643,9 @@ export function WorkerKhataModal({
           {/* Notebook Header Strip */}
           <div className="khata-pdf-notebook-header">
             <div>
-              <div className="pdf-notebook-title">નામ: {worker.name}</div>
+              <div className="pdf-notebook-title">Name: {worker.name}</div>
               <div className="pdf-notebook-meta">
-                મોબાઈલ: {worker.mobile || '—'} • A/c No. / ખાતા નં.: <strong>{vahiData.accountNo}</strong> ({vahiData.monthName} {vahiData.year})
+                Mobile: {worker.mobile || '—'} • A/c No.: <strong>{vahiData.accountNo}</strong> ({vahiData.monthName} {vahiData.year})
               </div>
             </div>
             <div className="pdf-page-stamp-box">
@@ -1684,10 +1656,10 @@ export function WorkerKhataModal({
 
           {/* 2-Column Ledger Grid */}
           <div className="khata-pdf-two-col-grid">
-            {/* Left Column: જમા (કામ - મજૂરી) */}
+            {/* Left Column: JAMA (Work Done) */}
             <div className="pdf-vahi-col-jama">
               <div className="pdf-col-hdr">
-                <span>જમા (કામ - મજૂરી)</span>
+                <span>JAMA (Work Done)</span>
                 <span>{vahiData.jamaRows.length} Entries</span>
               </div>
 
@@ -1695,9 +1667,9 @@ export function WorkerKhataModal({
                 <thead>
                   <tr>
                     <th style={{ width: '24px', textAlign: 'center' }}>#</th>
-                    <th style={{ width: '50px' }}>તારીખ</th>
-                    <th>વિગત (કામ / વિવરણ)</th>
-                    <th style={{ width: '80px', textAlign: 'right' }}>રૂપિયા ₹</th>
+                    <th style={{ width: '50px' }}>Date</th>
+                    <th>Work / Description</th>
+                    <th style={{ width: '80px', textAlign: 'right' }}>Amount ₹</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -1712,7 +1684,7 @@ export function WorkerKhataModal({
                   {vahiData.jamaRows.length === 0 && !vahiData.openingJamaRow ? (
                     <tr>
                       <td colSpan="4" style={{ textAlign: 'center', padding: '12px', color: '#64748b' }}>
-                        આ મહિનામાં કોઈ કામ નથી
+                        No work recorded this month
                       </td>
                     </tr>
                   ) : (
@@ -1720,7 +1692,7 @@ export function WorkerKhataModal({
                       <tr key={tx.id || idx}>
                         <td style={{ textAlign: 'center', color: '#64748b' }}>{idx + 1}</td>
                         <td>{tx.date ? String(tx.date).slice(8, 10) + '/' + String(tx.date).slice(5, 7) : '—'}</td>
-                        <td style={{ fontWeight: 600 }}>{tx.notes || 'મજૂરી કામ'}</td>
+                        <td style={{ fontWeight: 600 }}>{tx.notes || 'Work Done'}</td>
                         <td style={{ textAlign: 'right', fontWeight: 700, color: '#16a34a' }}>
                           ₹{(Number(tx.amount) || 0).toLocaleString('en-IN')}/-
                         </td>
@@ -1732,16 +1704,16 @@ export function WorkerKhataModal({
 
               <div className="pdf-col-footer">
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 900, fontSize: '11px', color: '#166534' }}>
-                  <span>ટોટલ મજૂરી કામ :</span>
+                  <span>Total Work (Jama):</span>
                   <span>₹{vahiData.totalJama.toLocaleString('en-IN')}/-</span>
                 </div>
               </div>
             </div>
 
-            {/* Right Column: ઉધાર (ઉપાડ - એડવાન્સ - રોકડા) */}
+            {/* Right Column: UDHAR (Upad / Advance) */}
             <div className="pdf-vahi-col-udhar">
               <div className="pdf-col-hdr">
-                <span>ઉધાર (ઉપાડ - એડવાન્સ - રોકડા)</span>
+                <span>UDHAR (Upad / Advance)</span>
                 <span>{(vahiData.openingUdharRow ? 1 : 0) + vahiData.udharRows.length} Entries</span>
               </div>
 
@@ -1749,13 +1721,13 @@ export function WorkerKhataModal({
                 <thead>
                   <tr>
                     <th style={{ width: '24px', textAlign: 'center' }}>#</th>
-                    <th style={{ width: '50px' }}>તારીખ</th>
-                    <th>વિગત (ઉપાડ / ચુકવણી)</th>
-                    <th style={{ width: '80px', textAlign: 'right' }}>રૂપિયા ₹</th>
+                    <th style={{ width: '50px' }}>Date</th>
+                    <th>Description</th>
+                    <th style={{ width: '80px', textAlign: 'right' }}>Amount ₹</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {/* Row 1: આગળ નો બાકી રહેલ ઉપાડ */}
+                  {/* Row 1: Previous Advance (B/F) */}
                   {vahiData.openingUdharRow && (
                     <tr className="pdf-vahi-bf-tr">
                       <td style={{ textAlign: 'center' }}>B/F</td>
@@ -1769,7 +1741,7 @@ export function WorkerKhataModal({
                   {vahiData.udharRows.length === 0 && !vahiData.openingUdharRow ? (
                     <tr>
                       <td colSpan="4" style={{ textAlign: 'center', padding: '12px', color: '#64748b' }}>
-                        આ મહિનામાં કોઈ ઉપાડ નથી
+                        No upad recorded this month
                       </td>
                     </tr>
                   ) : (
@@ -1780,7 +1752,7 @@ export function WorkerKhataModal({
                         </td>
                         <td>{tx.date ? String(tx.date).slice(8, 10) + '/' + String(tx.date).slice(5, 7) : '—'}</td>
                         <td style={{ fontWeight: 600 }}>
-                          {tx.notes || (tx.type === 'payment' ? 'ચુકવણી' : 'ઉપાડ')}
+                          {tx.notes || 'Upad (Advance)'}
                           {tx.payment_mode && tx.payment_mode !== 'Cash' ? ` (${tx.payment_mode})` : ''}
                         </td>
                         <td style={{ textAlign: 'right', fontWeight: 700, color: '#d97706' }}>
@@ -1795,20 +1767,20 @@ export function WorkerKhataModal({
               <div className="pdf-col-footer">
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '3px', fontSize: '10.5px' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 800 }}>
-                    <span>ટોટલ ઉપાડ :</span>
+                    <span>Total Upad:</span>
                     <span style={{ color: '#b45309' }}>₹{vahiData.totalUdhar.toLocaleString('en-IN')}/-</span>
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', color: '#64748b' }}>
-                    <span>- ટોટલ મજૂરી કામ :</span>
+                    <span>- Total Work (Jama):</span>
                     <span>- ₹{vahiData.totalJama.toLocaleString('en-IN')}/-</span>
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 900, fontSize: '12px', borderTop: '1px solid #cbd5e1', paddingTop: '3px' }}>
                     <span>
                       {vahiData.closingAdvance > 0
-                        ? 'બાકી રહેલ ઉપાડ :'
+                        ? 'Net Advance Due:'
                         : vahiData.closingAdvance < 0
-                        ? 'ચૂકવવાપાત્ર બાકી :'
-                        : 'હિસાબ સરભર :'}
+                        ? 'Due to Worker:'
+                        : 'Settled:'}
                     </span>
                     <span style={{ color: vahiData.closingAdvance > 0 ? '#dc2626' : '#16a34a' }}>
                       ₹{Math.abs(vahiData.closingAdvance).toLocaleString('en-IN')}/-
@@ -1823,19 +1795,19 @@ export function WorkerKhataModal({
           <div className="khata-pdf-sign-row" style={{ marginTop: '14px' }}>
             <div className="sign-col left-sign">
               <div className="sign-draw-line"></div>
-              <span className="sign-owner-lbl">કારીગર સહી / અંગૂઠો</span>
+              <span className="sign-owner-lbl">Worker Signature</span>
               <span className="sign-sub-lbl">({worker.name})</span>
             </div>
             <div className="sign-col right-sign">
               <div className="sign-draw-line"></div>
-              <span className="sign-owner-lbl">ઓથોરાઇઝ્ડ સહી</span>
+              <span className="sign-owner-lbl">Authorized Signatory</span>
               <span className="sign-sub-lbl">Faizan Body Works</span>
             </div>
           </div>
 
           <div className="khata-pdf-bottom-notice" style={{ marginTop: '10px' }}>
-            <span>Faizan Body Works • કારીગર ખાતાવહી • કમ્પ્યુટરાઇઝ્ડ લેજર સ્ટેટમેન્ટ</span>
-            <span className="pdf-page-num-tag">પાનું {vahiData.pageNo}</span>
+            <span>Faizan Body Works • Worker Khata Ledger • Computerized Statement</span>
+            <span className="pdf-page-num-tag">Page {vahiData.pageNo}</span>
           </div>
         </div>
       </div>
@@ -1875,7 +1847,7 @@ export function WorkerKhataModal({
                     <div className="khata-pdf-badge-col">
                       <div className="khata-pdf-statement-badge">
                         <span className="badge-eng">WORKER KHATA STATEMENT</span>
-                        <span className="badge-hin">કારીગર ખાતાવહી લેજર</span>
+                        <span className="badge-hin">ACCOUNT STATEMENT</span>
                       </div>
                     </div>
                   </div>
@@ -1883,25 +1855,25 @@ export function WorkerKhataModal({
                   <div className="khata-pdf-meta-card">
                     <div className="khata-meta-grid">
                       <div className="meta-item">
-                        <span className="meta-lbl">Worker Name (કારીગર):</span>
+                        <span className="meta-lbl">Worker Name:</span>
                         <span className="meta-val meta-worker-name">{worker.name}</span>
                       </div>
                       <div className="meta-item">
-                        <span className="meta-lbl">Mobile (મોબાઈલ):</span>
+                        <span className="meta-lbl">Mobile:</span>
                         <span className="meta-val">{worker.mobile || '—'}</span>
                       </div>
                       <div className="meta-item">
-                        <span className="meta-lbl">Statement Period (અવધિ):</span>
+                        <span className="meta-lbl">Period:</span>
                         <span className="meta-val meta-period-val">
                           {fromDate || toDate
-                            ? `${fromDate || 'Beginning'} થી ${toDate || 'આજ સુધી'}`
-                            : 'All Transactions (શરૂઆતથી આજ સુધી)'}
+                            ? `${fromDate || 'Beginning'} to ${toDate || 'Today'}`
+                            : 'All Transactions (Complete Ledger)'}
                         </span>
                       </div>
                       <div className="meta-item">
-                        <span className="meta-lbl">Generated On (તારીખ):</span>
+                        <span className="meta-lbl">Date:</span>
                         <span className="meta-val">
-                          {new Date().toLocaleDateString('gu-IN', {
+                          {new Date().toLocaleDateString('en-IN', {
                             day: 'numeric',
                             month: 'short',
                             year: 'numeric',
@@ -1911,24 +1883,19 @@ export function WorkerKhataModal({
                     </div>
                   </div>
 
-                  <div className="khata-pdf-kpi-row">
+                  <div className="khata-pdf-kpi-row" style={{ gridTemplateColumns: 'repeat(3, 1fr)' }}>
                     <div className="pdf-kpi-box box-salary">
-                      <span className="kpi-hdr">TOTAL WORK (કુલ કામ)</span>
+                      <span className="kpi-hdr">TOTAL WORK (JAMA)</span>
                       <span className="kpi-val">₹{effectiveSummary.total_salary.toLocaleString('en-IN')}</span>
                       <span className="kpi-desc">Total Earned</span>
                     </div>
                     <div className="pdf-kpi-box box-upad">
-                      <span className="kpi-hdr">TOTAL UPAD (ઉપાડ)</span>
+                      <span className="kpi-hdr">TOTAL UPAD (UDHAR)</span>
                       <span className="kpi-val">₹{effectiveSummary.total_upad.toLocaleString('en-IN')}</span>
                       <span className="kpi-desc">Total Advance</span>
                     </div>
-                    <div className="pdf-kpi-box box-payment">
-                      <span className="kpi-hdr">TOTAL PAID (ચુકવણી)</span>
-                      <span className="kpi-val">₹{effectiveSummary.total_paid.toLocaleString('en-IN')}</span>
-                      <span className="kpi-desc">Payment Settled</span>
-                    </div>
                     <div className={`pdf-kpi-box box-balance ${effectiveSummary.balance >= 0 ? 'due-pay' : 'due-adv'}`}>
-                      <span className="kpi-hdr">NET BALANCE (બાકી)</span>
+                      <span className="kpi-hdr">NET BALANCE</span>
                       <span className="kpi-val">₹{Math.abs(effectiveSummary.balance).toLocaleString('en-IN')}</span>
                       <span className="kpi-desc">
                         {effectiveSummary.balance > 0 ? 'Due to Worker' : effectiveSummary.balance < 0 ? 'Advance Due' : 'All Settled'}
@@ -1958,24 +1925,21 @@ export function WorkerKhataModal({
                       <th style={{ width: '105px' }}>Type</th>
                       <th>Work / Description / Notes</th>
                       <th style={{ width: '75px' }}>Mode</th>
-                      <th style={{ width: '85px', textAlign: 'right' }}>Work (+)</th>
-                      <th style={{ width: '85px', textAlign: 'right' }}>Upad (-)</th>
-                      <th style={{ width: '85px', textAlign: 'right' }}>Paid (-)</th>
+                      <th style={{ width: '85px', textAlign: 'right' }}>Jama (+)</th>
+                      <th style={{ width: '85px', textAlign: 'right' }}>Udhar (-)</th>
                     </tr>
                   </thead>
                   <tbody>
                     {page.rows.length === 0 ? (
                       <tr>
-                        <td colSpan="8" style={{ textAlign: 'center', padding: '16px', color: '#64748b' }}>
-                          કોઈ એન્ટ્રી મળી નથી (No transactions found)
+                        <td colSpan="7" style={{ textAlign: 'center', padding: '16px', color: '#64748b' }}>
+                          No transactions found
                         </td>
                       </tr>
                     ) : (
                       page.rows.map((tx, rIdx) => {
                         const globalIdx = (page.startIndex || 0) + rIdx + 1;
                         const isSalary = tx.type === 'salary';
-                        const isUpad = tx.type === 'upad';
-                        const isPayment = tx.type === 'payment';
                         const amt = Number(tx.amount) || 0;
 
                         return (
@@ -1984,7 +1948,7 @@ export function WorkerKhataModal({
                             <td style={{ fontWeight: 600, color: '#1e293b' }}>{tx.date || '—'}</td>
                             <td>
                               <span className={`pdf-pill-badge badge-${tx.type}`}>
-                                {isSalary ? 'Total Work' : isUpad ? 'Upad (Adv)' : 'Payment'}
+                                {isSalary ? 'Jama (Work)' : 'Udhar (Upad)'}
                               </span>
                             </td>
                             <td>
@@ -1996,11 +1960,8 @@ export function WorkerKhataModal({
                             <td style={{ textAlign: 'right', fontWeight: isSalary ? 700 : 400, color: isSalary ? '#16a34a' : '#cbd5e1' }}>
                               {isSalary ? `₹${amt.toLocaleString('en-IN')}` : '—'}
                             </td>
-                            <td style={{ textAlign: 'right', fontWeight: isUpad ? 700 : 400, color: isUpad ? '#d97706' : '#cbd5e1' }}>
-                              {isUpad ? `₹${amt.toLocaleString('en-IN')}` : '—'}
-                            </td>
-                            <td style={{ textAlign: 'right', fontWeight: isPayment ? 700 : 400, color: isPayment ? '#2563eb' : '#cbd5e1' }}>
-                              {isPayment ? `₹${amt.toLocaleString('en-IN')}` : '—'}
+                            <td style={{ textAlign: 'right', fontWeight: !isSalary ? 700 : 400, color: !isSalary ? '#d97706' : '#cbd5e1' }}>
+                              {!isSalary ? `₹${amt.toLocaleString('en-IN')}` : '—'}
                             </td>
                           </tr>
                         );
@@ -2019,9 +1980,6 @@ export function WorkerKhataModal({
                         <td style={{ textAlign: 'right', fontWeight: 800, color: '#d97706' }}>
                           ₹{effectiveSummary.total_upad.toLocaleString('en-IN')}
                         </td>
-                        <td style={{ textAlign: 'right', fontWeight: 800, color: '#2563eb' }}>
-                          ₹{effectiveSummary.total_paid.toLocaleString('en-IN')}
-                        </td>
                       </tr>
                     </tfoot>
                   )}
@@ -2032,13 +1990,13 @@ export function WorkerKhataModal({
                 <>
                   <div className="khata-pdf-settlement-callout">
                     <div className="settle-left">
-                      <span className="settle-title">Net Balance Status (અંતિમ હિસાબ):</span>
+                      <span className="settle-title">Net Balance Status:</span>
                       <span className="settle-desc">
                         {effectiveSummary.balance > 0
-                          ? `₹${effectiveSummary.balance.toLocaleString('en-IN')} કારીગરને આપવાના બાકી છે`
+                          ? `₹${effectiveSummary.balance.toLocaleString('en-IN')} Due to Worker`
                           : effectiveSummary.balance < 0
-                          ? `₹${Math.abs(effectiveSummary.balance).toLocaleString('en-IN')} એડવાન્સ કારીગર પર બાકી છે`
-                          : 'ખાતું પૂર્ણ સરભર છે (All Clear)'}
+                          ? `₹${Math.abs(effectiveSummary.balance).toLocaleString('en-IN')} Advance on Worker`
+                          : 'Account Settled (All Clear)'}
                       </span>
                     </div>
                     <div className="settle-right">
@@ -2049,12 +2007,12 @@ export function WorkerKhataModal({
                   <div className="khata-pdf-sign-row">
                     <div className="sign-col left-sign">
                       <div className="sign-draw-line"></div>
-                      <span className="sign-owner-lbl">કારીગર સહી / અંગૂઠો</span>
+                      <span className="sign-owner-lbl">Worker Signature</span>
                       <span className="sign-sub-lbl">({worker.name})</span>
                     </div>
                     <div className="sign-col right-sign">
                       <div className="sign-draw-line"></div>
-                      <span className="sign-owner-lbl">ઓથોરાઇઝ્ડ સહી</span>
+                      <span className="sign-owner-lbl">Authorized Signatory</span>
                       <span className="sign-sub-lbl">Faizan Body Works</span>
                     </div>
                   </div>

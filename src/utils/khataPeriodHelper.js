@@ -1,33 +1,33 @@
 /**
  * Helper to compute date ranges and monthly ledger pages for Khata system
- * Matching authentic Gujarati Khata Vahi (કારીગર ખાતાવહી - દેશી નામા પદ્ધતિ)
+ * Matching authentic Desi Nama Khata Vahi (English UI with standard Jama-Udhar ledger terms)
  */
 
-export const GUJARATI_MONTH_NAMES = [
-  'જાન્યુઆરી',
-  'ફેબ્રુઆરી',
-  'માર્ચ',
-  'એપ્રિલ',
-  'મે',
-  'જૂન',
-  'જુલાઈ',
-  'ઓગસ્ટ',
-  'સપ્ટેમ્બર',
-  'ઓક્ટોબર',
-  'નવેમ્બર',
-  'ડિસેમ્બર',
+export const MONTH_NAMES = [
+  'January',
+  'February',
+  'March',
+  'April',
+  'May',
+  'June',
+  'July',
+  'August',
+  'September',
+  'October',
+  'November',
+  'December',
 ];
 
-export function getGujaratiMonthName(monthNumber) {
+export function getMonthName(monthNumber) {
   const m = Number(monthNumber);
   if (m >= 1 && m <= 12) {
-    return GUJARATI_MONTH_NAMES[m - 1];
+    return MONTH_NAMES[m - 1];
   }
   return '';
 }
 
 /**
- * Format standard A/c No. shown in notebook (e.g. 1-9-2026, 1-10-2026)
+ * Format standard A/c No. shown in notebook (e.g. 1-9-2026, 1-10-2026, 1-11-2026)
  */
 export function formatKhataAccountNo(year, month) {
   return `1-${Number(month)}-${year}`;
@@ -48,12 +48,12 @@ export function getPeriodDateRange(period, customFrom = '', customTo = '') {
     const mStr = String(start.getMonth() + 1).padStart(2, '0');
     const startStr = `${yStr}-${mStr}-01`;
     const endStr = `${end.getFullYear()}-${String(end.getMonth() + 1).padStart(2, '0')}-${String(end.getDate()).padStart(2, '0')}`;
-    const monthName = getGujaratiMonthName(start.getMonth() + 1);
+    const monthName = getMonthName(start.getMonth() + 1);
     return {
       startDate: startStr,
       endDate: endStr,
-      label: `ચાલુ મહિનો (${monthName} ${year}) • 01/${mStr} થી ${end.getDate()}/${mStr}`,
-      shortLabel: `ચાલુ મહિનો (${monthName})`,
+      label: `Running Month (${monthName} ${year}) • 01/${mStr} to ${end.getDate()}/${mStr}`,
+      shortLabel: `Running Month (${monthName})`,
     };
   }
 
@@ -64,12 +64,12 @@ export function getPeriodDateRange(period, customFrom = '', customTo = '') {
     const mStr = String(start.getMonth() + 1).padStart(2, '0');
     const startStr = `${yStr}-${mStr}-01`;
     const endStr = `${end.getFullYear()}-${String(end.getMonth() + 1).padStart(2, '0')}-${String(end.getDate()).padStart(2, '0')}`;
-    const monthName = getGujaratiMonthName(start.getMonth() + 1);
+    const monthName = getMonthName(start.getMonth() + 1);
     return {
       startDate: startStr,
       endDate: endStr,
-      label: `ગયેલ મહિનો (${monthName} ${yStr}) • 01/${mStr} થી ${end.getDate()}/${mStr}`,
-      shortLabel: `ગયેલ મહિનો (${monthName})`,
+      label: `Last Month (${monthName} ${yStr}) • 01/${mStr} to ${end.getDate()}/${mStr}`,
+      shortLabel: `Last Month (${monthName})`,
     };
   }
 
@@ -77,8 +77,8 @@ export function getPeriodDateRange(period, customFrom = '', customTo = '') {
     return {
       startDate: customFrom || '',
       endDate: customTo || '',
-      label: customFrom && customTo ? `કસ્ટમ તારીખ: ${customFrom} થી ${customTo}` : 'કસ્ટમ તારીખ પસંદ કરો',
-      shortLabel: 'કસ્ટમ તારીખ',
+      label: customFrom && customTo ? `Custom Dates: ${customFrom} to ${customTo}` : 'Select Custom Dates',
+      shortLabel: 'Custom Dates',
     };
   }
 
@@ -86,8 +86,8 @@ export function getPeriodDateRange(period, customFrom = '', customTo = '') {
   return {
     startDate: '',
     endDate: '',
-    label: 'તમામ હિસાબ (શરૂઆતથી અત્યાર સુધી)',
-    shortLabel: 'તમામ હિસાબ',
+    label: 'All Time (Complete Ledger)',
+    shortLabel: 'All Time',
   };
 }
 
@@ -126,7 +126,7 @@ export function getAvailableKhataMonths(transactions = [], currentSelection = ''
     const [yStr, mStr] = key.split('-');
     const year = Number(yStr);
     const month = Number(mStr);
-    const monthName = getGujaratiMonthName(month);
+    const monthName = getMonthName(month);
     const accountNo = formatKhataAccountNo(year, month);
     const pageNo = month; // Matches notebook photo: Month 9 = Page 9, Month 10 = Page 10
 
@@ -137,7 +137,7 @@ export function getAvailableKhataMonths(transactions = [], currentSelection = ''
       pageNo,
       accountNo,
       monthName,
-      label: `${monthName} ${year} (ખાતા નં: ${accountNo} • પાનું ${pageNo})`,
+      label: `${monthName} ${year} (A/c: ${accountNo} • Page ${pageNo})`,
       shortLabel: `${monthName} ${year}`,
       isCurrent: key === currentMonthKey,
     };
@@ -147,10 +147,10 @@ export function getAvailableKhataMonths(transactions = [], currentSelection = ''
 /**
  * Compute the authentic 2-column Khata Vahi ledger for a given monthKey (YYYY-MM)
  *
- * Left Column: જમા (Jama / કામ - મજૂરી)
- * Right Column: ઉધાર (Udhar / ઉપાડ - એડવાન્સ - રોકડા)
+ * Left Column: JAMA (Work / Earnings)
+ * Right Column: UDHAR (Upad / Advance)
  *
- * First row of Udhar is automatically "આગળ નો બાકી રહેલ ઉપાડ" (Carried forward from previous month)
+ * First row of Udhar is automatically "Previous Advance (Carried Forward B/F)"
  */
 export function calculateMonthKhataVahi(transactions = [], monthKey = '') {
   if (!monthKey || !/^\d{4}-\d{2}$/.test(monthKey)) {
@@ -188,8 +188,8 @@ export function calculateMonthKhataVahi(transactions = [], monthKey = '') {
   });
 
   // Prior Advance = (priorUpad + priorPaid) - priorSalary
-  // If > 0, worker has net advance taken (આગળ નો બાકી રહેલ ઉપાડ)
-  // If < 0, workshop owes worker salary (આગળ ની જમા મજૂરી બાકી)
+  // If > 0, worker has net advance taken
+  // If < 0, workshop owes worker salary
   const priorAdvance = (priorUpad + priorPaid) - priorSalary;
 
   // 2. Current Month's Transactions
@@ -221,8 +221,8 @@ export function calculateMonthKhataVahi(transactions = [], monthKey = '') {
     // Normal case: Worker has advance carried forward in Udhar column
     openingUdharRow = {
       isOpeningBF: true,
-      label: 'આગળ નો બાકી રહેલ ઉપાડ',
-      sublabel: 'ગત મહિના માંથી કેરી ફોરવર્ડ (B/F)',
+      label: 'Previous Advance (B/F)',
+      sublabel: 'Auto Carried Forward from Last Month',
       amount: priorAdvance,
     };
     totalUdhar = priorAdvance + monthUpad;
@@ -231,8 +231,8 @@ export function calculateMonthKhataVahi(transactions = [], monthKey = '') {
     // Rare case: Worker has credit (Jama) carried forward in Jama column
     openingJamaRow = {
       isOpeningBF: true,
-      label: 'આગળ ની જમા મજૂરી બાકી',
-      sublabel: 'ગત મહિના માંથી કેરી ફોરવર્ડ (B/F)',
+      label: 'Previous Credit (B/F)',
+      sublabel: 'Auto Carried Forward from Last Month',
       amount: Math.abs(priorAdvance),
     };
     totalJama = Math.abs(priorAdvance) + monthSalary;
@@ -240,9 +240,9 @@ export function calculateMonthKhataVahi(transactions = [], monthKey = '') {
   }
 
   // Closing Balance: Net Advance to forward to next month
-  // positive = બાકી રહેલ ઉપાડ (Worker owes advance)
-  // negative = કારીગરને ચૂકવવાપાત્ર (Workshop owes worker)
-  // 0 = હિસાબ સરભર (Settled)
+  // positive = Advance on Worker
+  // negative = Due to Worker
+  // 0 = Settled
   const closingAdvance = totalUdhar - totalJama;
 
   return {
@@ -251,7 +251,7 @@ export function calculateMonthKhataVahi(transactions = [], monthKey = '') {
     month,
     pageNo: month,
     accountNo: formatKhataAccountNo(year, month),
-    monthName: getGujaratiMonthName(month),
+    monthName: getMonthName(month),
     startDate: startDateStr,
     endDate: endDateStr,
     priorAdvance,
