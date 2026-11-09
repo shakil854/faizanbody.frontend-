@@ -44,7 +44,25 @@ export function TruckAccountModal({
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
   const [pdfToast, setPdfToast] = useState('');
 
+  // Form input refs for Enter & Arrow Key field navigation
   const amountInputRef = useRef(null);
+  const dateInputRef = useRef(null);
+  const particularsInputRef = useRef(null);
+  const paymentModeRef = useRef(null);
+  const jamaTabRef = useRef(null);
+  const udharTabRef = useRef(null);
+
+  // Switch to Jama (Side Arrow Left / Tab)
+  const switchToJama = useCallback(() => {
+    setEntryType('jama');
+    setParticulars((prev) => (!prev || prev === 'ગાડી ની કિંમત' ? 'રોકડા જમા' : prev));
+  }, []);
+
+  // Switch to Udhar (Side Arrow Right / Tab)
+  const switchToUdhar = useCallback(() => {
+    setEntryType('udhar');
+    setParticulars((prev) => (!prev || prev === 'રોકડા જમા' ? 'ગાડી ની કિંમત' : prev));
+  }, []);
 
   const fetchAccountData = useCallback(async () => {
     if (!accountId) return;
@@ -456,27 +474,60 @@ export function TruckAccountModal({
                 </div>
               )}
 
-              <form onSubmit={handleSaveEntry} className="khata-entry-form">
+              <form
+                onSubmit={handleSaveEntry}
+                className="khata-entry-form"
+                onKeyDown={(e) => {
+                  if (e.altKey && e.key === 'ArrowLeft') {
+                    e.preventDefault();
+                    switchToJama();
+                    jamaTabRef.current?.focus();
+                  } else if (e.altKey && e.key === 'ArrowRight') {
+                    e.preventDefault();
+                    switchToUdhar();
+                    udharTabRef.current?.focus();
+                  }
+                }}
+              >
+                {/* 2 Tabs: Left = Jama, Right = Udhar (Navigable with Side Arrows) */}
                 <div className="entry-type-selector" style={{ gridTemplateColumns: '1fr 1fr' }}>
                   <button
+                    ref={jamaTabRef}
                     type="button"
                     className={`entry-type-tab tab-salary ${entryType === 'jama' ? 'active' : ''}`}
-                    onClick={() => {
-                      setEntryType('jama');
-                      setParticulars('રોકડા જમા');
+                    onClick={switchToJama}
+                    onKeyDown={(e) => {
+                      if (e.key === 'ArrowRight') {
+                        e.preventDefault();
+                        switchToUdhar();
+                        udharTabRef.current?.focus();
+                      } else if (e.key === 'Enter' || e.key === 'ArrowDown') {
+                        e.preventDefault();
+                        amountInputRef.current?.focus();
+                      }
                     }}
+                    title="Press Left Arrow (◀) to switch to Jama"
                   >
-                    💰 Jama (રોકડા / Received)
+                    💰 ◀ Jama (રોકડા / Received)
                   </button>
                   <button
+                    ref={udharTabRef}
                     type="button"
                     className={`entry-type-tab tab-upad ${entryType === 'udhar' ? 'active' : ''}`}
-                    onClick={() => {
-                      setEntryType('udhar');
-                      setParticulars('ગાડી ની કિંમત');
+                    onClick={switchToUdhar}
+                    onKeyDown={(e) => {
+                      if (e.key === 'ArrowLeft') {
+                        e.preventDefault();
+                        switchToJama();
+                        jamaTabRef.current?.focus();
+                      } else if (e.key === 'Enter' || e.key === 'ArrowDown') {
+                        e.preventDefault();
+                        amountInputRef.current?.focus();
+                      }
                     }}
+                    title="Press Right Arrow (▶) to switch to Udhar"
                   >
-                    ⚡ Udhar (ગાડી ની કિંમત / Bill)
+                    ⚡ Udhar (ગાડી ની કિંમત / Bill) ▶
                   </button>
                 </div>
 
@@ -491,7 +542,10 @@ export function TruckAccountModal({
                         <button
                           key={sug}
                           type="button"
-                          onClick={() => setParticulars(sug)}
+                          onClick={() => {
+                            setParticulars(sug);
+                            amountInputRef.current?.focus();
+                          }}
                           style={{
                             background: particulars === sug ? '#ea580c' : '#fff7ed',
                             color: particulars === sug ? '#fff' : '#c2410c',
@@ -513,7 +567,10 @@ export function TruckAccountModal({
                         <button
                           key={sug}
                           type="button"
-                          onClick={() => setParticulars(sug)}
+                          onClick={() => {
+                            setParticulars(sug);
+                            amountInputRef.current?.focus();
+                          }}
                           style={{
                             background: particulars === sug ? '#16a34a' : '#f0fdf4',
                             color: particulars === sug ? '#fff' : '#15803d',
@@ -533,6 +590,7 @@ export function TruckAccountModal({
                 </div>
 
                 <div className="entry-inputs-grid">
+                  {/* Amount Input with Enter & Arrow Key Navigation */}
                   <div className="form-group">
                     <label className="form-label">Amount (₹) *</label>
                     <div className="input-with-icon">
@@ -544,43 +602,104 @@ export function TruckAccountModal({
                         placeholder="e.g. 100000"
                         value={amount}
                         onChange={(e) => setAmount(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' || e.key === 'ArrowDown') {
+                            e.preventDefault();
+                            dateInputRef.current?.focus();
+                          } else if (e.key === 'ArrowLeft') {
+                            // Side arrow left: switches to Jama if at start of input
+                            if (!amount || e.target.selectionStart === 0 || e.altKey) {
+                              e.preventDefault();
+                              switchToJama();
+                              jamaTabRef.current?.focus();
+                            }
+                          } else if (e.key === 'ArrowRight') {
+                            // Side arrow right: switches to Udhar if at end of input
+                            if (!amount || e.target.selectionEnd === String(amount).length || e.altKey) {
+                              e.preventDefault();
+                              switchToUdhar();
+                              udharTabRef.current?.focus();
+                            }
+                          } else if (e.key === 'ArrowUp') {
+                            e.preventDefault();
+                            if (entryType === 'jama') {
+                              jamaTabRef.current?.focus();
+                            } else {
+                              udharTabRef.current?.focus();
+                            }
+                          }
+                        }}
                         required
                         min="1"
                         step="any"
+                        autoFocus
                       />
                     </div>
                   </div>
 
+                  {/* Date Input with Enter & Arrow Key Navigation */}
                   <div className="form-group">
                     <label className="form-label">Date (તારીખ) *</label>
                     <input
+                      ref={dateInputRef}
                       type="date"
                       className="form-input date-input"
                       value={date}
                       onChange={(e) => setDate(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === 'ArrowDown') {
+                          e.preventDefault();
+                          particularsInputRef.current?.focus();
+                        } else if (e.key === 'ArrowUp') {
+                          e.preventDefault();
+                          amountInputRef.current?.focus();
+                        }
+                      }}
                       required
                     />
                   </div>
                 </div>
 
                 <div className="entry-inputs-grid">
+                  {/* Particulars with Enter & Arrow Key Navigation */}
                   <div className="form-group">
                     <label className="form-label">Particulars / Details (વિગત)</label>
                     <input
+                      ref={particularsInputRef}
                       type="text"
                       className="form-input"
                       placeholder={entryType === 'jama' ? 'e.g. રોકડા જમા' : 'e.g. ગાડી ની કિંમત / ગેરેજ ખર્ચ'}
                       value={particulars}
                       onChange={(e) => setParticulars(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === 'ArrowDown') {
+                          e.preventDefault();
+                          paymentModeRef.current?.focus();
+                        } else if (e.key === 'ArrowUp') {
+                          e.preventDefault();
+                          dateInputRef.current?.focus();
+                        }
+                      }}
                     />
                   </div>
 
+                  {/* Payment Mode with Enter to Submit */}
                   <div className="form-group">
                     <label className="form-label">Payment Mode</label>
                     <select
+                      ref={paymentModeRef}
                       className="form-input select-mode"
                       value={paymentMode}
                       onChange={(e) => setPaymentMode(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault();
+                          handleSaveEntry(e);
+                        } else if (e.key === 'ArrowUp') {
+                          e.preventDefault();
+                          particularsInputRef.current?.focus();
+                        }
+                      }}
                     >
                       <option value="Cash">Cash (રોકડ)</option>
                       <option value="Online/UPI">Online / UPI / PhonePe</option>
@@ -604,7 +723,7 @@ export function TruckAccountModal({
                     className="btn btn-primary"
                     disabled={isSubmitting}
                   >
-                    {isSubmitting ? 'Saving...' : editingEntry ? 'Update Entry' : 'Save Entry'}
+                    {isSubmitting ? 'Saving...' : editingEntry ? 'Update Entry (Enter ↵)' : 'Save Entry (Enter ↵)'}
                   </button>
                 </div>
               </form>

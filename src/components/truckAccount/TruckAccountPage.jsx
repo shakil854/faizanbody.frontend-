@@ -3,6 +3,7 @@ import { truckAccountService } from '../../services/truckAccountService';
 import { TruckAccountCard } from './TruckAccountCard';
 import { TruckAccountFormModal } from './TruckAccountFormModal';
 import { Snackbar } from '../workers/Snackbar';
+import { useAuth } from '../../context/AuthContext';
 
 /**
  * Main Truck Account Page (ગાડી વાળા નું ખાતાવહી)
@@ -11,6 +12,13 @@ import { Snackbar } from '../workers/Snackbar';
  * STRICT RULE: No Account No.!
  */
 export function TruckAccountPage({ onBackToHome, onNavigate }) {
+  const { isAdmin, hasPermission } = useAuth();
+  const canCreate = isAdmin || hasPermission('truck_accounts:create') || hasPermission('workers:create');
+  const canEdit = isAdmin || hasPermission('truck_accounts:edit') || hasPermission('workers:edit');
+  const canDelete = isAdmin || hasPermission('truck_accounts:delete') || hasPermission('workers:delete');
+  const canKhata = isAdmin || hasPermission('truck_accounts:khata') || hasPermission('workers:khata');
+  const canPrint = isAdmin || hasPermission('truck_accounts:print') || hasPermission('workers:print');
+
   const [accounts, setAccounts] = useState(() => truckAccountService.getCachedAccounts());
   const [loading, setLoading] = useState(() => truckAccountService.getCachedAccounts().length === 0);
   const [searchQuery, setSearchQuery] = useState('');
@@ -170,17 +178,19 @@ export function TruckAccountPage({ onBackToHome, onNavigate }) {
           </div>
         </div>
 
-        <button
-          type="button"
-          className="btn btn-primary"
-          style={{ padding: '0.45rem 0.95rem', fontSize: '0.82rem', fontWeight: 800, borderRadius: '20px' }}
-          onClick={() => {
-            setEditingAccount(null);
-            setIsFormOpen(true);
-          }}
-        >
-          ＋ New Account
-        </button>
+        {canCreate && (
+          <button
+            type="button"
+            className="btn btn-primary"
+            style={{ padding: '0.45rem 0.95rem', fontSize: '0.82rem', fontWeight: 800, borderRadius: '20px' }}
+            onClick={() => {
+              setEditingAccount(null);
+              setIsFormOpen(true);
+            }}
+          >
+            ＋ New Account
+          </button>
+        )}
       </div>
 
       <main className="android-body" style={{ padding: '0.85rem 1rem 5rem' }}>
@@ -308,6 +318,10 @@ export function TruckAccountPage({ onBackToHome, onNavigate }) {
                 <TruckAccountCard
                   key={acc.id}
                   account={acc}
+                  canEdit={canEdit}
+                  canDelete={canDelete}
+                  canManageKhata={canKhata}
+                  canPrint={canPrint}
                   onEdit={(item) => {
                     setEditingAccount(item);
                     setIsFormOpen(true);
@@ -322,35 +336,37 @@ export function TruckAccountPage({ onBackToHome, onNavigate }) {
       </main>
 
       {/* Floating Action Button */}
-      <button
-        type="button"
-        className="worker-fab-btn"
-        title="Add New Truck Account"
-        onClick={() => {
-          setEditingAccount(null);
-          setIsFormOpen(true);
-        }}
-        style={{
-          position: 'fixed',
-          bottom: '5.5rem',
-          right: '1.25rem',
-          width: '54px',
-          height: '54px',
-          borderRadius: '50%',
-          background: 'linear-gradient(135deg, #0284c7, #0369a1)',
-          color: '#ffffff',
-          border: 'none',
-          boxShadow: '0 4px 14px rgba(2, 132, 199, 0.45)',
-          fontSize: '1.6rem',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          cursor: 'pointer',
-          zIndex: 90,
-        }}
-      >
-        ＋
-      </button>
+      {canCreate && (
+        <button
+          type="button"
+          className="worker-fab-btn"
+          title="Add New Truck Account"
+          onClick={() => {
+            setEditingAccount(null);
+            setIsFormOpen(true);
+          }}
+          style={{
+            position: 'fixed',
+            bottom: '5.5rem',
+            right: '1.25rem',
+            width: '54px',
+            height: '54px',
+            borderRadius: '50%',
+            background: 'linear-gradient(135deg, #0284c7, #0369a1)',
+            color: '#ffffff',
+            border: 'none',
+            boxShadow: '0 4px 14px rgba(2, 132, 199, 0.45)',
+            fontSize: '1.6rem',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            cursor: 'pointer',
+            zIndex: 90,
+          }}
+        >
+          ＋
+        </button>
+      )}
 
       {/* Form Modal (Create or Edit) */}
       <TruckAccountFormModal
