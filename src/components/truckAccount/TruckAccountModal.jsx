@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { truckAccountService } from '../../services/truckAccountService';
-import { sharePdfFile, downloadPdfFile } from '../../utils/pdfGenerator';
+import { downloadPdfFile } from '../../utils/pdfGenerator';
 
 /**
  * Authentic Five Star 2-Column Truck Account Ledger Sheet (ગાડી વાળા નું ખાતાવહી)
@@ -8,6 +8,7 @@ import { sharePdfFile, downloadPdfFile } from '../../utils/pdfGenerator';
  * Left Column: જ. (JAMA - Payment Received)
  * Right Column: ઉ. (UDHAR - Vehicle Cost & Expenses)
  * Bottom Settlement: Total Bill - Total Jama = Baki (બાકી)
+ * 100% Responsive on Mobile, Tablet, and PC
  * STRICT RULE: NO Account No. field!
  */
 export function TruckAccountModal({
@@ -16,6 +17,8 @@ export function TruckAccountModal({
   accountId,
   initialAccount = null,
   onAccountChanged,
+  canManage = true,
+  canPrint = true,
 }) {
   const [loading, setLoading] = useState(true);
   const [account, setAccount] = useState(initialAccount);
@@ -248,12 +251,15 @@ export function TruckAccountModal({
       setPdfToast('Generating PDF...');
       const element = document.getElementById('printableTruckAccountSheet');
       if (!element) {
-        setPdfToast('Could not find printable element');
+        setPdfToast('Could not find printable sheet');
         return;
       }
       const pName = (account?.party_name || 'Truck_Account').replace(/[^a-zA-Z0-9_-]/g, '_');
       const filename = `Truck_Khata_${pName}_Page_${account?.page_no || '1'}`;
-      await downloadPdfFile('printableTruckAccountSheet', filename);
+      await downloadPdfFile({
+        elementId: 'printableTruckAccountSheet',
+        fileName: filename,
+      });
       setPdfToast('PDF downloaded successfully!');
       setTimeout(() => setPdfToast(''), 3000);
     } catch (err) {
@@ -268,81 +274,153 @@ export function TruckAccountModal({
   if (!isOpen) return null;
 
   return (
-    <div className="modal-backdrop-luxury animate-fade-in" onClick={onClose}>
-      <div
-        className="modal-luxury-card animate-scale-up khata-modal-fullscreen"
-        onClick={(e) => e.stopPropagation()}
-      >
-        {/* Modal Top App Bar */}
-        <div className="khata-modal-top-bar">
-          <div className="top-bar-left">
-            <span className="khata-app-pill-icon">🚛</span>
-            <div>
-              <div className="khata-title-row">
-                <h3 className="khata-modal-title">
-                  {account?.party_name || 'Truck Account'}
-                </h3>
-                {account?.page_no && (
-                  <span className="khata-page-tag">
-                    Page {account.page_no}
-                  </span>
-                )}
-              </div>
-              <p className="khata-modal-subtitle">
-                {account?.truck_no ? `Truck: ${account.truck_no}` : 'Vehicle Customer Khata (ગાડી વાળા નું ખાતાવહી)'}
-                {account?.phone ? ` • 📞 ${account.phone}` : ''}
-              </p>
-            </div>
+    <>
+      <div className="modal-backdrop" onClick={onClose}>
+        <div
+          className="android-bottom-sheet luxury-bottom-sheet luxury-khata-sheet"
+          onClick={(e) => e.stopPropagation()}
+          role="dialog"
+          aria-modal="true"
+        >
+          {/* Mobile Handle */}
+          <div className="sheet-handle-bar">
+            <div className="sheet-handle"></div>
           </div>
 
-          <button
-            type="button"
-            className="btn-modal-close"
-            onClick={onClose}
-            aria-label="Close"
-          >
-            ✕
-          </button>
-        </div>
+          {/* Sheet Header */}
+          <div className="sheet-header khata-sheet-header">
+            <div className="sheet-title-group">
+              <div
+                className="sheet-icon-squircle khata-header-icon"
+                style={{ background: '#e0f2fe', borderColor: '#bae6fd' }}
+              >
+                <span style={{ fontSize: '1.25rem' }}>🚛</span>
+              </div>
+              <div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+                  <h3 className="sheet-title" style={{ margin: 0 }}>
+                    {account?.party_name || 'Truck Account'}
+                  </h3>
+                  {account?.page_no && (
+                    <span
+                      style={{
+                        fontSize: '0.68rem',
+                        fontWeight: 800,
+                        background: '#fee2e2',
+                        color: '#991b1b',
+                        padding: '0.12rem 0.5rem',
+                        borderRadius: '8px',
+                        border: '1px solid #fecaca',
+                      }}
+                    >
+                      PAGE {account.page_no}
+                    </span>
+                  )}
+                </div>
+                <p className="sheet-subtitle">
+                  {account?.truck_no ? `Truck: ${account.truck_no} • ` : ''}
+                  {account?.phone ? `📞 ${account.phone} • ` : ''}
+                  Vehicle Khata Ledger (ગાડી વાળા નું ખાતાવહી)
+                </p>
+              </div>
+            </div>
 
-        {/* Action Ribbon & Quick Buttons */}
-        <div className="khata-modal-body-scroll">
-          <div className="khata-action-ribbon">
             <button
               type="button"
-              className="btn-khata-action btn-add-jama"
-              onClick={handleOpenAddJama}
+              className="sheet-close-btn"
+              onClick={onClose}
+              aria-label="Close"
             >
-              <span>+</span>
-              <span>💰 + Jama (રોકડા જમા)</span>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+                <line x1="18" y1="6" x2="6" y2="18" />
+                <line x1="6" y1="6" x2="18" y2="18" />
+              </svg>
             </button>
+          </div>
 
+          {/* Action Bar (Add Jama, Add Udhar, WhatsApp Share, Download PDF) */}
+          <div className="khata-action-bar">
+            {canManage && (
+              <>
+                <button
+                  type="button"
+                  className="btn btn-add-entry-toggle btn-vahi-action-jama"
+                  onClick={handleOpenAddJama}
+                >
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+                    <line x1="12" y1="5" x2="12" y2="19" />
+                    <line x1="5" y1="12" x2="19" y2="12" />
+                  </svg>
+                  <span>+ Jama (રકમ જમા)</span>
+                </button>
+
+                <button
+                  type="button"
+                  className="btn btn-add-entry-toggle btn-vahi-action-udhar"
+                  onClick={handleOpenAddUdhar}
+                >
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+                    <line x1="12" y1="5" x2="12" y2="19" />
+                    <line x1="5" y1="12" x2="19" y2="12" />
+                  </svg>
+                  <span>+ Udhar (ગાડી ખર્ચ/બિલ)</span>
+                </button>
+              </>
+            )}
+
+            {canPrint && (
+              <>
+                <button
+                  type="button"
+                  className="btn btn-whatsapp-share"
+                  onClick={handleShareWhatsApp}
+                  title="Share Statement on WhatsApp"
+                >
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" />
+                  </svg>
+                  <span>Share WhatsApp</span>
+                </button>
+
+                <button
+                  type="button"
+                  className="btn btn-download-pdf-icon"
+                  onClick={handleDownloadPdf}
+                  disabled={isGeneratingPdf}
+                  title="Download PDF"
+                >
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                    <polyline points="7 10 12 15 17 10" />
+                    <line x1="12" y1="15" x2="12" y2="3" />
+                  </svg>
+                </button>
+              </>
+            )}
+          </div>
+
+          {/* Mobile Column View Switcher (Only visible on Mobile screens < 768px) */}
+          <div className="vahi-mobile-tabs-bar">
             <button
               type="button"
-              className="btn-khata-action btn-add-udhar"
-              onClick={handleOpenAddUdhar}
+              className={`vahi-mob-tab ${mobileTab === 'both' ? 'active' : ''}`}
+              onClick={() => setMobileTab('both')}
             >
-              <span>+</span>
-              <span>⚡ + Udhar (ગાડી ની કિંમત / ખર્ચ)</span>
+              📜 Both (જમા + ઉધાર)
             </button>
-
             <button
               type="button"
-              className="btn-khata-action btn-share-pdf"
-              onClick={handleShareWhatsApp}
+              className={`vahi-mob-tab tab-mob-jama ${mobileTab === 'jama' ? 'active' : ''}`}
+              onClick={() => setMobileTab('jama')}
             >
-              <span>💬</span>
-              <span>Share WhatsApp</span>
+              💰 Jama ({jamaRows.length})
             </button>
-
             <button
               type="button"
-              className="btn-khata-action btn-download-pdf"
-              onClick={handleDownloadPdf}
-              disabled={isGeneratingPdf}
+              className={`vahi-mob-tab tab-mob-udhar ${mobileTab === 'udhar' ? 'active' : ''}`}
+              onClick={() => setMobileTab('udhar')}
             >
-              <span>📥</span>
-              <span>{isGeneratingPdf ? 'PDF...' : 'Download PDF'}</span>
+              ⚡ Udhar ({udharRows.length})
             </button>
           </div>
 
@@ -352,9 +430,9 @@ export function TruckAccountModal({
             </div>
           )}
 
-          {/* Add / Edit Entry Form (Strictly 2 Tabs: Jama & Udhar) */}
+          {/* Expandable Add / Edit Entry Form (STRICTLY 2 OPTIONS: Jama & Udhar) */}
           {showAddForm && (
-            <div className="khata-add-entry-box animate-fade-in" style={{ margin: '0.75rem 0' }}>
+            <div className="khata-add-entry-box" style={{ marginBottom: '0.85rem' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.65rem' }}>
                 <h4 className="entry-box-title" style={{ margin: 0 }}>
                   {editingEntry
@@ -379,7 +457,6 @@ export function TruckAccountModal({
               )}
 
               <form onSubmit={handleSaveEntry} className="khata-entry-form">
-                {/* 2-Option Selector */}
                 <div className="entry-type-selector" style={{ gridTemplateColumns: '1fr 1fr' }}>
                   <button
                     type="button"
@@ -405,7 +482,7 @@ export function TruckAccountModal({
 
                 {/* Quick Suggestion Chips */}
                 <div style={{ margin: '0.35rem 0 0.65rem' }}>
-                  <span style={{ fontSize: '0.7rem', color: '#64748b', fontWeight: 700, marginRight: '0.4rem' }}>
+                  <span style={{ fontSize: '0.72rem', color: '#64748b', fontWeight: 700, marginRight: '0.4rem' }}>
                     Quick Select:
                   </span>
                   {entryType === 'udhar' ? (
@@ -456,7 +533,6 @@ export function TruckAccountModal({
                 </div>
 
                 <div className="entry-inputs-grid">
-                  {/* Amount */}
                   <div className="form-group">
                     <label className="form-label">Amount (₹) *</label>
                     <div className="input-with-icon">
@@ -475,7 +551,6 @@ export function TruckAccountModal({
                     </div>
                   </div>
 
-                  {/* Date */}
                   <div className="form-group">
                     <label className="form-label">Date (તારીખ) *</label>
                     <input
@@ -489,7 +564,6 @@ export function TruckAccountModal({
                 </div>
 
                 <div className="entry-inputs-grid">
-                  {/* Particulars */}
                   <div className="form-group">
                     <label className="form-label">Particulars / Details (વિગત)</label>
                     <input
@@ -501,7 +575,6 @@ export function TruckAccountModal({
                     />
                   </div>
 
-                  {/* Payment Mode */}
                   <div className="form-group">
                     <label className="form-label">Payment Mode</label>
                     <select
@@ -509,9 +582,9 @@ export function TruckAccountModal({
                       value={paymentMode}
                       onChange={(e) => setPaymentMode(e.target.value)}
                     >
-                      <option value="Cash">Cash (રોકડા)</option>
+                      <option value="Cash">Cash (રોકડ)</option>
+                      <option value="Online/UPI">Online / UPI / PhonePe</option>
                       <option value="Bank">Bank Transfer (NEFT/RTGS)</option>
-                      <option value="UPI">UPI / GPay / PhonePe</option>
                       <option value="Cheque">Cheque (ચેક)</option>
                     </select>
                   </div>
@@ -528,180 +601,111 @@ export function TruckAccountModal({
                   </button>
                   <button
                     type="submit"
-                    className={`btn ${entryType === 'jama' ? 'btn-save-salary' : 'btn-save-upad'}`}
+                    className="btn btn-primary"
                     disabled={isSubmitting}
                   >
-                    {isSubmitting ? 'Saving...' : editingEntry ? 'Save Changes' : `Save ${entryType === 'jama' ? 'Jama' : 'Udhar'}`}
+                    {isSubmitting ? 'Saving...' : editingEntry ? 'Update Entry' : 'Save Entry'}
                   </button>
                 </div>
               </form>
             </div>
           )}
 
-          {/* Mobile Tab Switcher (<768px screens) */}
-          <div className="vahi-mobile-tabs-bar">
-            <button
-              type="button"
-              className={`vahi-mobile-tab ${mobileTab === 'both' ? 'active' : ''}`}
-              onClick={() => setMobileTab('both')}
-            >
-              📜 Both Columns
-            </button>
-            <button
-              type="button"
-              className={`vahi-mobile-tab tab-mobile-jama ${mobileTab === 'jama' ? 'active' : ''}`}
-              onClick={() => setMobileTab('jama')}
-            >
-              💰 Jama ({jamaRows.length})
-            </button>
-            <button
-              type="button"
-              className={`vahi-mobile-tab tab-mobile-udhar ${mobileTab === 'udhar' ? 'active' : ''}`}
-              onClick={() => setMobileTab('udhar')}
-            >
-              ⚡ Udhar ({udharRows.length})
-            </button>
-          </div>
-
-          {/* ====================================================================
-              AUTHENTIC PHYSICAL NOTEBOOK LEDGER SHEET
-              Matches Five Star physical book layout
-              ==================================================================== */}
-          <div
-            id="printableTruckAccountSheet"
-            className={`luxury-khata-sheet mobile-tab-${mobileTab}`}
-          >
-            {/* Physical Notebook Header (NO Account No.!) */}
-            <div className="vahi-header-row" style={{ borderBottom: '2px solid #334155', paddingBottom: '0.85rem' }}>
-              {/* Page Number Box (Top-Left, matching '54' in notebook!) */}
-              <div
-                style={{
-                  minWidth: '55px',
-                  height: '55px',
-                  border: '2.5px solid #1e293b',
-                  borderRadius: '12px',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  background: '#f8fafc',
-                  padding: '0.2rem',
-                }}
-              >
-                <span style={{ fontSize: '0.62rem', fontWeight: 800, color: '#64748b', textTransform: 'uppercase' }}>
-                  PAGE
-                </span>
-                <span style={{ fontSize: '1.4rem', fontWeight: 900, color: '#0f172a', lineHeight: 1 }}>
-                  {account?.page_no || '—'}
+          {/* 2-COLUMN AUTHENTIC KHATA VAHI NOTEBOOK SHEET */}
+          <div className="khata-vahi-sheet-container" id="printableTruckAccountSheet">
+            {/* Notebook Header Strip (NO Account No.!) */}
+            <div className="khata-vahi-header-strip">
+              <div className="vahi-header-left">
+                <span className="vahi-worker-title">Name / નામ: {account?.party_name}</span>
+                <span className="vahi-ac-subtitle">
+                  {account?.truck_no ? `Truck: ${account.truck_no} • ` : ''}
+                  {account?.phone ? `Phone: ${account.phone} • ` : ''}
+                  {account?.address ? `City: ${account.address}` : 'Vehicle Customer Khata'}
                 </span>
               </div>
 
-              {/* Center / Right Details (Name, Address, Phone, Truck No.) */}
-              <div style={{ flex: 1, paddingLeft: '1rem' }}>
-                <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.5rem', flexWrap: 'wrap', borderBottom: '1px dashed #cbd5e1', paddingBottom: '0.35rem', marginBottom: '0.35rem' }}>
-                  <span style={{ fontSize: '0.85rem', fontWeight: 800, color: '#475569' }}>
-                    Name / નામ:
-                  </span>
-                  <span style={{ fontSize: '1.25rem', fontWeight: 900, color: '#0f172a' }}>
-                    {account?.party_name}
-                  </span>
-                  {account?.truck_no && (
-                    <span style={{ fontSize: '0.85rem', fontWeight: 800, background: '#dbeafe', color: '#1e40af', padding: '0.1rem 0.5rem', borderRadius: '12px' }}>
-                      🚛 {account.truck_no}
-                    </span>
-                  )}
-                </div>
-
-                <div style={{ display: 'flex', gap: '1.5rem', flexWrap: 'wrap', fontSize: '0.8rem', color: '#475569' }}>
-                  {account?.address && (
-                    <div>
-                      <strong style={{ color: '#64748b' }}>Address / સરનામું:</strong> {account.address}
-                    </div>
-                  )}
-                  {account?.phone && (
-                    <div>
-                      <strong style={{ color: '#64748b' }}>Phone:</strong> {account.phone}
-                    </div>
-                  )}
-                </div>
+              <div className="vahi-page-stamp">
+                <span className="vahi-page-stamp-lbl">PAGE</span>
+                <span className="vahi-page-stamp-num">{account?.page_no || '—'}</span>
               </div>
             </div>
 
-            {/* Two Column Layout (Left: Jama, Right: Udhar) */}
-            <div className="vahi-two-columns-grid">
-              {/* ========================================================
-                  LEFT COLUMN: જ. (JAMA - Received / Payment)
-                  ======================================================== */}
-              <div className="vahi-column vahi-column-jama">
-                <div className="vahi-column-title-bar bar-jama">
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                    <span style={{ fontSize: '1.2rem', fontWeight: 900 }}>જ.</span>
-                    <span style={{ fontSize: '0.9rem', fontWeight: 800 }}>JAMA (રકમ જમા)</span>
+            {/* 2 Columns Grid: Left = JAMA (જ.) | Right = UDHAR (ઉ.) */}
+            <div className="khata-vahi-grid">
+              {/* LEFT COLUMN: જ. (JAMA - Payment Received) */}
+              <div className={`khata-vahi-col col-jama ${mobileTab === 'udhar' ? 'mobile-hidden' : ''}`}>
+                <div className="vahi-col-top">
+                  <div className="vahi-col-title-group">
+                    <span className="vahi-col-heading">જ. JAMA (રકમ જમા)</span>
+                    <span className="vahi-col-count-badge">{jamaRows.length} items</span>
                   </div>
-                  <button
-                    type="button"
-                    className="btn-col-quick-add"
-                    onClick={handleOpenAddJama}
-                    title="Add Jama Entry"
-                  >
-                    + ઉમેરો
-                  </button>
+                  {canManage && (
+                    <button
+                      type="button"
+                      className="btn-vahi-add-entry"
+                      onClick={handleOpenAddJama}
+                    >
+                      + ઉમેરો
+                    </button>
+                  )}
                 </div>
 
-                <div className="vahi-table-wrapper">
+                <div className="vahi-table-wrap">
                   <table className="vahi-table">
                     <thead>
                       <tr>
-                        <th style={{ width: '45px' }}>#</th>
-                        <th style={{ width: '75px' }}>તારીખ</th>
+                        <th style={{ width: '28px', textAlign: 'center' }}>#</th>
+                        <th style={{ width: '56px' }}>તારીખ</th>
                         <th>PARTICULARS (વિગત)</th>
-                        <th style={{ textAlign: 'right', width: '110px' }}>રૂપિયા ₹</th>
-                        <th style={{ width: '65px', textAlign: 'center' }}>ક્રિયા</th>
+                        <th style={{ width: '90px', textAlign: 'right' }}>રૂપિયા ₹</th>
+                        {canManage && <th style={{ width: '50px', textAlign: 'center' }}>ક્રિયા</th>}
                       </tr>
                     </thead>
                     <tbody>
                       {jamaRows.length === 0 ? (
                         <tr>
-                          <td colSpan="5" className="vahi-empty-row">
-                            કોઈ જમા એન્ટ્રી નથી (No Jama entries yet)
+                          <td colSpan={canManage ? 5 : 4} className="vahi-empty-column-box">
+                            કોઈ જમા એન્ટ્રી નથી (No Jama entries recorded yet)
                           </td>
                         </tr>
                       ) : (
                         jamaRows.map((row, idx) => (
                           <tr key={row.id}>
-                            <td className="col-idx">{idx + 1}</td>
-                            <td className="col-date">
+                            <td style={{ textAlign: 'center', color: '#64748b', fontWeight: 600 }}>{idx + 1}</td>
+                            <td style={{ fontWeight: 600, color: '#1e293b' }}>
                               {row.date ? row.date.slice(5).replace('-', '/') : '—'}
                             </td>
-                            <td className="col-notes">
+                            <td>
                               <span style={{ fontWeight: 600 }}>{row.particulars || 'રોકડા જમા'}</span>
                               {row.payment_mode && row.payment_mode !== 'Cash' && (
-                                <span style={{ fontSize: '0.68rem', color: '#64748b', marginLeft: '0.4rem' }}>
-                                  ({row.payment_mode})
+                                <span className="vahi-mode-badge" style={{ marginLeft: '0.35rem' }}>
+                                  {row.payment_mode}
                                 </span>
                               )}
                             </td>
-                            <td className="col-amount text-amount-jama">
+                            <td style={{ textAlign: 'right' }} className="vahi-amt-jama">
                               ₹{Number(row.amount).toLocaleString('en-IN')}/-
                             </td>
-                            <td className="col-actions">
-                              <button
-                                type="button"
-                                className="row-action-btn btn-row-edit"
-                                onClick={() => handleEditEntry(row)}
-                                title="Edit Entry"
-                              >
-                                ✏️
-                              </button>
-                              <button
-                                type="button"
-                                className="row-action-btn btn-row-delete"
-                                onClick={() => setDeletingEntry(row)}
-                                title="Delete Entry"
-                              >
-                                🗑️
-                              </button>
-                            </td>
+                            {canManage && (
+                              <td style={{ textAlign: 'center' }}>
+                                <button
+                                  type="button"
+                                  style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '2px 4px', fontSize: '0.85rem' }}
+                                  onClick={() => handleEditEntry(row)}
+                                  title="Edit Entry"
+                                >
+                                  ✏️
+                                </button>
+                                <button
+                                  type="button"
+                                  style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '2px 4px', fontSize: '0.85rem' }}
+                                  onClick={() => setDeletingEntry(row)}
+                                  title="Delete Entry"
+                                >
+                                  🗑️
+                                </button>
+                              </td>
+                            )}
                           </tr>
                         ))
                       )}
@@ -709,83 +713,83 @@ export function TruckAccountModal({
                   </table>
                 </div>
 
-                {/* Left Total Footer */}
-                <div className="vahi-col-footer-total footer-jama">
-                  <span className="footer-label">ટોટલ જમા (Total Received):</span>
-                  <span className="footer-amount">₹{totalJama.toLocaleString('en-IN')}/-</span>
+                <div className="vahi-col-footer">
+                  <div className="vahi-total-row">
+                    <span>ટોટલ જમા (Total Received):</span>
+                    <span className="vahi-total-jama-val">₹{totalJama.toLocaleString('en-IN')}/-</span>
+                  </div>
                 </div>
               </div>
 
-              {/* ========================================================
-                  RIGHT COLUMN: ઉ. (UDHAR - Vehicle Cost & Expenses)
-                  ======================================================== */}
-              <div className="vahi-column vahi-column-udhar">
-                <div className="vahi-column-title-bar bar-udhar">
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                    <span style={{ fontSize: '1.2rem', fontWeight: 900 }}>ઉ.</span>
-                    <span style={{ fontSize: '0.9rem', fontWeight: 800 }}>UDHAR (બિલ / ખર્ચ)</span>
+              {/* RIGHT COLUMN: ઉ. (UDHAR - Vehicle Cost & Expenses) */}
+              <div className={`khata-vahi-col col-udhar ${mobileTab === 'jama' ? 'mobile-hidden' : ''}`}>
+                <div className="vahi-col-top">
+                  <div className="vahi-col-title-group">
+                    <span className="vahi-col-heading">ઉ. UDHAR (બિલ / ખર્ચ)</span>
+                    <span className="vahi-col-count-badge">{udharRows.length} items</span>
                   </div>
-                  <button
-                    type="button"
-                    className="btn-col-quick-add btn-add-orange"
-                    onClick={handleOpenAddUdhar}
-                    title="Add Udhar Entry"
-                  >
-                    + ઉમેરો
-                  </button>
+                  {canManage && (
+                    <button
+                      type="button"
+                      className="btn-vahi-add-entry"
+                      onClick={handleOpenAddUdhar}
+                    >
+                      + ઉમેરો
+                    </button>
+                  )}
                 </div>
 
-                <div className="vahi-table-wrapper">
+                <div className="vahi-table-wrap">
                   <table className="vahi-table">
                     <thead>
                       <tr>
-                        <th style={{ width: '45px' }}>#</th>
+                        <th style={{ width: '28px', textAlign: 'center' }}>#</th>
                         <th>PARTICULARS (વિગત)</th>
-                        <th style={{ textAlign: 'right', width: '110px' }}>રૂપિયા ₹</th>
-                        <th style={{ width: '75px' }}>તારીખ</th>
-                        <th style={{ width: '65px', textAlign: 'center' }}>ક્રિયા</th>
+                        <th style={{ width: '90px', textAlign: 'right' }}>રૂપિયા ₹</th>
+                        <th style={{ width: '56px' }}>તારીખ</th>
+                        {canManage && <th style={{ width: '50px', textAlign: 'center' }}>ક્રિયા</th>}
                       </tr>
                     </thead>
                     <tbody>
                       {udharRows.length === 0 ? (
                         <tr>
-                          <td colSpan="5" className="vahi-empty-row">
-                            કોઈ ઉધાર એન્ટ્રી નથી (No Udhar entries yet)
+                          <td colSpan={canManage ? 5 : 4} className="vahi-empty-column-box">
+                            કોઈ ઉધાર એન્ટ્રી નથી (No Udhar entries recorded yet)
                           </td>
                         </tr>
                       ) : (
                         udharRows.map((row, idx) => (
                           <tr key={row.id}>
-                            <td className="col-idx">{idx + 1}</td>
-                            <td className="col-notes">
-                              <span style={{ fontWeight: 700, color: '#9a3412' }}>
-                                {row.particulars || 'ગાડી ની કિંમત'}
-                              </span>
+                            <td style={{ textAlign: 'center', color: '#64748b', fontWeight: 600 }}>{idx + 1}</td>
+                            <td>
+                              <span style={{ fontWeight: 700, color: '#9a3412' }}>{row.particulars || 'ગાડી ની કિંમત'}</span>
                             </td>
-                            <td className="col-amount text-amount-udhar">
+                            <td style={{ textAlign: 'right' }} className="vahi-amt-udhar">
                               ₹{Number(row.amount).toLocaleString('en-IN')}/-
                             </td>
-                            <td className="col-date">
+                            <td style={{ fontWeight: 600, color: '#1e293b' }}>
                               {row.date ? row.date.slice(5).replace('-', '/') : '—'}
                             </td>
-                            <td className="col-actions">
-                              <button
-                                type="button"
-                                className="row-action-btn btn-row-edit"
-                                onClick={() => handleEditEntry(row)}
-                                title="Edit Entry"
-                              >
-                                ✏️
-                              </button>
-                              <button
-                                type="button"
-                                className="row-action-btn btn-row-delete"
-                                onClick={() => setDeletingEntry(row)}
-                                title="Delete Entry"
-                              >
-                                🗑️
-                              </button>
-                            </td>
+                            {canManage && (
+                              <td style={{ textAlign: 'center' }}>
+                                <button
+                                  type="button"
+                                  style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '2px 4px', fontSize: '0.85rem' }}
+                                  onClick={() => handleEditEntry(row)}
+                                  title="Edit Entry"
+                                >
+                                  ✏️
+                                </button>
+                                <button
+                                  type="button"
+                                  style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '2px 4px', fontSize: '0.85rem' }}
+                                  onClick={() => setDeletingEntry(row)}
+                                  title="Delete Entry"
+                                >
+                                  🗑️
+                                </button>
+                              </td>
+                            )}
                           </tr>
                         ))
                       )}
@@ -793,90 +797,74 @@ export function TruckAccountModal({
                   </table>
                 </div>
 
-                {/* Right Total Footer */}
-                <div className="vahi-col-footer-total footer-udhar">
-                  <span className="footer-label">ટોટલ બિલ / ઉધાર:</span>
-                  <span className="footer-amount">₹{totalUdhar.toLocaleString('en-IN')}/-</span>
-                </div>
-
-                {/* ========================================================
-                    AUTHENTIC PHYSICAL NOTEBOOK SETTLEMENT BOX
-                    Exactly as written in pen in the user's photo!
-                    ======================================================== */}
-                <div
-                  style={{
-                    margin: '0.85rem 0.5rem 0.5rem',
-                    padding: '0.85rem 1rem',
-                    background: '#f8fafc',
-                    border: '2px solid #cbd5e1',
-                    borderRadius: '12px',
-                    fontFamily: 'monospace',
-                  }}
-                >
-                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.92rem', fontWeight: 700, color: '#1e293b', marginBottom: '0.35rem' }}>
+                <div className="vahi-col-footer">
+                  <div className="vahi-total-row">
                     <span>ટોટલ બિલ / ઉધાર:</span>
-                    <span style={{ color: '#ea580c' }}>₹{totalUdhar.toLocaleString('en-IN')}/-</span>
+                    <span className="vahi-total-udhar-val">₹{totalUdhar.toLocaleString('en-IN')}/-</span>
                   </div>
 
-                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.92rem', fontWeight: 700, color: '#1e293b', borderBottom: '2px solid #94a3b8', paddingBottom: '0.35rem', marginBottom: '0.45rem' }}>
-                    <span>- ટોટલ જમા (મળેલ):</span>
-                    <span style={{ color: '#16a34a' }}>- ₹{totalJama.toLocaleString('en-IN')}/-</span>
-                  </div>
-
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '1.15rem', fontWeight: 900 }}>
-                    <span style={{ color: remainingBalance > 0 ? '#b91c1c' : remainingBalance < 0 ? '#1d4ed8' : '#15803d' }}>
-                      {remainingBalance > 0 ? 'બાકી (Due to Pay):' : remainingBalance < 0 ? 'એડવાન્સ જમા (Advance):' : 'સરભર (Settled):'}
-                    </span>
-                    <span style={{ color: remainingBalance > 0 ? '#b91c1c' : remainingBalance < 0 ? '#1d4ed8' : '#15803d' }}>
-                      ₹{Math.abs(remainingBalance).toLocaleString('en-IN')}/-
-                    </span>
+                  {/* Closing Settlement Box matching physical notebook pen handwriting */}
+                  <div className="vahi-closing-calc-box">
+                    <div className="vahi-calc-row calc-subtotal">
+                      <span>ટોટલ બિલ / ઉધાર:</span>
+                      <span style={{ color: '#b45309' }}>₹{totalUdhar.toLocaleString('en-IN')}/-</span>
+                    </div>
+                    <div className="vahi-calc-row">
+                      <span>- ટોટલ જમા (મળેલ):</span>
+                      <span style={{ color: '#15803d' }}>- ₹{totalJama.toLocaleString('en-IN')}/-</span>
+                    </div>
+                    <div className="vahi-calc-row calc-final">
+                      <span style={{ color: remainingBalance > 0 ? '#b91c1c' : remainingBalance < 0 ? '#1d4ed8' : '#15803d' }}>
+                        {remainingBalance > 0 ? 'બાકી (Due to Pay):' : remainingBalance < 0 ? 'એડવાન્સ જમા (Advance):' : 'સરભર (Settled):'}
+                      </span>
+                      <span className={`calc-final-val ${remainingBalance > 0 ? 'val-advance' : 'val-due'}`} style={{ color: remainingBalance > 0 ? '#dc2626' : '#16a34a' }}>
+                        ₹{Math.abs(remainingBalance).toLocaleString('en-IN')}/-
+                      </span>
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
-
-            {/* Notebook Signature & Footer Line */}
-            <div style={{ marginTop: '1.25rem', paddingTop: '0.65rem', borderTop: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', color: '#94a3b8' }}>
-              <span>FAIZAN BODY TRUCK ACCOUNT</span>
-              <span>FIVE STAR LEDGER</span>
             </div>
           </div>
         </div>
+      </div>
 
-        {/* Delete Confirmation Modal */}
-        {deletingEntry && (
-          <div className="modal-backdrop-luxury animate-fade-in" style={{ zIndex: 1100 }}>
-            <div className="modal-luxury-card animate-scale-up" style={{ maxWidth: '420px', padding: '1.5rem' }}>
-              <h3 style={{ margin: '0 0 0.5rem', color: '#0f172a' }}>Delete Entry?</h3>
-              <p style={{ color: '#64748b', fontSize: '0.88rem', margin: '0 0 1.25rem' }}>
-                Are you sure you want to delete this {deletingEntry.type === 'jama' ? 'Jama' : 'Udhar'} entry of{' '}
-                <strong>₹{Number(deletingEntry.amount).toLocaleString('en-IN')}/-</strong> ({deletingEntry.particulars})?
-              </p>
-              <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end' }}>
-                <button
-                  type="button"
-                  className="btn btn-secondary"
-                  onClick={() => setDeletingEntry(null)}
-                  disabled={isDeleting}
-                >
-                  Cancel
-                </button>
-                <button
-                  type="button"
-                  className="btn btn-danger"
-                  onClick={handleDeleteEntry}
-                  disabled={isDeleting}
-                >
-                  {isDeleting ? 'Deleting...' : 'Delete Entry'}
-                </button>
-              </div>
+      {/* Delete Confirmation Dialog */}
+      {deletingEntry && (
+        <div className="modal-backdrop" style={{ zIndex: 100000 }} onClick={() => setDeletingEntry(null)}>
+          <div
+            className="android-dialog luxury-dialog"
+            onClick={(e) => e.stopPropagation()}
+            style={{ maxWidth: '400px' }}
+          >
+            <h3 style={{ margin: '0 0 0.5rem', color: '#0f172a' }}>Delete Entry?</h3>
+            <p style={{ color: '#64748b', fontSize: '0.88rem', margin: '0 0 1.25rem' }}>
+              Are you sure you want to delete this {deletingEntry.type === 'jama' ? 'Jama' : 'Udhar'} entry of{' '}
+              <strong>₹{Number(deletingEntry.amount).toLocaleString('en-IN')}/-</strong> ({deletingEntry.particulars})?
+            </p>
+            <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end' }}>
+              <button
+                type="button"
+                className="btn btn-secondary"
+                onClick={() => setDeletingEntry(null)}
+                disabled={isDeleting}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="btn btn-danger"
+                onClick={handleDeleteEntry}
+                disabled={isDeleting}
+              >
+                {isDeleting ? 'Deleting...' : 'Delete'}
+              </button>
             </div>
           </div>
-        )}
-      </div>
-    </div>
+        </div>
+      )}
+    </>
   );
 }
 
 export default TruckAccountModal;
-

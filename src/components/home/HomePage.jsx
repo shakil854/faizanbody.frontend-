@@ -251,14 +251,16 @@ export function HomePage({ onNavigate, onQuickAddWorker, onOpenBackup }) {
             </button>
           )}
 
-          <button
-            type="button"
-            className="compact-action-btn action-truck"
-            onClick={() => onNavigate('truck_accounts')}
-          >
-            <span className="action-btn-icon" style={{ background: 'linear-gradient(135deg, #0284c7, #0369a1)', color: '#fff' }}>🚛</span>
-            <span className="action-btn-text">Truck Khata</span>
-          </button>
+          {canAccessModule('truck_accounts') && (
+            <button
+              type="button"
+              className="compact-action-btn action-truck"
+              onClick={() => onNavigate('truck_accounts')}
+            >
+              <span className="action-btn-icon" style={{ background: 'linear-gradient(135deg, #0284c7, #0369a1)', color: '#fff' }}>🚛</span>
+              <span className="action-btn-text">Truck Khata</span>
+            </button>
+          )}
         </div>
 
         {/* 4. 2x2 COMPACT MODULE TILES */}
@@ -401,36 +403,38 @@ export function HomePage({ onNavigate, onQuickAddWorker, onOpenBackup }) {
           )}
 
           {/* Truck Account (Vehicle Khata) Tile */}
-          <div
-            className={`compact-tile tile-theme-truck ${pendingTruckDue > 0 ? 'tile-has-warning' : ''}`}
-            onClick={() => onNavigate('truck_accounts')}
-            role="button"
-            tabIndex={0}
-            style={{
-              borderLeft: '4px solid #0284c7',
-            }}
-          >
-            <div className="compact-tile-top">
-              <div className="compact-icon-wrapper" style={{ background: 'linear-gradient(135deg, #0284c7, #0369a1)' }}>
-                <span style={{ fontSize: '1.25rem' }}>🚛</span>
+          {canAccessModule('truck_accounts') && (
+            <div
+              className={`compact-tile tile-theme-truck ${pendingTruckDue > 0 ? 'tile-has-warning' : ''}`}
+              onClick={() => onNavigate('truck_accounts')}
+              role="button"
+              tabIndex={0}
+              style={{
+                borderLeft: '4px solid #0284c7',
+              }}
+            >
+              <div className="compact-tile-top">
+                <div className="compact-icon-wrapper" style={{ background: 'linear-gradient(135deg, #0284c7, #0369a1)' }}>
+                  <span style={{ fontSize: '1.25rem' }}>🚛</span>
+                </div>
+                <span className="compact-stat-bubble" style={{ background: '#e0f2fe', color: '#0369a1' }}>
+                  {totalTruckAccounts} Trucks
+                </span>
               </div>
-              <span className="compact-stat-bubble" style={{ background: '#e0f2fe', color: '#0369a1' }}>
-                {totalTruckAccounts} Trucks
-              </span>
-            </div>
 
-            <div className="compact-tile-middle">
-              <h3 className="compact-module-heading">Truck Account</h3>
-              <p className="compact-status-hint" style={{ color: pendingTruckDue > 0 ? '#b91c1c' : '#0284c7' }}>
-                {pendingTruckDue > 0 ? `🔴 ₹${pendingTruckDue.toLocaleString('en-IN')} Due` : 'Vehicle Customer Khata'}
-              </p>
-            </div>
+              <div className="compact-tile-middle">
+                <h3 className="compact-module-heading">Truck Account</h3>
+                <p className="compact-status-hint" style={{ color: pendingTruckDue > 0 ? '#b91c1c' : '#0284c7' }}>
+                  {pendingTruckDue > 0 ? `🔴 ₹${pendingTruckDue.toLocaleString('en-IN')} Due` : 'Vehicle Customer Khata'}
+                </p>
+              </div>
 
-            <div className="compact-tile-bottom">
-              <span className="compact-open-tag" style={{ color: '#0284c7' }}>Open Khata</span>
-              <span className="compact-arrow-icon" style={{ color: '#0284c7' }}>→</span>
+              <div className="compact-tile-bottom">
+                <span className="compact-open-tag" style={{ color: '#0284c7' }}>Open Khata</span>
+                <span className="compact-arrow-icon" style={{ color: '#0284c7' }}>→</span>
+              </div>
             </div>
-          </div>
+          )}
 
           {/* User Access & Security Tile (Admin Only) */}
           {isAdmin && (

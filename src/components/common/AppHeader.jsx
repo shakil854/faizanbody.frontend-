@@ -3,7 +3,7 @@ import { TruckLogo } from './TruckLogo';
 import { useAuth } from '../../context/AuthContext';
 
 export function AppHeader({ onOpenChangePassword, onNotify, onNavigate, onOpenBackup }) {
-  const { user, role, isAdmin, logout } = useAuth();
+  const { user, role, isAdmin, canAccessModule, logout } = useAuth();
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef(null);
 
@@ -89,14 +89,15 @@ export function AppHeader({ onOpenChangePassword, onNotify, onNavigate, onOpenBa
                     <div className="dropdown-divider"></div>
 
                     <div className="dropdown-menu-items">
-                      <button
-                        type="button"
-                        className="dropdown-menu-item"
-                        onClick={() => {
-                          setMenuOpen(false);
-                          if (onNavigate) onNavigate('truck_accounts');
-                        }}
-                      >
+                      {canAccessModule && canAccessModule('truck_accounts') && (
+                        <button
+                          type="button"
+                          className="dropdown-menu-item"
+                          onClick={() => {
+                            setMenuOpen(false);
+                            if (onNavigate) onNavigate('truck_accounts');
+                          }}
+                        >
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                           <rect x="1" y="3" width="15" height="13" />
                           <polygon points="16 8 20 8 23 11 23 16 16 16 16 8" />
@@ -105,6 +106,7 @@ export function AppHeader({ onOpenChangePassword, onNotify, onNavigate, onOpenBa
                         </svg>
                         <span>Truck Account (ગાડી ખાતાવહી)</span>
                       </button>
+                      )}
 
                       {isAdmin && (
                         <button

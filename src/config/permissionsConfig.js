@@ -174,6 +174,45 @@ export const APP_MODULES = [
       },
     ],
   },
+  {
+    id: 'truck_accounts',
+    name: 'Truck Account (ગાડી વાળા નું ખાતાવહી)',
+    description: 'Vehicle customer khata, single page ledger, Jama (payments) & Udhar (charges)',
+    icon: 'truck_accounts',
+    color: '#0284c7',
+    permissions: [
+      {
+        key: 'truck_accounts:view',
+        label: 'View Truck Accounts',
+        description: 'Browse vehicle customer accounts and open ledger sheets',
+      },
+      {
+        key: 'truck_accounts:create',
+        label: 'Add Truck Account',
+        description: 'Create new vehicle customer account with page number',
+      },
+      {
+        key: 'truck_accounts:edit',
+        label: 'Edit Truck Account',
+        description: 'Modify party name, truck number, phone, address, and page number',
+      },
+      {
+        key: 'truck_accounts:khata',
+        label: 'Manage Khata Ledger',
+        description: 'Record Jama (payment received) and Udhar (charges/expenses) entries',
+      },
+      {
+        key: 'truck_accounts:print',
+        label: 'WhatsApp Share & PDF',
+        description: 'Share vehicle ledger on WhatsApp and export PDF statement',
+      },
+      {
+        key: 'truck_accounts:delete',
+        label: 'Delete Truck Account',
+        description: 'Permanently remove vehicle customer accounts from the system',
+      },
+    ],
+  },
 ];
 
 /**

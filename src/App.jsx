@@ -353,7 +353,7 @@ export function App() {
           />
         )}
 
-        {currentPage === 'truck_accounts' && (
+        {currentPage === 'truck_accounts' && canAccessModule('truck_accounts') && (
           <TruckAccountPage
             onBackToHome={() => navigateTo('home')}
             onNavigate={navigateTo}
