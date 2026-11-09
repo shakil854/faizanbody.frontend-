@@ -4,6 +4,7 @@ import { workerService } from '../../services/workerService';
 import { orderService } from '../../services/orderService';
 import { quotationService } from '../../services/quotationService';
 import { stockService } from '../../services/stockService';
+import { truckAccountService } from '../../services/truckAccountService';
 import { isLeavingSoon } from '../../utils/dateAlerts';
 
 export function HomePage({ onNavigate, onQuickAddWorker, onOpenBackup }) {
@@ -14,6 +15,7 @@ export function HomePage({ onNavigate, onQuickAddWorker, onOpenBackup }) {
   const [orders, setOrders] = useState(() => orderService.getCachedOrders());
   const [quotations, setQuotations] = useState(() => quotationService.getCachedQuotations());
   const [stockItems, setStockItems] = useState(() => stockService.getCachedItems());
+  const [truckAccounts, setTruckAccounts] = useState(() => truckAccountService.getCachedAccounts());
   const [searchQuery, setSearchQuery] = useState('');
   const [isSearchFocused, setIsSearchFocused] = useState(false);
   const searchContainerRef = useRef(null);
@@ -23,6 +25,7 @@ export function HomePage({ onNavigate, onQuickAddWorker, onOpenBackup }) {
     const unsubWorkers = workerService.subscribe((list) => setWorkers(list));
     const unsubOrders = orderService.subscribe((list) => setOrders(list));
     const unsubStock = stockService.subscribeItems((list) => setStockItems(list));
+    const unsubTruck = truckAccountService.subscribe((list) => setTruckAccounts(list));
     let unsubQuotes = () => {};
 
     if (isAdmin || canAccessModule('quotations')) {
@@ -35,6 +38,10 @@ export function HomePage({ onNavigate, onQuickAddWorker, onOpenBackup }) {
     // Silent background fetch
     workerService.getWorkers().then((res) => {
       if (res?.data) setWorkers(res.data);
+    }).catch(() => {});
+
+    truckAccountService.getAccounts().then((res) => {
+      if (res?.data) setTruckAccounts(res.data);
     }).catch(() => {});
 
     orderService.getOrders().then((res) => {
@@ -50,6 +57,7 @@ export function HomePage({ onNavigate, onQuickAddWorker, onOpenBackup }) {
       unsubOrders();
       unsubQuotes();
       unsubStock();
+      unsubTruck();
     };
   }, [isAdmin, canAccessModule]);
 
@@ -78,6 +86,9 @@ export function HomePage({ onNavigate, onQuickAddWorker, onOpenBackup }) {
   const lowStockCount = stockItems.filter(
     (i) => Number(i.quantity) <= Number(i.min_alert_quantity)
   ).length;
+
+  const totalTruckAccounts = truckAccounts.length;
+  const pendingTruckDue = truckAccounts.filter((a) => a.balance > 0).reduce((sum, a) => sum + (Number(a.balance) || 0), 0);
 
   // Instant search results from orders
   const searchResults = useMemo(() => {
@@ -239,6 +250,15 @@ export function HomePage({ onNavigate, onQuickAddWorker, onOpenBackup }) {
               <span className="action-btn-text">Add Worker</span>
             </button>
           )}
+
+          <button
+            type="button"
+            className="compact-action-btn action-truck"
+            onClick={() => onNavigate('truck_accounts')}
+          >
+            <span className="action-btn-icon" style={{ background: 'linear-gradient(135deg, #0284c7, #0369a1)', color: '#fff' }}>🚛</span>
+            <span className="action-btn-text">Truck Khata</span>
+          </button>
         </div>
 
         {/* 4. 2x2 COMPACT MODULE TILES */}
@@ -379,6 +399,38 @@ export function HomePage({ onNavigate, onQuickAddWorker, onOpenBackup }) {
               </div>
             </div>
           )}
+
+          {/* Truck Account (Vehicle Khata) Tile */}
+          <div
+            className={`compact-tile tile-theme-truck ${pendingTruckDue > 0 ? 'tile-has-warning' : ''}`}
+            onClick={() => onNavigate('truck_accounts')}
+            role="button"
+            tabIndex={0}
+            style={{
+              borderLeft: '4px solid #0284c7',
+            }}
+          >
+            <div className="compact-tile-top">
+              <div className="compact-icon-wrapper" style={{ background: 'linear-gradient(135deg, #0284c7, #0369a1)' }}>
+                <span style={{ fontSize: '1.25rem' }}>🚛</span>
+              </div>
+              <span className="compact-stat-bubble" style={{ background: '#e0f2fe', color: '#0369a1' }}>
+                {totalTruckAccounts} Trucks
+              </span>
+            </div>
+
+            <div className="compact-tile-middle">
+              <h3 className="compact-module-heading">Truck Account</h3>
+              <p className="compact-status-hint" style={{ color: pendingTruckDue > 0 ? '#b91c1c' : '#0284c7' }}>
+                {pendingTruckDue > 0 ? `🔴 ₹${pendingTruckDue.toLocaleString('en-IN')} Due` : 'Vehicle Customer Khata'}
+              </p>
+            </div>
+
+            <div className="compact-tile-bottom">
+              <span className="compact-open-tag" style={{ color: '#0284c7' }}>Open Khata</span>
+              <span className="compact-arrow-icon" style={{ color: '#0284c7' }}>→</span>
+            </div>
+          </div>
 
           {/* User Access & Security Tile (Admin Only) */}
           {isAdmin && (

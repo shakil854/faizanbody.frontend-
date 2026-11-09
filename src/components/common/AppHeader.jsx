@@ -32,7 +32,12 @@ export function AppHeader({ onOpenChangePassword, onNotify, onNavigate, onOpenBa
     <header className="android-top-app-bar luxury-header" role="banner">
       <div className="top-bar-inner">
         <div className="top-bar-content">
-          <div className="top-bar-left">
+          <div
+            className="top-bar-left"
+            onClick={() => onNavigate && onNavigate('home')}
+            style={{ cursor: 'pointer' }}
+            title="Go to Home Dashboard"
+          >
             {/* Executive Automotive Emblem Container */}
             <div className="luxury-logo-badge">
               <TruckLogo size={32} />
@@ -84,6 +89,23 @@ export function AppHeader({ onOpenChangePassword, onNotify, onNavigate, onOpenBa
                     <div className="dropdown-divider"></div>
 
                     <div className="dropdown-menu-items">
+                      <button
+                        type="button"
+                        className="dropdown-menu-item"
+                        onClick={() => {
+                          setMenuOpen(false);
+                          if (onNavigate) onNavigate('truck_accounts');
+                        }}
+                      >
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <rect x="1" y="3" width="15" height="13" />
+                          <polygon points="16 8 20 8 23 11 23 16 16 16 16 8" />
+                          <circle cx="5.5" cy="18.5" r="2.5" />
+                          <circle cx="18.5" cy="18.5" r="2.5" />
+                        </svg>
+                        <span>Truck Account (ગાડી ખાતાવહી)</span>
+                      </button>
+
                       {isAdmin && (
                         <button
                           type="button"

@@ -9,6 +9,7 @@ import { OrdersPage } from './components/orders/OrdersPage';
 import { QuotationsPage } from './components/quotations/QuotationsPage';
 import { StockPage } from './components/stock/StockPage';
 import { UsersPage } from './components/users/UsersPage';
+import { TruckAccountPage } from './components/truckAccount/TruckAccountPage';
 import { WorkerFormModal } from './components/workers/WorkerFormModal';
 import { BackupPage } from './components/backup/BackupPage';
 import { Snackbar } from './components/workers/Snackbar';
@@ -31,6 +32,7 @@ export function App() {
     if (hash === '#orders') return 'orders';
     if (hash === '#quotations') return 'quotations';
     if (hash === '#stock') return 'stock';
+    if (hash === '#truck_accounts' || hash === '#truck-accounts') return 'truck_accounts';
     if (hash === '#users') return 'users';
     if (hash === '#backup') return 'backup';
     return 'home';
@@ -348,6 +350,13 @@ export function App() {
             onBackToHome={() => navigateTo('home')}
             onNavigate={navigateTo}
             onAlertCountChange={handleAlertCountChange}
+          />
+        )}
+
+        {currentPage === 'truck_accounts' && (
+          <TruckAccountPage
+            onBackToHome={() => navigateTo('home')}
+            onNavigate={navigateTo}
           />
         )}
 
