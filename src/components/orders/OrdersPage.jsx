@@ -200,14 +200,40 @@ export function OrdersPage({ onBackToHome }) {
       );
     }
 
-    // Sort by Entry Date: pehele aaya ho vo upar (earliest date first), last date last me
-    result.sort((a, b) => {
+    const compareByEntryDate = (a, b) => {
       const dateA = a.entry_date || a.order_date || '9999-12-31';
       const dateB = b.entry_date || b.order_date || '9999-12-31';
       const cmp = String(dateA).localeCompare(String(dateB));
       if (cmp !== 0) return cmp;
       return (a.id || 0) - (b.id || 0);
-    });
+    };
+
+    const getShadeSortKey = (shadeVal) => {
+      const s = String(shadeVal ?? '').trim();
+      if (!s) return { hasShade: false, num: Infinity, text: '' };
+      const match = s.match(/\d+/);
+      return {
+        hasShade: true,
+        num: match ? Number(match[0]) : Infinity,
+        text: s,
+      };
+    };
+
+    if (statusFilter === 'in_progress') {
+      // ONLY in In Process: sort sequentially by Shade No. (1, 2, 3, ..., 7, 10)
+      result.sort((a, b) => {
+        const sa = getShadeSortKey(a.shade_no);
+        const sb = getShadeSortKey(b.shade_no);
+        if (sa.hasShade !== sb.hasShade) return sa.hasShade ? -1 : 1;
+        if (sa.num !== sb.num) return sa.num - sb.num;
+        const textCmp = sa.text.localeCompare(sb.text, undefined, { numeric: true, sensitivity: 'base' });
+        if (textCmp !== 0) return textCmp;
+        return compareByEntryDate(a, b);
+      });
+    } else {
+      // Sort by Entry Date: pehele aaya ho vo upar (earliest date first), last date last me
+      result.sort(compareByEntryDate);
+    }
 
     return result;
   }, [orders, statusFilter, searchQuery, isOrderCompleted]);

@@ -21,6 +21,8 @@ export const OrderCard = React.memo(function OrderCard({
 
   const { total, done } = calculateOrderProgress(order);
   const isCompleted = order.status === 'Completed' || (total > 0 && done === total);
+  const isInProgress = !isCompleted && order.status !== 'Incoming' && order.status !== 'Cancelled';
+  const hasShadeNo = Boolean(order.shade_no && String(order.shade_no).trim());
   const [isUploading, setIsUploading] = useState(false);
   const [isSharingPhoto, setIsSharingPhoto] = useState(false);
   const fileInputRef = useRef(null);
@@ -238,7 +240,10 @@ export const OrderCard = React.memo(function OrderCard({
                 )}
               </span>
 
-              <span className="card-shade-pill" title={`Shade No: ${order.shade_no || 'Not set'}`}>
+              <span
+                className={`card-shade-pill ${isInProgress && hasShadeNo ? 'shade-highlighted' : ''}`}
+                title={`Shade No: ${order.shade_no || 'Not set'}`}
+              >
                 <span className="shade-pill-dot"></span>
                 <span>Shade: {order.shade_no || '—'}</span>
               </span>
