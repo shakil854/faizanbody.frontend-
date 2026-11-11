@@ -10,6 +10,7 @@ import { QuotationsPage } from './components/quotations/QuotationsPage';
 import { StockPage } from './components/stock/StockPage';
 import { UsersPage } from './components/users/UsersPage';
 import { TruckAccountPage } from './components/truckAccount/TruckAccountPage';
+import { RojmedPage } from './components/rojmed/RojmedPage';
 import { WorkerFormModal } from './components/workers/WorkerFormModal';
 import { BackupPage } from './components/backup/BackupPage';
 import { Snackbar } from './components/workers/Snackbar';
@@ -33,6 +34,7 @@ export function App() {
     if (hash === '#quotations') return 'quotations';
     if (hash === '#stock') return 'stock';
     if (hash === '#truck_accounts' || hash === '#truck-accounts') return 'truck_accounts';
+    if (hash === '#rojmed') return 'rojmed';
     if (hash === '#users') return 'users';
     if (hash === '#backup') return 'backup';
     return 'home';
@@ -146,6 +148,10 @@ export function App() {
         setCurrentPage('home');
         window.location.hash = '#home';
       }
+      if (currentPage === 'rojmed' && !isAdmin && !canAccessModule('rojmed')) {
+        setCurrentPage('home');
+        window.location.hash = '#home';
+      }
       if (currentPage === 'quotations' && !isAdmin && !canAccessModule('quotations')) {
         setCurrentPage('home');
         window.location.hash = '#home';
@@ -166,9 +172,10 @@ export function App() {
           : hash === '#quotations' ? ((isAdmin || canAccessModule('quotations')) ? 'quotations' : 'home')
             : hash === '#stock' ? 'stock'
               : (hash === '#truck_accounts' || hash === '#truck-accounts') ? ((isAdmin || canAccessModule('truck_accounts')) ? 'truck_accounts' : 'home')
-                : hash === '#users' ? (isAdmin ? 'users' : 'home')
-                  : hash === '#backup' ? (isAdmin ? 'backup' : 'home')
-                    : 'home';
+                : hash === '#rojmed' ? ((isAdmin || canAccessModule('rojmed')) ? 'rojmed' : 'home')
+                  : hash === '#users' ? (isAdmin ? 'users' : 'home')
+                    : hash === '#backup' ? (isAdmin ? 'backup' : 'home')
+                      : 'home';
 
       setCurrentPage((prev) => {
         if (prev !== targetPage) {
@@ -376,6 +383,12 @@ export function App() {
           <TruckAccountPage
             onBackToHome={() => navigateTo('home')}
             onNavigate={navigateTo}
+          />
+        )}
+
+        {currentPage === 'rojmed' && canAccessModule('rojmed') && (
+          <RojmedPage
+            onBackToHome={() => navigateTo('home')}
           />
         )}
 

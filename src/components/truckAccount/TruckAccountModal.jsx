@@ -33,6 +33,7 @@ export function TruckAccountModal({
   const [date, setDate] = useState(() => new Date().toISOString().split('T')[0]);
   const [particulars, setParticulars] = useState('');
   const [paymentMode, setPaymentMode] = useState('Cash');
+  const [addToRojmed, setAddToRojmed] = useState(false);
   const [formError, setFormError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -126,6 +127,7 @@ export function TruckAccountModal({
     setDate(new Date().toISOString().split('T')[0]);
     setParticulars('રોકડા જમા');
     setPaymentMode('Cash');
+    setAddToRojmed(false);
     setFormError('');
     setShowAddForm(true);
   };
@@ -138,6 +140,7 @@ export function TruckAccountModal({
     setDate(new Date().toISOString().split('T')[0]);
     setParticulars('ગાડી ની કિંમત');
     setPaymentMode('Cash');
+    setAddToRojmed(false);
     setFormError('');
     setShowAddForm(true);
   };
@@ -149,6 +152,7 @@ export function TruckAccountModal({
     setDate(entry.date || new Date().toISOString().split('T')[0]);
     setParticulars(entry.particulars || '');
     setPaymentMode(entry.payment_mode || 'Cash');
+    setAddToRojmed(Boolean(entry.rojmed_entry_id));
     setFormError('');
     setShowAddForm(true);
   };
@@ -176,6 +180,7 @@ export function TruckAccountModal({
         date,
         particulars: particulars.trim() || (entryType === 'jama' ? 'રોકડા જમા' : 'ગાડી ની કિંમત'),
         payment_mode: paymentMode,
+        add_to_rojmed: paymentMode === 'Cash' ? addToRojmed : false,
       };
 
       if (editingEntry) {
@@ -193,6 +198,7 @@ export function TruckAccountModal({
       setEditingEntry(null);
       setAmount('');
       setParticulars('');
+      setAddToRojmed(false);
     } catch (err) {
       setFormError(err.message || 'Error saving entry');
     } finally {
@@ -690,7 +696,11 @@ export function TruckAccountModal({
                       ref={paymentModeRef}
                       className="form-input select-mode"
                       value={paymentMode}
-                      onChange={(e) => setPaymentMode(e.target.value)}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        setPaymentMode(val);
+                        if (val !== 'Cash') setAddToRojmed(false);
+                      }}
                       onKeyDown={(e) => {
                         if (e.key === 'Enter') {
                           e.preventDefault();
@@ -707,6 +717,28 @@ export function TruckAccountModal({
                       <option value="Cheque">Cheque (ચેક)</option>
                     </select>
                   </div>
+                </div>
+
+                {/* Optional Add to Rojmed Checkbox */}
+                <div className="rojmed-sync-checkbox-row">
+                  <label className={`rojmed-sync-checkbox-label ${paymentMode !== 'Cash' ? 'disabled' : ''}`}>
+                    <input
+                      type="checkbox"
+                      checked={paymentMode === 'Cash' && addToRojmed}
+                      disabled={paymentMode !== 'Cash'}
+                      onChange={(e) => setAddToRojmed(e.target.checked)}
+                    />
+                    <span>
+                      <strong>📒 રોજમેળમાં ઉમેરો (Also add to Daily Rojmed)</strong>
+                      <small>
+                        {paymentMode !== 'Cash'
+                          ? 'માત્ર Cash (રોકડ) એન્ટ્રી જ રોજમેળમાં ઉમેરી શકાય છે'
+                          : entryType === 'jama'
+                          ? 'આ એન્ટ્રી રોજમેળમાં આવક (રોકડા જમા) તરીકે પણ ઉમેરાશે'
+                          : 'આ એન્ટ્રી રોજમેળમાં જાવક (રોકડ ખર્ચ) તરીકે ઉમેરાશે (માત્ર રોકડ ચૂકવેલ હોય તો જ ટિક કરો)'}
+                      </small>
+                    </span>
+                  </label>
                 </div>
 
                 <div className="entry-form-actions">
@@ -801,6 +833,11 @@ export function TruckAccountModal({
                                   {row.payment_mode}
                                 </span>
                               )}
+                              {row.rojmed_entry_id && (
+                                <span className="vahi-mode-badge rojmed-link-pill" style={{ marginLeft: '0.35rem' }}>
+                                  📒 Rojmed
+                                </span>
+                              )}
                             </td>
                             <td style={{ textAlign: 'right' }} className="vahi-amt-jama">
                               ₹{Number(row.amount).toLocaleString('en-IN')}/-
@@ -882,6 +919,11 @@ export function TruckAccountModal({
                             <td style={{ textAlign: 'center', color: '#64748b', fontWeight: 600 }}>{idx + 1}</td>
                             <td>
                               <span style={{ fontWeight: 700, color: '#9a3412' }}>{row.particulars || 'ગાડી ની કિંમત'}</span>
+                              {row.rojmed_entry_id && (
+                                <span className="vahi-mode-badge rojmed-link-pill" style={{ marginLeft: '0.35rem' }}>
+                                  📒 Rojmed
+                                </span>
+                              )}
                             </td>
                             <td style={{ textAlign: 'right' }} className="vahi-amt-udhar">
                               ₹{Number(row.amount).toLocaleString('en-IN')}/-

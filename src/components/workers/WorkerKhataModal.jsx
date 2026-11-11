@@ -60,6 +60,7 @@ export function WorkerKhataModal({
   const [date, setDate] = useState(() => new Date().toISOString().split('T')[0]);
   const [notes, setNotes] = useState('');
   const [paymentMode, setPaymentMode] = useState('Cash');
+  const [addToRojmed, setAddToRojmed] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formError, setFormError] = useState('');
 
@@ -113,6 +114,7 @@ export function WorkerKhataModal({
       setNotes('');
       setDate(new Date().toISOString().split('T')[0]);
       setEntryType('upad');
+      setAddToRojmed(false);
       setPdfToast('');
       setFromDate(initialFromDate || '');
       setToDate(initialToDate || '');
@@ -165,6 +167,7 @@ export function WorkerKhataModal({
     setEntryType('salary');
     setAmount('');
     setNotes('');
+    setAddToRojmed(false);
     const nowStr = new Date().toISOString().split('T')[0];
     if (nowStr.startsWith(selectedMonthKey)) {
       setDate(nowStr);
@@ -180,6 +183,7 @@ export function WorkerKhataModal({
     setEntryType('upad');
     setAmount('');
     setNotes('');
+    setAddToRojmed(false);
     const nowStr = new Date().toISOString().split('T')[0];
     if (nowStr.startsWith(selectedMonthKey)) {
       setDate(nowStr);
@@ -249,6 +253,29 @@ export function WorkerKhataModal({
   // Return early ONLY AFTER all hooks have executed
   if (!isOpen || !worker) return null;
 
+  const renderRojmedSyncCheckbox = () => (
+    <div className="rojmed-sync-checkbox-row">
+      <label className={`rojmed-sync-checkbox-label ${paymentMode !== 'Cash' ? 'disabled' : ''}`}>
+        <input
+          type="checkbox"
+          checked={paymentMode === 'Cash' && addToRojmed}
+          disabled={paymentMode !== 'Cash'}
+          onChange={(e) => setAddToRojmed(e.target.checked)}
+        />
+        <span>
+          <strong>📒 રોજમેળમાં ઉમેરો (Also add to Daily Rojmed)</strong>
+          <small>
+            {paymentMode !== 'Cash'
+              ? 'માત્ર Cash (રોકડ) એન્ટ્રી જ રોજમેળમાં ઉમેરી શકાય છે'
+              : entryType === 'salary'
+              ? 'રોજમેળમાં આવક (રોકડા જમા) તરીકે ઉમેરાશે (માત્ર રોકડ મળે તો જ ટિક કરો)'
+              : 'રોજમેળમાં જાવક (ઉપાડ) તરીકે પણ ઉમેરાશે'}
+          </small>
+        </span>
+      </label>
+    </div>
+  );
+
   // Start editing an existing transaction
   const handleStartEdit = (tx) => {
     setEditingTx(tx);
@@ -258,6 +285,7 @@ export function WorkerKhataModal({
     setDate(tx.date ? String(tx.date).slice(0, 10) : new Date().toISOString().split('T')[0]);
     setNotes(tx.notes || '');
     setPaymentMode(tx.payment_mode || 'Cash');
+    setAddToRojmed(Boolean(tx.rojmed_entry_id));
     setFormError('');
     setShowAddForm(true);
     setTimeout(() => {
@@ -272,6 +300,7 @@ export function WorkerKhataModal({
     setEditingTx(null);
     setAmount('');
     setNotes('');
+    setAddToRojmed(false);
     setDate(new Date().toISOString().split('T')[0]);
     setFormError('');
   };
@@ -298,6 +327,7 @@ export function WorkerKhataModal({
           date: date || new Date().toISOString().split('T')[0],
           notes: notes.trim(),
           payment_mode: paymentMode,
+          add_to_rojmed: paymentMode === 'Cash' ? addToRojmed : false,
         });
 
         if (res && res.transaction) {
@@ -315,6 +345,7 @@ export function WorkerKhataModal({
           date: date || new Date().toISOString().split('T')[0],
           notes: notes.trim(),
           payment_mode: paymentMode,
+          add_to_rojmed: paymentMode === 'Cash' ? addToRojmed : false,
         });
 
         if (res && res.transaction) {
@@ -327,6 +358,7 @@ export function WorkerKhataModal({
 
       setAmount('');
       setNotes('');
+      setAddToRojmed(false);
       setEditingTx(null);
       setShowAddForm(false);
     } catch (err) {
@@ -784,7 +816,11 @@ export function WorkerKhataModal({
                           ref={paymentModeRef}
                           className="form-input select-mode"
                           value={paymentMode}
-                          onChange={(e) => setPaymentMode(e.target.value)}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            setPaymentMode(val);
+                            if (val !== 'Cash') setAddToRojmed(false);
+                          }}
                           onKeyDown={(e) => {
                             if (e.key === 'Enter') {
                               e.preventDefault();
@@ -798,6 +834,8 @@ export function WorkerKhataModal({
                         </select>
                       </div>
                     </div>
+
+                    {renderRojmedSyncCheckbox()}
 
                     {/* Form Submit Actions */}
                     <div className="entry-form-actions">
@@ -908,7 +946,14 @@ export function WorkerKhataModal({
                                   {tx.date ? String(tx.date).slice(8, 10) + '/' + String(tx.date).slice(5, 7) : '—'}
                                 </td>
                                 <td>
-                                  <span style={{ fontWeight: 600, color: '#0f172a' }}>{tx.notes || 'Work Done'}</span>
+                                  <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                                    <span style={{ fontWeight: 600, color: '#0f172a' }}>{tx.notes || 'Work Done'}</span>
+                                    {tx.rojmed_entry_id && (
+                                      <span className="vahi-mode-badge rojmed-link-pill" style={{ alignSelf: 'flex-start' }}>
+                                        📒 Rojmed
+                                      </span>
+                                    )}
+                                  </div>
                                 </td>
                                 <td style={{ textAlign: 'right' }} className="vahi-amt-jama">
                                   ₹{(Number(tx.amount) || 0).toLocaleString('en-IN')}/-
@@ -1033,9 +1078,14 @@ export function WorkerKhataModal({
                                     <span style={{ fontWeight: 600, color: '#0f172a' }}>
                                       {tx.notes || (tx.type === 'payment' ? 'Payment' : 'Upad (Advance)')}
                                     </span>
-                                    {tx.payment_mode && tx.payment_mode !== 'Cash' && (
-                                      <span className="vahi-mode-badge">{tx.payment_mode}</span>
-                                    )}
+                                    <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
+                                      {tx.payment_mode && tx.payment_mode !== 'Cash' && (
+                                        <span className="vahi-mode-badge">{tx.payment_mode}</span>
+                                      )}
+                                      {tx.rojmed_entry_id && (
+                                        <span className="vahi-mode-badge rojmed-link-pill">📒 Rojmed</span>
+                                      )}
+                                    </div>
                                   </div>
                                 </td>
                                 <td style={{ textAlign: 'right' }} className="vahi-amt-udhar">
@@ -1408,7 +1458,11 @@ export function WorkerKhataModal({
                           ref={paymentModeRef}
                           className="form-input select-mode"
                           value={paymentMode}
-                          onChange={(e) => setPaymentMode(e.target.value)}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            setPaymentMode(val);
+                            if (val !== 'Cash') setAddToRojmed(false);
+                          }}
                           onKeyDown={(e) => {
                             if (e.key === 'Enter') {
                               e.preventDefault();
@@ -1422,6 +1476,8 @@ export function WorkerKhataModal({
                         </select>
                       </div>
                     </div>
+
+                    {renderRojmedSyncCheckbox()}
 
                     <div className="entry-form-actions">
                       <button
@@ -1515,9 +1571,14 @@ export function WorkerKhataModal({
                               <span className="tx-date-text">{tx.date}</span>
                             </div>
                             {tx.notes && <p className="tx-notes-text">{tx.notes}</p>}
-                            <span className="tx-mode-tag">
-                              {tx.payment_mode || 'Cash'}
-                            </span>
+                            <div style={{ display: 'flex', gap: '0.35rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                              <span className="tx-mode-tag">
+                                {tx.payment_mode || 'Cash'}
+                              </span>
+                              {tx.rojmed_entry_id && (
+                                <span className="vahi-mode-badge rojmed-link-pill">📒 Rojmed</span>
+                              )}
+                            </div>
                           </div>
                         </div>
 

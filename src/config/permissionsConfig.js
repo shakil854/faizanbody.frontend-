@@ -213,6 +213,40 @@ export const APP_MODULES = [
       },
     ],
   },
+  {
+    id: 'rojmed',
+    name: 'Daily Rojmed (રોજમેળ)',
+    description: 'Daily cash book (Silak, Aavak, Javak) synced with Worker & Truck Khata',
+    icon: 'rojmed',
+    color: '#7c3aed',
+    permissions: [
+      {
+        key: 'rojmed:view',
+        label: 'View Daily Rojmed & Summary',
+        description: 'View daily cash book, opening/closing Silak, and monthly summaries',
+      },
+      {
+        key: 'rojmed:create',
+        label: 'Add Rojmed Entries & Set Opening',
+        description: 'Add daily Aavak/Javak entries and set initial opening Silak',
+      },
+      {
+        key: 'rojmed:edit',
+        label: 'Edit Rojmed Entries & Opening',
+        description: 'Modify existing Rojmed entries and adjust opening Silak',
+      },
+      {
+        key: 'rojmed:delete',
+        label: 'Delete Rojmed Entries',
+        description: 'Delete Rojmed entries (also removes linked Khata entries)',
+      },
+      {
+        key: 'rojmed:print',
+        label: 'WhatsApp Share & PDF',
+        description: 'Share daily Rojmed report on WhatsApp and export A4 PDF sheet',
+      },
+    ],
+  },
 ];
 
 /**

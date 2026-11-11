@@ -5,6 +5,7 @@ import { orderService } from '../../services/orderService';
 import { quotationService } from '../../services/quotationService';
 import { stockService } from '../../services/stockService';
 import { truckAccountService } from '../../services/truckAccountService';
+import { rojmedService } from '../../services/rojmedService';
 import { isLeavingSoon } from '../../utils/dateAlerts';
 
 export function HomePage({ onNavigate, onQuickAddWorker, onOpenBackup }) {
@@ -18,6 +19,9 @@ export function HomePage({ onNavigate, onQuickAddWorker, onOpenBackup }) {
   const [truckAccounts, setTruckAccounts] = useState(() =>
     canAccessModule('truck_accounts') ? truckAccountService.getCachedAccounts() : []
   );
+  const [rojmedToday, setRojmedToday] = useState(() =>
+    canAccessModule('rojmed') ? rojmedService.getCachedTodaySheet() : null
+  );
   const [searchQuery, setSearchQuery] = useState('');
   const [isSearchFocused, setIsSearchFocused] = useState(false);
   const searchContainerRef = useRef(null);
@@ -29,6 +33,7 @@ export function HomePage({ onNavigate, onQuickAddWorker, onOpenBackup }) {
     const unsubStock = stockService.subscribeItems((list) => setStockItems(list));
     let unsubTruck = () => {};
     let unsubQuotes = () => {};
+    let unsubRojmed = () => {};
 
     if (isAdmin || canAccessModule('quotations')) {
       unsubQuotes = quotationService.subscribe((list) => setQuotations(list));
@@ -41,6 +46,13 @@ export function HomePage({ onNavigate, onQuickAddWorker, onOpenBackup }) {
       unsubTruck = truckAccountService.subscribe((list) => setTruckAccounts(list));
       truckAccountService.getAccounts().then((res) => {
         if (res?.data) setTruckAccounts(res.data);
+      }).catch(() => {});
+    }
+
+    if (isAdmin || canAccessModule('rojmed')) {
+      unsubRojmed = rojmedService.subscribeToday((sheet) => setRojmedToday(sheet));
+      rojmedService.getDailySheet().then((sheet) => {
+        if (sheet) setRojmedToday(sheet);
       }).catch(() => {});
     }
 
@@ -63,6 +75,7 @@ export function HomePage({ onNavigate, onQuickAddWorker, onOpenBackup }) {
       unsubQuotes();
       unsubStock();
       unsubTruck();
+      unsubRojmed();
     };
   }, [isAdmin, canAccessModule]);
 
@@ -266,6 +279,17 @@ export function HomePage({ onNavigate, onQuickAddWorker, onOpenBackup }) {
               <span className="action-btn-text">Truck Khata</span>
             </button>
           )}
+
+          {canAccessModule('rojmed') && (
+            <button
+              type="button"
+              className="compact-action-btn action-rojmed"
+              onClick={() => onNavigate('rojmed')}
+            >
+              <span className="action-btn-icon" style={{ background: 'linear-gradient(135deg, #7c3aed, #6d28d9)', color: '#fff' }}>📒</span>
+              <span className="action-btn-text">Rojmed</span>
+            </button>
+          )}
         </div>
 
         {/* 4. 2x2 COMPACT MODULE TILES */}
@@ -442,6 +466,42 @@ export function HomePage({ onNavigate, onQuickAddWorker, onOpenBackup }) {
               <div className="compact-tile-bottom">
                 <span className="compact-open-tag" style={{ color: '#0284c7' }}>Open Khata</span>
                 <span className="compact-arrow-icon" style={{ color: '#0284c7' }}>→</span>
+              </div>
+            </div>
+          )}
+
+          {/* Daily Rojmed (રોજમેળ) Tile */}
+          {canAccessModule('rojmed') && (
+            <div
+              className="compact-tile tile-theme-rojmed"
+              onClick={() => onNavigate('rojmed')}
+              role="button"
+              tabIndex={0}
+              style={{
+                borderLeft: '4px solid #7c3aed',
+              }}
+            >
+              <div className="compact-tile-top">
+                <div className="compact-icon-wrapper" style={{ background: 'linear-gradient(135deg, #7c3aed, #6d28d9)' }}>
+                  <span style={{ fontSize: '1.25rem' }}>📒</span>
+                </div>
+                <span className="compact-stat-bubble" style={{ background: '#ede9fe', color: '#6d28d9' }}>
+                  {rojmedToday ? `${rojmedToday.total_entries_count || 0} Today` : 'રોજમેળ'}
+                </span>
+              </div>
+
+              <div className="compact-tile-middle">
+                <h3 className="compact-module-heading">Daily Rojmed</h3>
+                <p className="compact-status-hint" style={{ color: '#6d28d9' }}>
+                  {rojmedToday
+                    ? `સિલક ₹${Number(rojmedToday.closing_silak || 0).toLocaleString('en-IN')}/-`
+                    : 'આવક • જાવક • સિલક'}
+                </p>
+              </div>
+
+              <div className="compact-tile-bottom">
+                <span className="compact-open-tag" style={{ color: '#7c3aed' }}>Open રોજમેળ</span>
+                <span className="compact-arrow-icon" style={{ color: '#7c3aed' }}>→</span>
               </div>
             </div>
           )}

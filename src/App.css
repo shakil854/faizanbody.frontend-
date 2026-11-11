@@ -22940,3 +22940,366 @@
     display: none !important;
   }
 }
+
+/* ==========================================================================
+   📒 Daily Rojmed (રોજમેળ) & Bidirectional Khata Sync Styles
+   ========================================================================== */
+.tile-theme-rojmed {
+  background: linear-gradient(180deg, #ffffff 0%, #f5f3ff 100%);
+  border-color: #ddd6fe;
+}
+.tile-theme-rojmed:hover {
+  border-color: #7c3aed;
+  box-shadow: 0 8px 24px rgba(124, 58, 237, 0.14);
+}
+.action-rojmed:hover {
+  background: #f5f3ff;
+  border-color: #c4b5fd;
+}
+
+.rojmed-link-pill {
+  background: #eff6ff !important;
+  color: #1d4ed8 !important;
+  border: 1px solid #bfdbfe !important;
+  font-weight: 700 !important;
+}
+
+.rojmed-sync-checkbox-row {
+  margin: 0.45rem 0 0.75rem;
+}
+.rojmed-sync-checkbox-label {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.55rem;
+  padding: 0.6rem 0.75rem;
+  border-radius: 10px;
+  border: 1.5px solid #c7d2fe;
+  background: #eef2ff;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.rojmed-sync-checkbox-label.disabled {
+  background: #f8fafc;
+  border-color: #e2e8f0;
+  cursor: not-allowed;
+  opacity: 0.72;
+}
+.rojmed-sync-checkbox-label input[type='checkbox'] {
+  width: 18px;
+  height: 18px;
+  margin-top: 2px;
+  accent-color: #4f46e5;
+  flex-shrink: 0;
+}
+.rojmed-sync-checkbox-label span {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.rojmed-sync-checkbox-label strong {
+  font-size: 0.8rem;
+  color: #1e1b4b;
+}
+.rojmed-sync-checkbox-label small {
+  font-size: 0.7rem;
+  color: #475569;
+  font-weight: 600;
+}
+
+.rojmed-top-bar {
+  background: #ffffff;
+  border-bottom: 1px solid #e2e8f0;
+  padding: 0.85rem 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.rojmed-view-switch {
+  display: inline-flex;
+  background: #f1f5f9;
+  padding: 3px;
+  border-radius: 12px;
+  gap: 3px;
+}
+.rojmed-view-btn {
+  border: none;
+  background: transparent;
+  padding: 0.38rem 0.75rem;
+  border-radius: 9px;
+  font-size: 0.78rem;
+  font-weight: 800;
+  color: #475569;
+  cursor: pointer;
+  font-family: inherit;
+}
+.rojmed-view-btn.active {
+  background: #ffffff;
+  color: #4f46e5;
+  box-shadow: 0 2px 6px rgba(15, 23, 42, 0.08);
+}
+
+.rojmed-date-nav-card {
+  background: #ffffff;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 14px;
+  padding: 0.6rem 0.75rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.85rem;
+}
+.rojmed-date-arrow-btn {
+  border: 1px solid #cbd5e1;
+  background: #f8fafc;
+  color: #1e293b;
+  border-radius: 9px;
+  padding: 0.4rem 0.7rem;
+  font-size: 0.76rem;
+  font-weight: 800;
+  cursor: pointer;
+  font-family: inherit;
+}
+.rojmed-date-arrow-btn:hover {
+  background: #e2e8f0;
+}
+.rojmed-date-center {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+.rojmed-date-picker {
+  border: 1.5px solid #cbd5e1;
+  border-radius: 9px;
+  padding: 0.35rem 0.55rem;
+  font-size: 0.82rem;
+  font-weight: 800;
+  color: #0f172a;
+  background: #ffffff;
+  font-family: inherit;
+}
+.rojmed-date-readable {
+  font-size: 0.82rem;
+  font-weight: 800;
+  color: #334155;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+.rojmed-today-pill {
+  background: #dcfce7;
+  color: #166534;
+  border: 1px solid #86efac;
+  border-radius: 8px;
+  padding: 0.08rem 0.45rem;
+  font-size: 0.68rem;
+  font-weight: 800;
+}
+.rojmed-today-jump-btn {
+  border: 1px solid #a5b4fc;
+  background: #eef2ff;
+  color: #4338ca;
+  border-radius: 9px;
+  padding: 0.4rem 0.65rem;
+  font-size: 0.75rem;
+  font-weight: 800;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.rojmed-kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(145px, 1fr));
+  gap: 0.65rem;
+  margin-bottom: 0.85rem;
+}
+.rojmed-kpi-card {
+  background: #ffffff;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 13px;
+  padding: 0.65rem 0.8rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+.rojmed-kpi-card.kpi-opening {
+  background: #fffbeb;
+  border-color: #fde68a;
+}
+.rojmed-kpi-card.kpi-aavak {
+  background: #f0fdf4;
+  border-color: #bbf7d0;
+}
+.rojmed-kpi-card.kpi-javak {
+  background: #fff7ed;
+  border-color: #fed7aa;
+}
+.rojmed-kpi-card.kpi-closing {
+  background: #eef2ff;
+  border-color: #c7d2fe;
+}
+.rojmed-kpi-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.3rem;
+}
+.rojmed-kpi-lbl {
+  font-size: 0.68rem;
+  font-weight: 800;
+  color: #475569;
+}
+.rojmed-kpi-val {
+  font-size: 1.12rem;
+  font-weight: 900;
+  color: #0f172a;
+}
+.kpi-aavak .rojmed-kpi-val {
+  color: #15803d;
+}
+.kpi-javak .rojmed-kpi-val {
+  color: #c2410c;
+}
+.kpi-closing .rojmed-kpi-val {
+  color: #3730a3;
+}
+.rojmed-kpi-sub {
+  font-size: 0.66rem;
+  font-weight: 700;
+  color: #64748b;
+}
+.rojmed-opening-edit-btn {
+  border: 1px solid #f59e0b;
+  background: #ffffff;
+  color: #92400e;
+  border-radius: 7px;
+  padding: 0.1rem 0.4rem;
+  font-size: 0.66rem;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.rojmed-bottom-summary-box {
+  border-top: 2px solid #94a3b8;
+  background: #f8fafc;
+  padding: 0.75rem 0.9rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+}
+.rojmed-bottom-compare-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-around;
+  gap: 0.5rem;
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
+  border-radius: 10px;
+  padding: 0.55rem 0.75rem;
+}
+.rojmed-bottom-col {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+.rojmed-bottom-lbl {
+  font-size: 0.7rem;
+  font-weight: 800;
+  color: #64748b;
+}
+.rojmed-bottom-amt {
+  font-size: 0.98rem;
+  font-weight: 900;
+}
+.rojmed-bottom-amt.text-aavak {
+  color: #15803d;
+}
+.rojmed-bottom-amt.text-javak {
+  color: #c2410c;
+}
+.rojmed-bottom-divider {
+  font-size: 1.25rem;
+  font-weight: 900;
+  color: #64748b;
+}
+.rojmed-closing-banner {
+  background: linear-gradient(135deg, #1e3a8a, #3730a3);
+  color: #ffffff;
+  border-radius: 10px;
+  padding: 0.6rem 0.9rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+.rojmed-closing-title {
+  font-size: 0.88rem;
+  font-weight: 800;
+}
+.rojmed-closing-value {
+  font-size: 1.18rem;
+  font-weight: 900;
+  letter-spacing: 0.01em;
+}
+
+.rojmed-source-selector {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.4rem;
+}
+.rojmed-source-btn {
+  border: 1.5px solid #cbd5e1;
+  background: #f8fafc;
+  color: #334155;
+  border-radius: 10px;
+  padding: 0.48rem 0.35rem;
+  font-size: 0.76rem;
+  font-weight: 800;
+  cursor: pointer;
+  font-family: inherit;
+  text-align: center;
+}
+.rojmed-source-btn.active {
+  background: #eef2ff;
+  border-color: #4f46e5;
+  color: #3730a3;
+}
+.rojmed-link-box {
+  background: #f8fafc;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 11px;
+  padding: 0.65rem 0.75rem;
+}
+.rojmed-subtype-btn {
+  border: 1.5px solid #cbd5e1;
+  background: #ffffff;
+  color: #334155;
+  border-radius: 9px;
+  padding: 0.42rem 0.5rem;
+  font-size: 0.76rem;
+  font-weight: 800;
+  cursor: pointer;
+  font-family: inherit;
+}
+.rojmed-subtype-btn.active {
+  background: #fff7ed;
+  border-color: #ea580c;
+  color: #9a3412;
+}
+.rojmed-sync-preview-banner {
+  background: #eef2ff;
+  border: 1px solid #c7d2fe;
+  color: #3730a3;
+  border-radius: 9px;
+  padding: 0.45rem 0.65rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+  margin-bottom: 0.7rem;
+}
