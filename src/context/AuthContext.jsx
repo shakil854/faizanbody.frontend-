@@ -109,7 +109,7 @@ export function AuthProvider({ children }) {
     if (moduleId === 'stock') return hasPermission('stock:view');
     if (moduleId === 'workers') return hasPermission('workers:view');
     if (moduleId === 'truck_accounts' || moduleId === 'truck-accounts' || moduleId === 'truck_account') {
-      return hasPermission('truck_accounts:view') || hasPermission('workers:view');
+      return hasPermission('truck_accounts:view');
     }
 
     return false;

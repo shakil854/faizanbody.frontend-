@@ -48,12 +48,14 @@ export const TruckAccountCard = React.memo(function TruckAccountCard({
     window.open(url, '_blank');
   };
 
+  const canOpenKhata = canManageKhata || canPrint;
+
   return (
     <>
       <div
         className="worker-card luxury-worker-card"
-        style={{ cursor: 'pointer' }}
-        onClick={() => setShowModal(true)}
+        style={{ cursor: canOpenKhata ? 'pointer' : 'default' }}
+        onClick={() => canOpenKhata && setShowModal(true)}
       >
         {/* Card Header */}
         <div className="worker-card-header">
@@ -167,70 +169,76 @@ export const TruckAccountCard = React.memo(function TruckAccountCard({
           </div>
         )}
 
-        {/* Khata Micro Dashboard */}
-        <div className="worker-khata-card" style={{ marginTop: '0.65rem' }}>
-          <div className="khata-card-header-row">
-            <div className="khata-card-title-group">
-              <span className="khata-card-icon-squircle" style={{ background: '#e0f2fe' }}>
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#0284c7" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
-                  <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
-                  <line x1="9" y1="7" x2="15" y2="7" />
-                  <line x1="9" y1="11" x2="13" y2="11" />
-                </svg>
-              </span>
-              <div className="khata-card-title-text">
-                <span className="khata-card-heading">Truck Account</span>
-                <span className="khata-card-subheading">Five Star Physical Ledger</span>
+        {/* Khata Micro Dashboard (Strictly gated by Khata/Print permissions) */}
+        {canOpenKhata && (
+          <div className="worker-khata-card" style={{ marginTop: '0.65rem' }}>
+            <div className="khata-card-header-row">
+              <div className="khata-card-title-group">
+                <span className="khata-card-icon-squircle" style={{ background: '#e0f2fe' }}>
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#0284c7" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
+                    <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
+                    <line x1="9" y1="7" x2="15" y2="7" />
+                    <line x1="9" y1="11" x2="13" y2="11" />
+                  </svg>
+                </span>
+                <div className="khata-card-title-text">
+                  <span className="khata-card-heading">Truck Account</span>
+                  <span className="khata-card-subheading">Five Star Physical Ledger</span>
+                </div>
               </div>
+
+              <button
+                type="button"
+                className="btn-khata-open-pill"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setShowModal(true);
+                }}
+              >
+                <span>View Khata</span>
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <polyline points="9 18 15 12 9 6" />
+                </svg>
+              </button>
             </div>
 
-            <button
-              type="button"
-              className="btn-khata-open-pill"
-              onClick={(e) => {
-                e.stopPropagation();
-                setShowModal(true);
-              }}
-            >
-              <span>View Khata</span>
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                <polyline points="9 18 15 12 9 6" />
-              </svg>
-            </button>
-          </div>
+            {canManageKhata && (
+              <>
+                {/* 2 Micro KPIs: Total Udhar (Bill) vs Total Jama (Received) */}
+                <div className="khata-micro-grid" style={{ gridTemplateColumns: '1fr 1fr' }}>
+                  <div className="khata-micro-item item-upad">
+                    <span className="micro-label">TOTAL BILL (ઉધાર)</span>
+                    <span className="micro-val">₹{totalUdhar.toLocaleString('en-IN')}</span>
+                  </div>
+                  <div className="khata-micro-item item-total">
+                    <span className="micro-label">TOTAL RECEIVED (જમા)</span>
+                    <span className="micro-val" style={{ color: '#16a34a' }}>₹{totalJama.toLocaleString('en-IN')}</span>
+                  </div>
+                </div>
 
-          {/* 2 Micro KPIs: Total Udhar (Bill) vs Total Jama (Received) */}
-          <div className="khata-micro-grid" style={{ gridTemplateColumns: '1fr 1fr' }}>
-            <div className="khata-micro-item item-upad">
-              <span className="micro-label">TOTAL BILL (ઉધાર)</span>
-              <span className="micro-val">₹{totalUdhar.toLocaleString('en-IN')}</span>
-            </div>
-            <div className="khata-micro-item item-total">
-              <span className="micro-label">TOTAL RECEIVED (જમા)</span>
-              <span className="micro-val" style={{ color: '#16a34a' }}>₹{totalJama.toLocaleString('en-IN')}</span>
-            </div>
+                {/* Prominent Balance Strip */}
+                <div
+                  className={`khata-balance-strip ${
+                    balance > 0 ? 'strip-upad' : balance < 0 ? 'strip-due' : 'strip-settled'
+                  }`}
+                >
+                  <div className="balance-strip-left">
+                    <span className="balance-strip-label">
+                      {balance > 0 ? 'બાકી (Due to Pay):' : balance < 0 ? 'એડવાન્સ જમા (Advance):' : 'હિસાબ (Net):'}
+                    </span>
+                    <span className="balance-strip-amount">
+                      ₹{Math.abs(balance).toLocaleString('en-IN')}
+                    </span>
+                  </div>
+                  <span className="balance-strip-badge">
+                    {balance > 0 ? 'બાકી (Due)' : balance < 0 ? 'Advance' : 'સરભર (Settled)'}
+                  </span>
+                </div>
+              </>
+            )}
           </div>
-
-          {/* Prominent Balance Strip */}
-          <div
-            className={`khata-balance-strip ${
-              balance > 0 ? 'strip-upad' : balance < 0 ? 'strip-due' : 'strip-settled'
-            }`}
-          >
-            <div className="balance-strip-left">
-              <span className="balance-strip-label">
-                {balance > 0 ? 'બાકી (Due to Pay):' : balance < 0 ? 'એડવાન્સ જમા (Advance):' : 'હિસાબ (Net):'}
-              </span>
-              <span className="balance-strip-amount">
-                ₹{Math.abs(balance).toLocaleString('en-IN')}
-              </span>
-            </div>
-            <span className="balance-strip-badge">
-              {balance > 0 ? 'બાકી (Due)' : balance < 0 ? 'Advance' : 'સરભર (Settled)'}
-            </span>
-          </div>
-        </div>
+        )}
       </div>
 
       {/* Five Star Physical Notebook Modal */}

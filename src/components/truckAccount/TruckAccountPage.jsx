@@ -12,12 +12,12 @@ import { useAuth } from '../../context/AuthContext';
  * STRICT RULE: No Account No.!
  */
 export function TruckAccountPage({ onBackToHome, onNavigate }) {
-  const { isAdmin, hasPermission } = useAuth();
-  const canCreate = isAdmin || hasPermission('truck_accounts:create') || hasPermission('workers:create');
-  const canEdit = isAdmin || hasPermission('truck_accounts:edit') || hasPermission('workers:edit');
-  const canDelete = isAdmin || hasPermission('truck_accounts:delete') || hasPermission('workers:delete');
-  const canKhata = isAdmin || hasPermission('truck_accounts:khata') || hasPermission('workers:khata');
-  const canPrint = isAdmin || hasPermission('truck_accounts:print') || hasPermission('workers:print');
+  const { hasPermission } = useAuth();
+  const canCreate = hasPermission('truck_accounts:create');
+  const canEdit = hasPermission('truck_accounts:edit');
+  const canDelete = hasPermission('truck_accounts:delete');
+  const canKhata = hasPermission('truck_accounts:khata');
+  const canPrint = hasPermission('truck_accounts:print');
 
   const [accounts, setAccounts] = useState(() => truckAccountService.getCachedAccounts());
   const [loading, setLoading] = useState(() => truckAccountService.getCachedAccounts().length === 0);
@@ -208,20 +208,24 @@ export function TruckAccountPage({ onBackToHome, onNavigate }) {
             <span style={{ fontSize: '1.25rem', fontWeight: 900, color: '#0f172a' }}>{stats.totalAccs}</span>
           </div>
 
-          <div style={{ background: '#fff7ed', padding: '0.65rem 0.85rem', borderRadius: '12px', border: '1px solid #fed7aa' }}>
-            <span style={{ fontSize: '0.68rem', fontWeight: 700, color: '#c2410c', display: 'block' }}>TOTAL BILL (ઉધાર)</span>
-            <span style={{ fontSize: '1.1rem', fontWeight: 900, color: '#9a3412' }}>₹{stats.totalUdhar.toLocaleString('en-IN')}</span>
-          </div>
+          {canKhata && (
+            <>
+              <div style={{ background: '#fff7ed', padding: '0.65rem 0.85rem', borderRadius: '12px', border: '1px solid #fed7aa' }}>
+                <span style={{ fontSize: '0.68rem', fontWeight: 700, color: '#c2410c', display: 'block' }}>TOTAL BILL (ઉધાર)</span>
+                <span style={{ fontSize: '1.1rem', fontWeight: 900, color: '#9a3412' }}>₹{stats.totalUdhar.toLocaleString('en-IN')}</span>
+              </div>
 
-          <div style={{ background: '#f0fdf4', padding: '0.65rem 0.85rem', borderRadius: '12px', border: '1px solid #bbf7d0' }}>
-            <span style={{ fontSize: '0.68rem', fontWeight: 700, color: '#15803d', display: 'block' }}>RECEIVED (જમા)</span>
-            <span style={{ fontSize: '1.1rem', fontWeight: 900, color: '#166534' }}>₹{stats.totalJama.toLocaleString('en-IN')}</span>
-          </div>
+              <div style={{ background: '#f0fdf4', padding: '0.65rem 0.85rem', borderRadius: '12px', border: '1px solid #bbf7d0' }}>
+                <span style={{ fontSize: '0.68rem', fontWeight: 700, color: '#15803d', display: 'block' }}>RECEIVED (જમા)</span>
+                <span style={{ fontSize: '1.1rem', fontWeight: 900, color: '#166534' }}>₹{stats.totalJama.toLocaleString('en-IN')}</span>
+              </div>
 
-          <div style={{ background: '#fef2f2', padding: '0.65rem 0.85rem', borderRadius: '12px', border: '1px solid #fecaca' }}>
-            <span style={{ fontSize: '0.68rem', fontWeight: 700, color: '#b91c1c', display: 'block' }}>PENDING DUE (બાકી)</span>
-            <span style={{ fontSize: '1.1rem', fontWeight: 900, color: '#991b1b' }}>₹{stats.totalDue.toLocaleString('en-IN')}</span>
-          </div>
+              <div style={{ background: '#fef2f2', padding: '0.65rem 0.85rem', borderRadius: '12px', border: '1px solid #fecaca' }}>
+                <span style={{ fontSize: '0.68rem', fontWeight: 700, color: '#b91c1c', display: 'block' }}>PENDING DUE (બાકી)</span>
+                <span style={{ fontSize: '1.1rem', fontWeight: 900, color: '#991b1b' }}>₹{stats.totalDue.toLocaleString('en-IN')}</span>
+              </div>
+            </>
+          )}
         </div>
 
         {/* Search Box */}
@@ -259,20 +263,24 @@ export function TruckAccountPage({ onBackToHome, onNavigate }) {
           >
             📋 All Accounts ({accounts.length})
           </button>
-          <button
-            type="button"
-            className={`khata-period-chip ${statusFilter === 'due' ? 'active' : ''}`}
-            onClick={() => setStatusFilter('due')}
-          >
-            🔴 Pending Due ({stats.dueCount})
-          </button>
-          <button
-            type="button"
-            className={`khata-period-chip ${statusFilter === 'settled' ? 'active' : ''}`}
-            onClick={() => setStatusFilter('settled')}
-          >
-            🟢 Settled (સરભર)
-          </button>
+          {canKhata && (
+            <>
+              <button
+                type="button"
+                className={`khata-period-chip ${statusFilter === 'due' ? 'active' : ''}`}
+                onClick={() => setStatusFilter('due')}
+              >
+                🔴 Pending Due ({stats.dueCount})
+              </button>
+              <button
+                type="button"
+                className={`khata-period-chip ${statusFilter === 'settled' ? 'active' : ''}`}
+                onClick={() => setStatusFilter('settled')}
+              >
+                🟢 Settled (સરભર)
+              </button>
+            </>
+          )}
         </div>
 
         {/* Accounts List */}
@@ -300,17 +308,19 @@ export function TruckAccountPage({ onBackToHome, onNavigate }) {
                   ? `No account matches "${searchQuery}". Try clearing search.`
                   : 'Start adding vehicle customer accounts to manage physical Five Star ledger pages.'}
               </p>
-              <button
-                type="button"
-                className="btn btn-primary btn-empty-cta"
-                onClick={() => {
-                  setSearchQuery('');
-                  setEditingAccount(null);
-                  setIsFormOpen(true);
-                }}
-              >
-                ＋ Add First Truck Account
-              </button>
+              {canCreate && (
+                <button
+                  type="button"
+                  className="btn btn-primary btn-empty-cta"
+                  onClick={() => {
+                    setSearchQuery('');
+                    setEditingAccount(null);
+                    setIsFormOpen(true);
+                  }}
+                >
+                  ＋ Add First Truck Account
+                </button>
+              )}
             </div>
           ) : (
             <div className="workers-grid">

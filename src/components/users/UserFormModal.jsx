@@ -30,7 +30,7 @@ export function UserFormModal({ isOpen, onClose, onSave, initialData }) {
       setRole('user');
       setIsActive(true);
       // For new user, default to standard basic viewing permissions
-      setSelectedPermissions(new Set(['orders:view', 'stock:view', 'workers:view', 'truck_accounts:view']));
+      setSelectedPermissions(new Set(['orders:view', 'stock:view', 'workers:view']));
     }
     setError('');
     setIsSubmitting(false);

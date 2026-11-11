@@ -8,14 +8,16 @@ import { truckAccountService } from '../../services/truckAccountService';
 import { isLeavingSoon } from '../../utils/dateAlerts';
 
 export function HomePage({ onNavigate, onQuickAddWorker, onOpenBackup }) {
-  const { user, isAdmin, canAccessModule } = useAuth();
+  const { user, isAdmin, canAccessModule, hasPermission } = useAuth();
 
   // Instant SWR cache initialization
   const [workers, setWorkers] = useState(() => workerService.getCachedWorkers());
   const [orders, setOrders] = useState(() => orderService.getCachedOrders());
   const [quotations, setQuotations] = useState(() => quotationService.getCachedQuotations());
   const [stockItems, setStockItems] = useState(() => stockService.getCachedItems());
-  const [truckAccounts, setTruckAccounts] = useState(() => truckAccountService.getCachedAccounts());
+  const [truckAccounts, setTruckAccounts] = useState(() =>
+    canAccessModule('truck_accounts') ? truckAccountService.getCachedAccounts() : []
+  );
   const [searchQuery, setSearchQuery] = useState('');
   const [isSearchFocused, setIsSearchFocused] = useState(false);
   const searchContainerRef = useRef(null);
@@ -25,7 +27,7 @@ export function HomePage({ onNavigate, onQuickAddWorker, onOpenBackup }) {
     const unsubWorkers = workerService.subscribe((list) => setWorkers(list));
     const unsubOrders = orderService.subscribe((list) => setOrders(list));
     const unsubStock = stockService.subscribeItems((list) => setStockItems(list));
-    const unsubTruck = truckAccountService.subscribe((list) => setTruckAccounts(list));
+    let unsubTruck = () => {};
     let unsubQuotes = () => {};
 
     if (isAdmin || canAccessModule('quotations')) {
@@ -35,13 +37,16 @@ export function HomePage({ onNavigate, onQuickAddWorker, onOpenBackup }) {
       }).catch(() => {});
     }
 
+    if (isAdmin || canAccessModule('truck_accounts')) {
+      unsubTruck = truckAccountService.subscribe((list) => setTruckAccounts(list));
+      truckAccountService.getAccounts().then((res) => {
+        if (res?.data) setTruckAccounts(res.data);
+      }).catch(() => {});
+    }
+
     // Silent background fetch
     workerService.getWorkers().then((res) => {
       if (res?.data) setWorkers(res.data);
-    }).catch(() => {});
-
-    truckAccountService.getAccounts().then((res) => {
-      if (res?.data) setTruckAccounts(res.data);
     }).catch(() => {});
 
     orderService.getOrders().then((res) => {
@@ -405,7 +410,7 @@ export function HomePage({ onNavigate, onQuickAddWorker, onOpenBackup }) {
           {/* Truck Account (Vehicle Khata) Tile */}
           {canAccessModule('truck_accounts') && (
             <div
-              className={`compact-tile tile-theme-truck ${pendingTruckDue > 0 ? 'tile-has-warning' : ''}`}
+              className={`compact-tile tile-theme-truck ${hasPermission('truck_accounts:khata') && pendingTruckDue > 0 ? 'tile-has-warning' : ''}`}
               onClick={() => onNavigate('truck_accounts')}
               role="button"
               tabIndex={0}
@@ -424,8 +429,13 @@ export function HomePage({ onNavigate, onQuickAddWorker, onOpenBackup }) {
 
               <div className="compact-tile-middle">
                 <h3 className="compact-module-heading">Truck Account</h3>
-                <p className="compact-status-hint" style={{ color: pendingTruckDue > 0 ? '#b91c1c' : '#0284c7' }}>
-                  {pendingTruckDue > 0 ? `🔴 ₹${pendingTruckDue.toLocaleString('en-IN')} Due` : 'Vehicle Customer Khata'}
+                <p
+                  className="compact-status-hint"
+                  style={{ color: hasPermission('truck_accounts:khata') && pendingTruckDue > 0 ? '#b91c1c' : '#0284c7' }}
+                >
+                  {hasPermission('truck_accounts:khata') && pendingTruckDue > 0
+                    ? `🔴 ₹${pendingTruckDue.toLocaleString('en-IN')} Due`
+                    : 'Vehicle Customer Khata'}
                 </p>
               </div>
 

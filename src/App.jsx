@@ -139,17 +139,36 @@ export function App() {
     };
   }, [currentPage, isAuthenticated, isAdmin]);
 
+  // Redirect away if current page is unauthorized
+  useEffect(() => {
+    if (!authLoading && isAuthenticated) {
+      if (currentPage === 'truck_accounts' && !isAdmin && !canAccessModule('truck_accounts')) {
+        setCurrentPage('home');
+        window.location.hash = '#home';
+      }
+      if (currentPage === 'quotations' && !isAdmin && !canAccessModule('quotations')) {
+        setCurrentPage('home');
+        window.location.hash = '#home';
+      }
+      if ((currentPage === 'users' || currentPage === 'backup') && !isAdmin) {
+        setCurrentPage('home');
+        window.location.hash = '#home';
+      }
+    }
+  }, [authLoading, isAuthenticated, currentPage, isAdmin, canAccessModule]);
+
   // Sync hash with browser history for Android back gesture / back button
   useEffect(() => {
     const handleHashChange = () => {
       const hash = window.location.hash;
       const targetPage = hash === '#workers' ? 'workers'
         : hash === '#orders' ? 'orders'
-          : hash === '#quotations' ? (isAdmin ? 'quotations' : 'home')
+          : hash === '#quotations' ? ((isAdmin || canAccessModule('quotations')) ? 'quotations' : 'home')
             : hash === '#stock' ? 'stock'
-              : hash === '#users' ? (isAdmin ? 'users' : 'home')
-                : hash === '#backup' ? (isAdmin ? 'backup' : 'home')
-                  : 'home';
+              : (hash === '#truck_accounts' || hash === '#truck-accounts') ? ((isAdmin || canAccessModule('truck_accounts')) ? 'truck_accounts' : 'home')
+                : hash === '#users' ? (isAdmin ? 'users' : 'home')
+                  : hash === '#backup' ? (isAdmin ? 'backup' : 'home')
+                    : 'home';
 
       setCurrentPage((prev) => {
         if (prev !== targetPage) {
@@ -168,7 +187,7 @@ export function App() {
 
     window.addEventListener('hashchange', handleHashChange);
     return () => window.removeEventListener('hashchange', handleHashChange);
-  }, []);
+  }, [isAdmin, canAccessModule]);
 
   // Native Android Capacitor hardware back button & status bar integration
   useEffect(() => {
