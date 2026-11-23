@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { backupService } from '../../services/backupService';
+import { downloadPdfFile, sharePdfFile } from '../../utils/pdfGenerator';
+import { BackupPdfReport } from './BackupPdfReport';
 
 export function BackupPage({ onBackToHome }) {
   const { isAdmin } = useAuth();
@@ -12,6 +14,11 @@ export function BackupPage({ onBackToHome }) {
   const [fileDetails, setFileDetails] = useState(null);
   const [toast, setToast] = useState({ show: false, message: '', type: 'success' });
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
+
+  // Full App Data PDF Export state
+  const [isExportingPdf, setIsExportingPdf] = useState(false);
+  const [pdfProgressMsg, setPdfProgressMsg] = useState('');
+  const [fullPdfData, setFullPdfData] = useState(null);
 
   // Google Drive automated backup state
   const [driveSettings, setDriveSettings] = useState(null);
@@ -128,7 +135,69 @@ export function BackupPage({ onBackToHome }) {
     }
   };
 
-  // 2. Manual Backup Download (.json ONLY)
+  // 2. Full App Data PDF Export (Offline & Maintenance Friendly)
+  const handleExportAllDataPdf = async () => {
+    try {
+      setIsExportingPdf(true);
+      setPdfProgressMsg('સર્વરમાંથી તમામ ૧૨ ટેબલનો ડેટા મેળવી રહ્યાં છીએ...');
+
+      const allData = await backupService.getFullAppDataForExport();
+      setFullPdfData(allData);
+
+      setPdfProgressMsg('પીડીએફ પેજીસ તૈયાર થઈ રહ્યાં છે...');
+      // Wait for React to render printable DOM elements
+      await new Promise((r) => setTimeout(r, 350));
+
+      const dateStr = new Date().toISOString().slice(0, 10);
+      const fileName = `FaizanBody_All_Data_Backup_${dateStr}.pdf`;
+
+      await downloadPdfFile({
+        elementId: 'printableFullBackupReport',
+        fileName,
+      });
+
+      showToast('✓ સમગ્ર એપ્લિકેશન ડેટાની PDF ડાઉનલોડ થઈ ગઈ છે! હવે મેન્ટેનન્સ દરમિયાન પણ બધો ડેટા વાંચી શકાશે.');
+    } catch (err) {
+      console.error('Full PDF export error:', err);
+      showToast('પીડીએફ બનાવવામાં નિષ્ફળ. કૃપા કરીને ફરી પ્રયાસ કરો.', 'error');
+    } finally {
+      setIsExportingPdf(false);
+      setPdfProgressMsg('');
+    }
+  };
+
+  // 2B. Direct WhatsApp Share of Full App Data PDF
+  const handleShareAllDataPdf = async () => {
+    try {
+      setIsExportingPdf(true);
+      setPdfProgressMsg('પીડીએફ બનાવી WhatsApp માટે તૈયાર થઈ રહી છે...');
+
+      const allData = await backupService.getFullAppDataForExport();
+      setFullPdfData(allData);
+
+      await new Promise((r) => setTimeout(r, 350));
+
+      const dateStr = new Date().toISOString().slice(0, 10);
+      const fileName = `FaizanBody_All_Data_Backup_${dateStr}.pdf`;
+
+      const result = await sharePdfFile({
+        elementId: 'printableFullBackupReport',
+        fileName,
+      });
+
+      if (result?.success || result?.method === 'downloaded') {
+        showToast('✓ સંપૂર્ણ ડેટા PDF સફળતાપૂર્વક શેર / ડાઉનલોડ થઈ ગઈ!');
+      }
+    } catch (err) {
+      console.error('WhatsApp PDF share error:', err);
+      showToast('WhatsApp પર PDF મોકલવામાં નિષ્ફળ', 'error');
+    } finally {
+      setIsExportingPdf(false);
+      setPdfProgressMsg('');
+    }
+  };
+
+  // 3. Manual Backup Download (.json ONLY)
   const handleDownloadBackup = async () => {
     try {
       setActionLoading(true);
@@ -515,16 +584,92 @@ export function BackupPage({ onBackToHome }) {
         )}
       </div>
 
-      {/* 4. OPTION 2: Manual Backup Download (Single File JSON ONLY - as requested) */}
+      {/* 4. OPTION 2: Full System Data PDF Export (Offline & Maintenance Friendly) */}
+      <div className="backup-card" style={{ border: '1.5px solid #0284c7', backgroundColor: '#f0f9ff' }}>
+        <div className="backup-card-header">
+          <div className="backup-card-icon" style={{ background: '#e0f2fe', color: '#0369a1' }}>
+            📄
+          </div>
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', flexWrap: 'wrap' }}>
+              <h2 className="backup-card-title" style={{ color: '#0369a1' }}>
+                ૨. સંપૂર્ણ એપ્લિકેશન ડેટા PDF (Full App Data PDF)
+              </h2>
+              <span style={{ fontSize: '0.68rem', background: '#dcfce7', color: '#15803d', padding: '0.15rem 0.5rem', borderRadius: '12px', fontWeight: 800, border: '1px solid #86efac' }}>
+                ★ OFFLINE &amp; MAINTENANCE READABLE
+              </span>
+            </div>
+            <span style={{ fontSize: '0.72rem', color: '#0369a1', fontWeight: 700 }}>
+              સર્વર મેન્ટેનન્સ કે નેટ વગર સમગ્ર ડેટા સરળતાથી વાંચવા માટે
+            </span>
+          </div>
+        </div>
+
+        <p className="backup-card-desc" style={{ color: '#334155' }}>
+          જો ક્યારેય સિસ્ટમ મેન્ટેનન્સમાં હોય કે ઇન્ટરનેટ બંધ હોય, તો પણ આ એક જ <strong>સંપૂર્ણ PDF</strong> ડાઉનલોડ કરી રાખવાથી તમારા <strong>ઓર્ડર્સ, ગાડી વાળા નું ખાતાવહી, કારીગરો, રોજમેળ, સ્ટોક અને કોટેશન</strong> નો તમામ ડેટા સુંદર કોષ્ટકમાં વાંચી શકાશે.
+        </p>
+
+        {isExportingPdf && (
+          <div style={{ margin: '0.75rem 0', padding: '0.65rem 0.85rem', background: '#e0f2fe', border: '1px solid #bae6fd', borderRadius: '8px', fontSize: '0.78rem', color: '#0369a1', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <span style={{ animation: 'spin 1s linear infinite', display: 'inline-block' }}>⏳</span>
+            <span>{pdfProgressMsg || 'પીડીએફ પ્રોસેસ થઈ રહી છે... કૃપા કરીને થોડી સેકન્ડ રાહ જુઓ.'}</span>
+          </div>
+        )}
+
+        <div style={{ display: 'flex', gap: '0.6rem', flexWrap: 'wrap', marginTop: '0.75rem' }}>
+          <button
+            type="button"
+            className="backup-btn-download"
+            onClick={handleExportAllDataPdf}
+            disabled={actionLoading || isExportingPdf}
+            style={{
+              flex: 1,
+              minWidth: '220px',
+              backgroundColor: '#0284c7',
+              borderColor: '#0284c7',
+              boxShadow: '0 2px 6px rgba(2, 132, 199, 0.25)',
+            }}
+          >
+            <span>📄</span>
+            <span>{isExportingPdf ? 'PDF બની રહી છે...' : 'ડાઉનલોડ સંપૂર્ણ ડેટા PDF (All App Data)'}</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={handleShareAllDataPdf}
+            disabled={actionLoading || isExportingPdf}
+            style={{
+              background: '#25d366',
+              color: '#ffffff',
+              border: 'none',
+              borderRadius: '10px',
+              padding: '0.65rem 1rem',
+              fontSize: '0.82rem',
+              fontWeight: 800,
+              cursor: actionLoading || isExportingPdf ? 'not-allowed' : 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '0.45rem',
+              boxShadow: '0 2px 6px rgba(37, 211, 102, 0.3)',
+            }}
+          >
+            <span>📲</span>
+            <span>WhatsApp પર PDF મોકલો</span>
+          </button>
+        </div>
+      </div>
+
+      {/* 5. OPTION 3: Manual Backup Download (Single File JSON ONLY - as requested) */}
       <div className="backup-card">
         <div className="backup-card-header">
           <div className="backup-card-icon" style={{ background: '#dbeafe', color: '#1e3a8a' }}>
             📥
           </div>
           <div>
-            <h2 className="backup-card-title">૨. મેન્યુઅલ બેકઅપ (Manual Download)</h2>
+            <h2 className="backup-card-title">૩. મેન્યુઅલ બેકઅપ ફાઈલ (Manual .json Download)</h2>
             <span style={{ fontSize: '0.7rem', color: '#64748b', fontWeight: 700 }}>
-              પેનડ્રાઈવ, કમ્પ્યુટર કે મોબાઇલમાં સેવ કરવા માટે
+              પેનડ્રાઈવ, કમ્પ્યુટર કે મોબાઇલમાં સેવ કરવા માટે (સિસ્ટમ રીસ્ટોર ફાઈલ)
             </span>
           </div>
         </div>
@@ -547,14 +692,14 @@ export function BackupPage({ onBackToHome }) {
         </div>
       </div>
 
-      {/* 5. OPTION 3: Restore via File Upload ONLY (Zero Table Drop Guarantee) */}
+      {/* 6. OPTION 4: Restore via File Upload ONLY (Zero Table Drop Guarantee) */}
       <div className="backup-card">
         <div className="backup-card-header">
           <div className="backup-card-icon" style={{ background: '#fee2e2', color: '#dc2626' }}>
             🔄
           </div>
           <div>
-            <h2 className="backup-card-title">૩. બેકઅપ ફાઈલ અપલોડ કરીને રીસ્ટોર (Restore from File)</h2>
+            <h2 className="backup-card-title">૪. બેકઅપ ફાઈલ અપલોડ કરીને રીસ્ટોર (Restore from File)</h2>
             <span style={{ fontSize: '0.7rem', color: '#b91c1c', fontWeight: 800 }}>
               🛡️ ફક્ત ટેબલનો ડેટા રીસ્ટોર થશે (ટેબલ ક્યારેય ઊડશે નહીં)
             </span>
@@ -703,6 +848,9 @@ export function BackupPage({ onBackToHome }) {
           </div>
         </div>
       )}
+
+      {/* Hidden / Offscreen Multi-Page Printable Full App Backup Document */}
+      <BackupPdfReport data={fullPdfData} elementId="printableFullBackupReport" />
     </div>
   );
 }

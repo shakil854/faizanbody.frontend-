@@ -61,6 +61,7 @@ export const ENDPOINTS = {
     STATS: '/backup/stats',
     DOWNLOAD_JSON: '/backup/download-json',
     DOWNLOAD_SQL: '/backup/download-sql',
+    FULL_DATA: '/backup/full-data',
     LIST: '/backup/list',
     SERVER_FILE: (filename) => `/backup/server-file/${encodeURIComponent(filename)}`,
     RESTORE_FILE: '/backup/restore-file',

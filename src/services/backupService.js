@@ -8,6 +8,8 @@ import { workerService } from './workerService';
 import { quotationService } from './quotationService';
 import { stockService } from './stockService';
 import { userService } from './userService';
+import { truckAccountService } from './truckAccountService';
+import { rojmedService } from './rojmedService';
 
 /**
  * Converts a Blob to pure Base64 string
@@ -160,6 +162,77 @@ export const backupService = {
         stock_items: stockItems,
         stock_categories: stockCategories,
       },
+    };
+  },
+
+  /**
+   * Fetch complete application data for PDF export (Works Online & Offline)
+   */
+  async getFullAppDataForExport() {
+    // 1. Try fetching full database snapshot from backend
+    try {
+      const res = await axiosInstance.get(ENDPOINTS.BACKUP.FULL_DATA, { timeout: 10000 });
+      if (res?.data?.success && res.data.data) {
+        const raw = res.data.data;
+        const tables = raw.data || {};
+        return {
+          exportedAt: raw.exportedAt || new Date().toISOString(),
+          database: raw.database || 'faizanbody',
+          summary: raw.summary || {},
+          orders: Array.isArray(tables.work_orders) ? tables.work_orders : [],
+          truckAccounts: Array.isArray(tables.truck_accounts) ? tables.truck_accounts : [],
+          workers: Array.isArray(tables.workers) ? tables.workers : [],
+          rojmedEntries: Array.isArray(tables.rojmed_entries) ? tables.rojmed_entries : [],
+          stockItems: Array.isArray(tables.stock_items) ? tables.stock_items : [],
+          quotations: Array.isArray(tables.quotations) ? tables.quotations : [],
+          users: Array.isArray(tables.users) ? tables.users : [],
+        };
+      }
+    } catch (apiErr) {
+      console.warn('Backend full-data endpoint notice, falling back to client services/cache:', apiErr);
+    }
+
+    // 2. Fallback to client-side services (Offline / Server Maintenance mode)
+    const [ordersRes, workersRes, quotesRes, stockRes, truckRes, usersRes] = await Promise.all([
+      orderService.getOrders().catch(() => ({ data: orderService.getCachedOrders() || [] })),
+      workerService.getWorkers().catch(() => ({ data: workerService.getCachedWorkers() || [] })),
+      quotationService.getQuotations().catch(() => ({ data: quotationService.getCachedQuotations() || [] })),
+      stockService.getItems().catch(() => ({ data: stockService.getCachedItems() || [] })),
+      truckAccountService.getAccounts().catch(() => ({ data: truckAccountService.getCachedAccounts() || [] })),
+      userService.getUsers().catch(() => ({ data: userService.getCachedUsers?.() || [] })),
+    ]);
+
+    const orders = ordersRes.data || [];
+    const workers = workersRes.data || [];
+    const quotations = quotesRes.data || [];
+    const stockItems = stockRes.data || [];
+    const truckAccounts = truckRes.data || [];
+    const users = usersRes.data || [];
+
+    // Rojmed cached entries
+    let rojmedEntries = [];
+    try {
+      const todaySheet = rojmedService.getCachedTodaySheet?.();
+      if (todaySheet?.entries) {
+        rojmedEntries = todaySheet.entries;
+      }
+    } catch {
+      rojmedEntries = [];
+    }
+
+    return {
+      exportedAt: new Date().toISOString(),
+      database: 'faizanbody',
+      summary: {
+        totalRecords: orders.length + workers.length + quotations.length + stockItems.length + truckAccounts.length + users.length,
+      },
+      orders,
+      truckAccounts,
+      workers,
+      rojmedEntries,
+      stockItems,
+      quotations,
+      users,
     };
   },
 
