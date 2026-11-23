@@ -32,6 +32,8 @@ export const ENDPOINTS = {
   TRUCK_ACCOUNT_DETAIL: (id) => `/truck-accounts/${id}`,
   TRUCK_ACCOUNT_ENTRIES: (id) => `/truck-accounts/${id}/entries`,
   TRUCK_ACCOUNT_ENTRY_DELETE: (accountId, entryId) => `/truck-accounts/${accountId}/entries/${entryId}`,
+  TRUCK_ACCOUNT_SETTLE_CYCLE: (id) => `/truck-accounts/${id}/settle-cycle`,
+  TRUCK_ACCOUNT_REOPEN_CYCLE: (id) => `/truck-accounts/${id}/reopen-cycle`,
   ROJMED_DAILY: '/rojmed/daily',
   ROJMED_SUMMARY: '/rojmed/summary',
   ROJMED_ACCOUNT_OPTIONS: '/rojmed/accounts-options',

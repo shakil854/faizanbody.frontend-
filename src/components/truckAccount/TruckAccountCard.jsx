@@ -83,6 +83,21 @@ export const TruckAccountCard = React.memo(function TruckAccountCard({
                     PAGE {account.page_no}
                   </span>
                 )}
+                {Number(account?.current_cycle) > 1 && (
+                  <span
+                    style={{
+                      fontSize: '0.68rem',
+                      fontWeight: 800,
+                      background: '#dcfce7',
+                      color: '#166534',
+                      padding: '0.12rem 0.5rem',
+                      borderRadius: '10px',
+                      border: '1px solid #bbf7d0',
+                    }}
+                  >
+                    ROUND {account.current_cycle}
+                  </span>
+                )}
               </div>
               <span className="worker-status-indicator">
                 {account.truck_no ? (

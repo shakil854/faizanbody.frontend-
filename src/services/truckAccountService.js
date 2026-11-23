@@ -358,6 +358,140 @@ export const truckAccountService = {
     return { success: true, entryId: numEntryId };
   },
 
+  async settleCycle(accountId, notes = {}) {
+    const numAccId = Number(accountId);
+    try {
+      const response = await axiosInstance.post(ENDPOINTS.TRUCK_ACCOUNT_SETTLE_CYCLE(accountId), notes);
+      const data = response.data?.data;
+      if (data) {
+        this._syncLocalSettleCycle(numAccId, data);
+        return { success: true, data };
+      }
+    } catch (err) {
+      console.warn('⚠️ [TruckAccountService settleCycle fallback]:', err.message);
+    }
+
+    // Local fallback
+    const localAccounts = getLocalAccounts();
+    const target = localAccounts.find((a) => a.id === numAccId);
+    const curCycle = Number(target?.current_cycle) || 1;
+    const allEntries = getLocalEntries();
+    const activeEntries = allEntries.filter((e) => e.account_id === numAccId && (!e.is_settled || e.is_settled === 0));
+    const curJama = activeEntries.filter((e) => e.type === 'jama').reduce((sum, e) => sum + (Number(e.amount) || 0), 0);
+    const curUdhar = activeEntries.filter((e) => e.type === 'udhar').reduce((sum, e) => sum + (Number(e.amount) || 0), 0);
+    const carryDiff = curUdhar - curJama;
+
+    allEntries.forEach((e) => {
+      if (e.account_id === numAccId && (!e.is_settled || e.is_settled === 0)) {
+        e.is_settled = true;
+        e.cycle_no = curCycle;
+      }
+    });
+
+    const nextCycle = curCycle + 1;
+    if (target) {
+      target.current_cycle = nextCycle;
+      saveLocalAccounts(localAccounts);
+    }
+
+    if (carryDiff > 0) {
+      const maxId = allEntries.reduce((max, e) => Math.max(max, Number(e.id) || 0), 0);
+      allEntries.push({
+        id: maxId + 1,
+        account_id: numAccId,
+        type: 'udhar',
+        amount: carryDiff,
+        date: new Date().toISOString().split('T')[0],
+        particulars: `Round ${curCycle} ની આગળની બાકી રહેલ રકમ`,
+        payment_mode: 'Cash',
+        cycle_no: nextCycle,
+        is_settled: false,
+        rojmed_entry_id: null,
+        created_at: new Date().toISOString(),
+      });
+    } else if (carryDiff < 0) {
+      const maxId = allEntries.reduce((max, e) => Math.max(max, Number(e.id) || 0), 0);
+      allEntries.push({
+        id: maxId + 1,
+        account_id: numAccId,
+        type: 'jama',
+        amount: Math.abs(carryDiff),
+        date: new Date().toISOString().split('T')[0],
+        particulars: `Round ${curCycle} ની આગળની એડવાન્સ જમા રકમ`,
+        payment_mode: 'Cash',
+        cycle_no: nextCycle,
+        is_settled: false,
+        rojmed_entry_id: null,
+        created_at: new Date().toISOString(),
+      });
+    }
+
+    saveLocalEntries(allEntries);
+    this._recalcAndNotifyAccount(numAccId);
+    return this.getAccountById(numAccId);
+  },
+
+  async reopenCycle(accountId) {
+    const numAccId = Number(accountId);
+    try {
+      const response = await axiosInstance.post(ENDPOINTS.TRUCK_ACCOUNT_REOPEN_CYCLE(accountId));
+      const data = response.data?.data;
+      if (data) {
+        this._syncLocalReopenCycle(numAccId, data);
+        return { success: true, data };
+      }
+    } catch (err) {
+      console.warn('⚠️ [TruckAccountService reopenCycle fallback]:', err.message);
+    }
+
+    // Local fallback
+    const localAccounts = getLocalAccounts();
+    const target = localAccounts.find((a) => a.id === numAccId);
+    const curCycle = Number(target?.current_cycle) || 1;
+    if (curCycle > 1) {
+      const targetCycle = curCycle - 1;
+      let allEntries = getLocalEntries();
+      // Remove opening carry forward entry from curCycle if any was added
+      allEntries = allEntries.filter(
+        (e) => !(e.account_id === numAccId && Number(e.cycle_no) === curCycle && String(e.particulars).includes(`Round ${targetCycle} ની આગળની`))
+      );
+      allEntries.forEach((e) => {
+        if (e.account_id === numAccId && Number(e.cycle_no) === targetCycle) {
+          e.is_settled = false;
+        }
+      });
+      saveLocalEntries(allEntries);
+      if (target) {
+        target.current_cycle = targetCycle;
+        saveLocalAccounts(localAccounts);
+      }
+    }
+    this._recalcAndNotifyAccount(numAccId);
+    return this.getAccountById(numAccId);
+  },
+
+  _syncLocalSettleCycle(accountId, updatedAccount) {
+    const localAccounts = getLocalAccounts().map((a) => (a.id === accountId ? { ...a, ...updatedAccount } : a));
+    saveLocalAccounts(localAccounts);
+    if (Array.isArray(updatedAccount.entries)) {
+      const allEntries = getLocalEntries().filter((e) => e.account_id !== accountId);
+      saveLocalEntries([...allEntries, ...updatedAccount.entries]);
+    }
+    cachedAccounts = localAccounts;
+    notifyListeners();
+  },
+
+  _syncLocalReopenCycle(accountId, updatedAccount) {
+    const localAccounts = getLocalAccounts().map((a) => (a.id === accountId ? { ...a, ...updatedAccount } : a));
+    saveLocalAccounts(localAccounts);
+    if (Array.isArray(updatedAccount.entries)) {
+      const allEntries = getLocalEntries().filter((e) => e.account_id !== accountId);
+      saveLocalEntries([...allEntries, ...updatedAccount.entries]);
+    }
+    cachedAccounts = localAccounts;
+    notifyListeners();
+  },
+
   _syncLocalAddEntry(accountId, entry) {
     const all = getLocalEntries();
     if (!all.some((e) => e.id === entry.id)) {
@@ -380,9 +514,13 @@ export const truckAccountService = {
   _recalcAndNotifyAccount(accountId) {
     const allEntries = getLocalEntries();
     const entries = allEntries.filter((e) => e.account_id === accountId);
-    const totalJama = entries.filter((e) => e.type === 'jama').reduce((sum, e) => sum + (Number(e.amount) || 0), 0);
-    const totalUdhar = entries.filter((e) => e.type === 'udhar').reduce((sum, e) => sum + (Number(e.amount) || 0), 0);
+    const activeEntries = entries.filter((e) => !e.is_settled || e.is_settled === 0);
+    const totalJama = activeEntries.filter((e) => e.type === 'jama').reduce((sum, e) => sum + (Number(e.amount) || 0), 0);
+    const totalUdhar = activeEntries.filter((e) => e.type === 'udhar').reduce((sum, e) => sum + (Number(e.amount) || 0), 0);
     const balance = totalUdhar - totalJama;
+
+    const allTimeJama = entries.filter((e) => e.type === 'jama').reduce((sum, e) => sum + (Number(e.amount) || 0), 0);
+    const allTimeUdhar = entries.filter((e) => e.type === 'udhar').reduce((sum, e) => sum + (Number(e.amount) || 0), 0);
 
     const localAccounts = getLocalAccounts().map((a) => {
       if (a.id === accountId) {
@@ -391,7 +529,11 @@ export const truckAccountService = {
           total_jama: totalJama,
           total_udhar: totalUdhar,
           balance,
+          all_time_jama: allTimeJama,
+          all_time_udhar: allTimeUdhar,
+          all_time_balance: allTimeUdhar - allTimeJama,
           status: balance > 0 ? 'due' : balance < 0 ? 'advance' : 'settled',
+          active_entries: activeEntries.length,
           total_entries: entries.length,
         };
       }

@@ -24,6 +24,13 @@ export function TruckAccountModal({
   const [account, setAccount] = useState(initialAccount);
   const [entries, setEntries] = useState([]);
   const [mobileTab, setMobileTab] = useState('both'); // 'both' | 'jama' | 'udhar'
+  const [selectedCycle, setSelectedCycle] = useState('active'); // 'active' | number (e.g. 1, 2) | 'all'
+
+  // Settle Round / Cycle modal state
+  const [showSettleDialog, setShowSettleDialog] = useState(false);
+  const [settleNotes, setSettleNotes] = useState('');
+  const [isSettling, setIsSettling] = useState(false);
+  const [isReopening, setIsReopening] = useState(false);
 
   // Add / Edit Entry state (STRICTLY 2 TYPES: 'jama' vs 'udhar')
   const [showAddForm, setShowAddForm] = useState(false);
@@ -87,6 +94,7 @@ export function TruckAccountModal({
       setShowAddForm(false);
       setEditingEntry(null);
       setFormError('');
+      setSelectedCycle('active');
     }
   }, [isOpen, accountId, fetchAccountData]);
 
@@ -96,18 +104,58 @@ export function TruckAccountModal({
     }
   }, [showAddForm]);
 
-  // Separate Jama and Udhar rows
-  const jamaRows = useMemo(() => {
-    return (entries || [])
-      .filter((e) => e && e.type === 'jama')
-      .sort((a, b) => (String(a.date) > String(b.date) ? 1 : -1));
+  // Current Cycle Number
+  const currentCycleNo = Number(account?.current_cycle) || 1;
+
+  // Extract past settled cycles from entries
+  const pastCycles = useMemo(() => {
+    const cycles = new Set();
+    (entries || []).forEach((e) => {
+      if (e.is_settled && e.cycle_no) {
+        cycles.add(Number(e.cycle_no));
+      }
+    });
+    return Array.from(cycles).sort((a, b) => a - b);
   }, [entries]);
 
+  // Active entries count and active balance
+  const activeEntriesCount = useMemo(() => {
+    return (entries || []).filter((e) => !e.is_settled).length;
+  }, [entries]);
+
+  const activeBalance = useMemo(() => {
+    const activeJama = (entries || [])
+      .filter((e) => !e.is_settled && e.type === 'jama')
+      .reduce((sum, e) => sum + (Number(e.amount) || 0), 0);
+    const activeUdhar = (entries || [])
+      .filter((e) => !e.is_settled && e.type === 'udhar')
+      .reduce((sum, e) => sum + (Number(e.amount) || 0), 0);
+    return activeUdhar - activeJama;
+  }, [entries]);
+
+  // Filter entries based on selectedCycle
+  const displayedEntries = useMemo(() => {
+    if (selectedCycle === 'active') {
+      return (entries || []).filter((e) => !e.is_settled);
+    }
+    if (selectedCycle === 'all') {
+      return entries || [];
+    }
+    return (entries || []).filter((e) => Number(e.cycle_no) === Number(selectedCycle));
+  }, [entries, selectedCycle]);
+
+  // Separate Jama and Udhar rows for current displayed selection
+  const jamaRows = useMemo(() => {
+    return (displayedEntries || [])
+      .filter((e) => e && e.type === 'jama')
+      .sort((a, b) => (String(a.date) > String(b.date) ? 1 : -1));
+  }, [displayedEntries]);
+
   const udharRows = useMemo(() => {
-    return (entries || [])
+    return (displayedEntries || [])
       .filter((e) => e && e.type === 'udhar')
       .sort((a, b) => (String(a.date) > String(b.date) ? 1 : -1));
-  }, [entries]);
+  }, [displayedEntries]);
 
   const totalJama = useMemo(() => {
     return jamaRows.reduce((sum, e) => sum + (Number(e.amount) || 0), 0);
@@ -267,6 +315,55 @@ export function TruckAccountModal({
     }
   };
 
+  // Settle current cycle and open new round
+  const handleSettleCycle = async () => {
+    try {
+      setIsSettling(true);
+      await truckAccountService.settleCycle(accountId, { notes: settleNotes });
+      await fetchAccountData();
+      if (typeof onAccountChanged === 'function') {
+        onAccountChanged();
+      }
+      setShowSettleDialog(false);
+      setSettleNotes('');
+      setSelectedCycle('active');
+      setPdfToast('✅ હિસાબ સરભર થયો અને નવો રાઉન્ડ શરૂ થયો!');
+      setTimeout(() => setPdfToast(''), 3500);
+    } catch (err) {
+      console.error('Error settling cycle:', err);
+      alert(err.message || 'Error settling cycle');
+    } finally {
+      setIsSettling(false);
+    }
+  };
+
+  // Reopen previous cycle
+  const handleReopenCycle = async () => {
+    if (!window.confirm('શું તમે પાછલો રાઉન્ડ ફરી ચાલુ (Reopen) કરવા માંગો છો?')) return;
+    try {
+      setIsReopening(true);
+      await truckAccountService.reopenCycle(accountId);
+      await fetchAccountData();
+      if (typeof onAccountChanged === 'function') {
+        onAccountChanged();
+      }
+      setSelectedCycle('active');
+      setPdfToast('✅ પાછલો રાઉન્ડ ફરી ચાલુ થઈ ગયો!');
+      setTimeout(() => setPdfToast(''), 3500);
+    } catch (err) {
+      console.error('Error reopening cycle:', err);
+      alert(err.message || 'Error reopening cycle');
+    } finally {
+      setIsReopening(false);
+    }
+  };
+
+  const getCycleFilenameSuffix = () => {
+    if (selectedCycle === 'active') return `_Round_${currentCycleNo}`;
+    if (selectedCycle === 'all') return '_All_History';
+    return `_Round_${selectedCycle}_Settled`;
+  };
+
   // WhatsApp Share (Sends Pure PDF File Directly)
   const handleShareWhatsApp = async () => {
     if (isGeneratingPdf) return;
@@ -276,7 +373,7 @@ export function TruckAccountModal({
       await new Promise((r) => setTimeout(r, 200));
 
       const pName = (account?.party_name || 'Truck_Account').replace(/[^a-zA-Z0-9_-]/g, '_');
-      const filename = `Truck_Khata_${pName}_Page_${account?.page_no || '1'}.pdf`;
+      const filename = `Truck_Khata_${pName}${getCycleFilenameSuffix()}_Page_${account?.page_no || '1'}.pdf`;
 
       const result = await sharePdfFile({
         elementId: 'printableTruckAccountSheet',
@@ -312,7 +409,7 @@ export function TruckAccountModal({
         return;
       }
       const pName = (account?.party_name || 'Truck_Account').replace(/[^a-zA-Z0-9_-]/g, '_');
-      const filename = `Truck_Khata_${pName}_Page_${account?.page_no || '1'}`;
+      const filename = `Truck_Khata_${pName}${getCycleFilenameSuffix()}_Page_${account?.page_no || '1'}`;
       await downloadPdfFile({
         elementId: 'printableTruckAccountSheet',
         fileName: filename,
@@ -377,6 +474,7 @@ export function TruckAccountModal({
                 <p className="sheet-subtitle">
                   {account?.truck_no ? `Truck: ${account.truck_no} • ` : ''}
                   {account?.phone ? `📞 ${account.phone} • ` : ''}
+                  {currentCycleNo > 1 ? `Round ${currentCycleNo} • ` : ''}
                   Vehicle Khata Ledger (ગાડી વાળા નું ખાતાવહી)
                 </p>
               </div>
@@ -395,9 +493,93 @@ export function TruckAccountModal({
             </button>
           </div>
 
+          {/* Cycle / Round Navigation Bar */}
+          <div className="vahi-cycle-nav-bar">
+            <div className="cycle-pills-wrap">
+              <button
+                type="button"
+                className={`cycle-pill ${selectedCycle === 'active' ? 'active' : ''}`}
+                onClick={() => setSelectedCycle('active')}
+              >
+                <span>🟢 Round {currentCycleNo} (ચાલુ)</span>
+                {activeEntriesCount > 0 && <span className="cycle-pill-count">{activeEntriesCount}</span>}
+              </button>
+
+              {pastCycles.map((cycleNum) => (
+                <button
+                  key={cycleNum}
+                  type="button"
+                  className={`cycle-pill pill-settled ${selectedCycle === cycleNum ? 'active' : ''}`}
+                  onClick={() => setSelectedCycle(cycleNum)}
+                >
+                  <span>✓ Round {cycleNum} (સરભર)</span>
+                </button>
+              ))}
+
+              {pastCycles.length > 0 && (
+                <button
+                  type="button"
+                  className={`cycle-pill pill-all ${selectedCycle === 'all' ? 'active' : ''}`}
+                  onClick={() => setSelectedCycle('all')}
+                >
+                  <span>📋 તમામ હિસાબ ({entries.length})</span>
+                </button>
+              )}
+            </div>
+
+            {/* Settle Round Button (only in active cycle when entries exist) */}
+            {canManage && selectedCycle === 'active' && activeEntriesCount > 0 && (
+              <button
+                type="button"
+                className="btn btn-settle-cycle"
+                onClick={() => setShowSettleDialog(true)}
+                title="Mark current round as settled & archive entries"
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
+                  <polyline points="22 4 12 14.01 9 11.01" />
+                </svg>
+                <span>સરભર કરો & નવો રાઉન્ડ</span>
+              </button>
+            )}
+
+            {canManage && typeof selectedCycle === 'number' && selectedCycle === currentCycleNo - 1 && (
+              <button
+                type="button"
+                className="btn btn-reopen-cycle"
+                onClick={handleReopenCycle}
+                disabled={isReopening}
+                title="Reopen this settled round"
+              >
+                <span>↩️ રાઉન્ડ ફરી ચાલુ કરો</span>
+              </button>
+            )}
+          </div>
+
+          {/* Past Cycle Notice Banner */}
+          {selectedCycle !== 'active' && (
+            <div className="vahi-past-cycle-notice">
+              <span>
+                {selectedCycle === 'all'
+                  ? '📋 તમામ હિસાબ (All History): બધી જ એન્ટ્રીઓ દર્શાવેલ છે.'
+                  : `✓ Round ${selectedCycle} (સરભર થયેલ હિસાબ): આ રાઉન્ડ પૂર્ણ અને સરભર થઈ ગયેલ છે.`}
+              </span>
+              {selectedCycle === currentCycleNo - 1 && canManage && (
+                <button
+                  type="button"
+                  className="btn btn-link-reopen"
+                  onClick={handleReopenCycle}
+                  disabled={isReopening}
+                >
+                  રાઉન્ડ ફરી ખોલો (Reopen)
+                </button>
+              )}
+            </div>
+          )}
+
           {/* Action Bar (Add Jama, Add Udhar, WhatsApp Share, Download PDF) */}
           <div className="khata-action-bar">
-            {canManage && (
+            {canManage && selectedCycle === 'active' && (
               <>
                 <button
                   type="button"
@@ -423,6 +605,12 @@ export function TruckAccountModal({
                   <span>+ Udhar (ગાડી ખર્ચ/બિલ)</span>
                 </button>
               </>
+            )}
+
+            {canManage && selectedCycle !== 'active' && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.78rem', fontWeight: 700, color: '#64748b', padding: '0.3rem 0' }}>
+                <span>🔒 આ રાઉન્ડ સરભર થયેલ છે (Viewing Past History)</span>
+              </div>
             )}
 
             {canPrint && (
@@ -805,7 +993,12 @@ export function TruckAccountModal({
                 <span className="vahi-ac-subtitle">
                   {account?.truck_no ? `Truck: ${account.truck_no} • ` : ''}
                   {account?.phone ? `Phone: ${account.phone} • ` : ''}
-                  {account?.address ? `City: ${account.address}` : 'Vehicle Customer Khata'}
+                  {account?.address ? `City: ${account.address} • ` : ''}
+                  {selectedCycle === 'active'
+                    ? `Round ${currentCycleNo} (Active Ledger)`
+                    : selectedCycle === 'all'
+                    ? 'All History (તમામ હિસાબ)'
+                    : `Round ${selectedCycle} (Settled સરભર)`}
                 </span>
               </div>
 
@@ -824,7 +1017,7 @@ export function TruckAccountModal({
                     <span className="vahi-col-heading">જ. JAMA (રકમ જમા)</span>
                     <span className="vahi-col-count-badge">{jamaRows.length} items</span>
                   </div>
-                  {canManage && (
+                  {canManage && selectedCycle === 'active' && (
                     <button
                       type="button"
                       className="btn-vahi-add-entry"
@@ -918,7 +1111,7 @@ export function TruckAccountModal({
                     <span className="vahi-col-heading">ઉ. UDHAR (બિલ / ખર્ચ)</span>
                     <span className="vahi-col-count-badge">{udharRows.length} items</span>
                   </div>
-                  {canManage && (
+                  {canManage && selectedCycle === 'active' && (
                     <button
                       type="button"
                       className="btn-vahi-add-entry"
@@ -1081,7 +1274,12 @@ export function TruckAccountModal({
                       <div className="pdf-notebook-meta">
                         {account?.truck_no ? `Truck: ${account.truck_no} • ` : ''}
                         {account?.phone ? `Phone: ${account.phone} • ` : ''}
-                        {account?.address ? `City: ${account.address}` : 'Vehicle Customer Khata'}
+                        {account?.address ? `City: ${account.address} • ` : ''}
+                        {selectedCycle === 'active'
+                          ? `Round ${currentCycleNo} (Active Ledger)`
+                          : selectedCycle === 'all'
+                          ? 'All-Time Complete Ledger'
+                          : `Round ${selectedCycle} (Settled Statement)`}
                       </div>
                     </div>
                     <div className="pdf-page-stamp-box">
@@ -1321,6 +1519,91 @@ export function TruckAccountModal({
                 disabled={isDeleting}
               >
                 {isDeleting ? 'Deleting...' : 'Delete'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* Settle Round Confirmation Dialog */}
+      {showSettleDialog && (
+        <div className="modal-backdrop" style={{ zIndex: 100000 }} onClick={() => setShowSettleDialog(false)}>
+          <div
+            className="android-dialog luxury-dialog"
+            onClick={(e) => e.stopPropagation()}
+            style={{ maxWidth: '440px' }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', marginBottom: '0.75rem' }}>
+              <span style={{ fontSize: '1.4rem' }}>✅</span>
+              <div>
+                <h3 style={{ margin: 0, color: '#0f172a', fontSize: '1.05rem', fontWeight: 800 }}>
+                  હિસાબ સરભર કરો & નવો રાઉન્ડ
+                </h3>
+                <span style={{ fontSize: '0.75rem', color: '#64748b', fontWeight: 600 }}>
+                  Round {currentCycleNo} Final Settlement
+                </span>
+              </div>
+            </div>
+
+            <div style={{ background: '#f8fafc', border: '1.5px solid #e2e8f0', borderRadius: '12px', padding: '0.75rem 0.9rem', marginBottom: '1rem' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.82rem', marginBottom: '0.35rem' }}>
+                <span style={{ color: '#64748b', fontWeight: 600 }}>Party:</span>
+                <strong style={{ color: '#0f172a' }}>{account?.party_name}</strong>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.82rem', marginBottom: '0.35rem' }}>
+                <span style={{ color: '#64748b', fontWeight: 600 }}>ટોટલ બિલ (ઉધાર):</span>
+                <strong style={{ color: '#b45309' }}>₹{totalUdhar.toLocaleString('en-IN')}/-</strong>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.82rem', marginBottom: '0.35rem' }}>
+                <span style={{ color: '#64748b', fontWeight: 600 }}>ટોટલ મળેલ (જમા):</span>
+                <strong style={{ color: '#15803d' }}>₹{totalJama.toLocaleString('en-IN')}/-</strong>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.88rem', borderTop: '1px solid #cbd5e1', paddingTop: '0.45rem', marginTop: '0.45rem' }}>
+                <span style={{ fontWeight: 800, color: remainingBalance > 0 ? '#b91c1c' : '#15803d' }}>
+                  {remainingBalance === 0 ? 'સરભર (Net Settled):' : remainingBalance > 0 ? 'બાકી રકમ (Due):' : 'એડવાન્સ જમા:'}
+                </span>
+                <strong style={{ fontWeight: 900, fontSize: '0.95rem', color: remainingBalance === 0 ? '#15803d' : remainingBalance > 0 ? '#dc2626' : '#2563eb' }}>
+                  ₹{Math.abs(remainingBalance).toLocaleString('en-IN')}/-
+                </strong>
+              </div>
+            </div>
+
+            {remainingBalance !== 0 ? (
+              <div style={{ background: remainingBalance > 0 ? '#fef2f2' : '#eff6ff', border: `1.5px solid ${remainingBalance > 0 ? '#fecaca' : '#bfdbfe'}`, borderRadius: '10px', padding: '0.65rem 0.8rem', marginBottom: '0.9rem' }}>
+                <p style={{ margin: 0, fontSize: '0.8rem', fontWeight: 700, color: remainingBalance > 0 ? '#991b1b' : '#1e40af', lineHeight: 1.45 }}>
+                  {remainingBalance > 0
+                    ? `📌 બાકી રકમ ₹${Math.abs(remainingBalance).toLocaleString('en-IN')}/- નવા Round ${currentCycleNo + 1} માં આપમેળે ઉધાર બાજુ "Round ${currentCycleNo} ની આગળની બાકી રહેલ રકમ" તરીકે કેરી-ફોરવર્ડ થઈ જશે.`
+                    : `📌 એડવાન્સ રકમ ₹${Math.abs(remainingBalance).toLocaleString('en-IN')}/- નવા Round ${currentCycleNo + 1} માં આપમેળે જમા બાજુ "Round ${currentCycleNo} ની આગળની એડવાન્સ જમા રકમ" તરીકે કેરી-ફોરવર્ડ થઈ જશે.`}
+                </p>
+              </div>
+            ) : (
+              <div style={{ background: '#f0fdf4', border: '1.5px solid #bbf7d0', borderRadius: '10px', padding: '0.65rem 0.8rem', marginBottom: '0.9rem' }}>
+                <p style={{ margin: 0, fontSize: '0.8rem', fontWeight: 700, color: '#166534' }}>
+                  ✓ હિસાબ સંપૂર્ણ સરભર (₹0) છે. નવો Round {currentCycleNo + 1} એકદમ ખાલી/સાફ શરૂ થશે.
+                </p>
+              </div>
+            )}
+
+            <p style={{ color: '#64748b', fontSize: '0.78rem', lineHeight: 1.45, margin: '0 0 1rem' }}>
+              ℹ️ હાલની એન્ટ્રીઓ <strong>Round {currentCycleNo}</strong> તરીકે સચવાઈ જશે. જૂનો હિસાબ ગમે ત્યારે &quot;Round {currentCycleNo}&quot; ટેબ પરથી જોઈ અને WhatsApp/PDF કરી શકાશે.
+            </p>
+
+            <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end' }}>
+              <button
+                type="button"
+                className="btn btn-secondary"
+                onClick={() => setShowSettleDialog(false)}
+                disabled={isSettling}
+              >
+                રદ કરો (Cancel)
+              </button>
+              <button
+                type="button"
+                className="btn btn-primary"
+                style={{ background: '#059669', borderColor: '#059669' }}
+                onClick={handleSettleCycle}
+                disabled={isSettling}
+              >
+                {isSettling ? 'સરભર થઈ રહ્યું છે...' : '✅ હા, સરભર કરી નવો રાઉન્ડ શરૂ કરો'}
               </button>
             </div>
           </div>
