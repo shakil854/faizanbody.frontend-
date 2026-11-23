@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { truckAccountService } from '../../services/truckAccountService';
-import { downloadPdfFile } from '../../utils/pdfGenerator';
+import { sharePdfFile, downloadPdfFile } from '../../utils/pdfGenerator';
 
 /**
  * Authentic Five Star 2-Column Truck Account Ledger Sheet (ગાડી વાળા નું ખાતાવહી)
@@ -119,6 +119,50 @@ export function TruckAccountModal({
 
   const remainingBalance = totalUdhar - totalJama; // > 0: Due to pay (બાકી), <= 0: Settled/Advance
 
+  // Helper to chunk entries for printable PDF ensuring all entries appear across pages
+  const getPdfPagesData = useCallback(() => {
+    const maxEntries = Math.max(jamaRows.length, udharRows.length);
+    if (maxEntries <= 18) {
+      return [
+        {
+          pageNum: 1,
+          totalPages: 1,
+          jamaPageRows: jamaRows,
+          udharPageRows: udharRows,
+          isFirst: true,
+          isLast: true,
+          startIndex: 0,
+        },
+      ];
+    }
+
+    const pages = [];
+    const firstPageRowsCount = 14;
+    const continuationRowsCount = 18;
+
+    let currentIdx = 0;
+    while (currentIdx < maxEntries) {
+      const isFirst = pages.length === 0;
+      const count = isFirst ? firstPageRowsCount : continuationRowsCount;
+      const nextIdx = currentIdx + count;
+      const isLast = nextIdx >= maxEntries;
+
+      pages.push({
+        pageNum: pages.length + 1,
+        jamaPageRows: jamaRows.slice(currentIdx, nextIdx),
+        udharPageRows: udharRows.slice(currentIdx, nextIdx),
+        startIndex: currentIdx,
+        isFirst,
+        isLast,
+      });
+
+      currentIdx = nextIdx;
+    }
+
+    const totalPages = pages.length;
+    return pages.map((p) => ({ ...p, totalPages }));
+  }, [jamaRows, udharRows]);
+
   // Quick Open Add Jama
   const handleOpenAddJama = () => {
     setEditingEntry(null);
@@ -223,49 +267,38 @@ export function TruckAccountModal({
     }
   };
 
-  // WhatsApp Share
-  const handleShareWhatsApp = () => {
-    const pName = account?.party_name || 'Truck Account';
-    const pageStr = account?.page_no ? `Page No: ${account.page_no}` : '';
-    const truckStr = account?.truck_no ? `Truck No: ${account.truck_no}` : '';
+  // WhatsApp Share (Sends Pure PDF File Directly)
+  const handleShareWhatsApp = async () => {
+    if (isGeneratingPdf) return;
+    try {
+      setIsGeneratingPdf(true);
+      setPdfToast('⏳ Generating PDF, opening WhatsApp...');
+      await new Promise((r) => setTimeout(r, 200));
 
-    let text = `🚛 *FAIZAN BODY WORKSHOP*\n`;
-    text += `*Vehicle Khata Ledger (ગાડી વાળા નું ખાતું)*\n`;
-    text += `━━━━━━━━━━━━━━━━━━━━━\n`;
-    text += `👤 *Party:* ${pName}\n`;
-    if (pageStr) text += `📖 *${pageStr}*\n`;
-    if (truckStr) text += `🚚 *${truckStr}*\n`;
-    text += `━━━━━━━━━━━━━━━━━━━━━\n\n`;
+      const pName = (account?.party_name || 'Truck_Account').replace(/[^a-zA-Z0-9_-]/g, '_');
+      const filename = `Truck_Khata_${pName}_Page_${account?.page_no || '1'}.pdf`;
 
-    text += `*🔹 ઉધાર / TOTAL BILL (Charges):* ₹${totalUdhar.toLocaleString('en-IN')}/-\n`;
-    udharRows.forEach((r, i) => {
-      text += `  ${i + 1}. ${r.particulars || 'Bill'}: ₹${Number(r.amount).toLocaleString('en-IN')}/-\n`;
-    });
+      const result = await sharePdfFile({
+        elementId: 'printableTruckAccountSheet',
+        fileName: filename,
+      });
 
-    text += `\n*🔸 જમા / TOTAL RECEIVED (Payments):* ₹${totalJama.toLocaleString('en-IN')}/-\n`;
-    jamaRows.forEach((r, i) => {
-      text += `  ${i + 1}. ${r.date?.slice(5) || ''} ${r.particulars || 'Rokda'}: ₹${Number(r.amount).toLocaleString('en-IN')}/-\n`;
-    });
-
-    text += `\n━━━━━━━━━━━━━━━━━━━━━\n`;
-    text += `*💰 TOTAL BILL:* ₹${totalUdhar.toLocaleString('en-IN')}/-\n`;
-    text += `*💵 LESS RECEIVED:* - ₹${totalJama.toLocaleString('en-IN')}/-\n`;
-    text += `━━━━━━━━━━━━━━━━━━━━━\n`;
-    if (remainingBalance > 0) {
-      text += `*🔴 બાકી રહેલ રકમ (Remaining Due): ₹${remainingBalance.toLocaleString('en-IN')}/-*\n`;
-    } else if (remainingBalance < 0) {
-      text += `*🟢 એડવાન્સ જમા (Advance Paid): ₹${Math.abs(remainingBalance).toLocaleString('en-IN')}/-*\n`;
-    } else {
-      text += `*✅ સંપૂર્ણ હિસાબ સરભર (Fully Settled - ₹0 Due)*\n`;
+      if (result?.method === 'downloaded') {
+        setPdfToast('✅ PDF downloaded! WhatsApp par share kar sakte hain.');
+        setTimeout(() => setPdfToast(''), 4000);
+      } else if (result?.success) {
+        setPdfToast('✅ PDF WhatsApp par share ho gaya!');
+        setTimeout(() => setPdfToast(''), 3000);
+      } else {
+        setPdfToast('');
+      }
+    } catch (err) {
+      console.error('WhatsApp PDF share error:', err);
+      setPdfToast('⚠️ Issue sharing PDF.');
+      setTimeout(() => setPdfToast(''), 3000);
+    } finally {
+      setIsGeneratingPdf(false);
     }
-
-    const cleanPhone = (account?.phone || '').replace(/[^0-9]/g, '');
-    const waPhone = cleanPhone.length === 10 ? `91${cleanPhone}` : cleanPhone;
-    const url = waPhone
-      ? `https://wa.me/${waPhone}?text=${encodeURIComponent(text)}`
-      : `https://wa.me/?text=${encodeURIComponent(text)}`;
-
-    window.open(url, '_blank');
   };
 
   // PDF Export
@@ -398,12 +431,13 @@ export function TruckAccountModal({
                   type="button"
                   className="btn btn-whatsapp-share"
                   onClick={handleShareWhatsApp}
-                  title="Share Statement on WhatsApp"
+                  disabled={isGeneratingPdf}
+                  title="Share PDF Statement on WhatsApp"
                 >
                   <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
                     <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" />
                   </svg>
-                  <span>Share WhatsApp</span>
+                  <span>{isGeneratingPdf ? '⏳ PDF Ban Rahi Hai...' : 'Share WhatsApp (PDF)'}</span>
                 </button>
 
                 <button
@@ -763,7 +797,7 @@ export function TruckAccountModal({
           )}
 
           {/* 2-COLUMN AUTHENTIC KHATA VAHI NOTEBOOK SHEET */}
-          <div className="khata-vahi-sheet-container" id="printableTruckAccountSheet">
+          <div className="khata-vahi-sheet-container">
             {/* Notebook Header Strip (NO Account No.!) */}
             <div className="khata-vahi-header-strip">
               <div className="vahi-header-left">
@@ -987,6 +1021,274 @@ export function TruckAccountModal({
               </div>
             </div>
           </div>
+        </div>
+      </div>
+
+      {/* ========================================================
+          BACKGROUND PRINTABLE PDF SHEET (Fixed 720px, All Entries, Multi-Page Support)
+          ======================================================== */}
+      <div
+        style={{
+          position: 'fixed',
+          top: '0px',
+          left: '-9999px',
+          width: '720px',
+          zIndex: -1,
+          pointerEvents: 'none',
+          visibility: 'visible',
+          opacity: 1,
+          backgroundColor: '#ffffff',
+        }}
+        aria-hidden="true"
+      >
+        <div id="printableTruckAccountSheet" className="khata-printable-paper">
+          {getPdfPagesData().map((page) => (
+            <div
+              key={page.pageNum}
+              id={page.totalPages === 1 ? 'pdf-single-page' : undefined}
+              className="pdf-page khata-pdf-sheet-page"
+              style={{
+                width: '720px',
+                minHeight: '980px',
+                padding: '16px 20px',
+                backgroundColor: '#ffffff',
+                boxSizing: 'border-box',
+                position: 'relative',
+                display: 'flex',
+                flexDirection: 'column',
+              }}
+            >
+              {/* Header: Full brand banner on Page 1, compact continuation header on Page 2+ */}
+              {page.isFirst ? (
+                <>
+                  <div className="khata-pdf-top-banner">
+                    <div className="khata-pdf-brand-col">
+                      <h1 className="khata-pdf-main-brand">FAIZAN BODY WORKS</h1>
+                      <p className="khata-pdf-sub-brand">Truck Body Builders & Commercial Fabricators</p>
+                      <p className="khata-pdf-brand-extra">Specialist in Cabin, Platform, Dumper & All Body Repair Work</p>
+                    </div>
+                    <div className="khata-pdf-badge-col">
+                      <div className="khata-pdf-statement-badge">
+                        <span className="badge-eng">TRUCK KHATA VAHI</span>
+                        <span className="badge-hin">CUSTOMER LEDGER STATEMENT</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="khata-pdf-notebook-header">
+                    <div>
+                      <div className="pdf-notebook-title">Name / નામ: {account?.party_name}</div>
+                      <div className="pdf-notebook-meta">
+                        {account?.truck_no ? `Truck: ${account.truck_no} • ` : ''}
+                        {account?.phone ? `Phone: ${account.phone} • ` : ''}
+                        {account?.address ? `City: ${account.address}` : 'Vehicle Customer Khata'}
+                      </div>
+                    </div>
+                    <div className="pdf-page-stamp-box">
+                      <div>PAGE</div>
+                      <div style={{ fontSize: '18px' }}>{account?.page_no || '—'}</div>
+                    </div>
+                  </div>
+                </>
+              ) : (
+                <div
+                  className="khata-pdf-continuation-header"
+                  style={{
+                    marginBottom: '10px',
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    borderBottom: '2px solid #1e3a8a',
+                    paddingBottom: '4px',
+                  }}
+                >
+                  <span style={{ fontWeight: 800, fontSize: '12px', color: '#1e3a8a' }}>
+                    FAIZAN BODY WORKS • {account?.party_name} {account?.truck_no ? `(${account.truck_no})` : ''} — Page {page.pageNum} of {page.totalPages}
+                  </span>
+                  <span style={{ fontSize: '10px', color: '#64748b', fontWeight: 600 }}>
+                    Vehicle Khata Ledger Statement (Continuation)
+                  </span>
+                </div>
+              )}
+
+              {/* 2-Column Ledger Grid (Never hidden, no scroll cutoff) */}
+              <div className="khata-pdf-two-col-grid" style={{ flex: 1, minHeight: '380px' }}>
+                {/* Left Column: JAMA (Payment Received) */}
+                <div className="pdf-vahi-col-jama">
+                  <div className="pdf-col-hdr">
+                    <span>જ. JAMA (રકમ જમા / Payment)</span>
+                    <span>{page.jamaPageRows.length} {page.totalPages > 1 ? `(Pg ${page.pageNum})` : 'Entries'}</span>
+                  </div>
+
+                  <table className="pdf-vahi-table">
+                    <thead>
+                      <tr>
+                        <th style={{ width: '24px', textAlign: 'center' }}>#</th>
+                        <th style={{ width: '50px' }}>તારીખ</th>
+                        <th>PARTICULARS (વિગત)</th>
+                        <th style={{ width: '80px', textAlign: 'right' }}>રૂપિયા ₹</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {page.jamaPageRows.length === 0 ? (
+                        <tr>
+                          <td colSpan="4" style={{ textAlign: 'center', padding: '14px', color: '#94a3b8', fontStyle: 'italic' }}>
+                            {page.isFirst ? 'કોઈ જમા એન્ટ્રી નથી (No Jama entries)' : '(બધી જમા એન્ટ્રીઓ આગળ દર્શાવેલ છે)'}
+                          </td>
+                        </tr>
+                      ) : (
+                        page.jamaPageRows.map((row, idx) => (
+                          <tr key={row.id || idx}>
+                            <td style={{ textAlign: 'center', color: '#64748b', fontWeight: 600 }}>
+                              {page.startIndex + idx + 1}
+                            </td>
+                            <td style={{ fontWeight: 600, color: '#1e293b' }}>
+                              {row.date ? String(row.date).slice(5).replace('-', '/') : '—'}
+                            </td>
+                            <td>
+                              <span style={{ fontWeight: 600 }}>{row.particulars || 'રોકડા જમા'}</span>
+                              {row.payment_mode && row.payment_mode !== 'Cash' ? (
+                                <span style={{ marginLeft: '4px', fontSize: '8.5px', background: '#f1f5f9', padding: '1px 3px', borderRadius: '3px', color: '#475569' }}>
+                                  {row.payment_mode}
+                                </span>
+                              ) : null}
+                            </td>
+                            <td style={{ textAlign: 'right', fontWeight: 700, color: '#16a34a' }}>
+                              ₹{Number(row.amount).toLocaleString('en-IN')}/-
+                            </td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+
+                  {page.isLast && (
+                    <div
+                      className="pdf-col-footer"
+                      style={{
+                        marginTop: 'auto',
+                        padding: '6px 8px',
+                        borderTop: '1.5px solid #64748b',
+                        background: '#f0fdf4',
+                      }}
+                    >
+                      <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 900, fontSize: '11px', color: '#166534' }}>
+                        <span>ટોટલ જમા (Total Received):</span>
+                        <span>₹{totalJama.toLocaleString('en-IN')}/-</span>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Right Column: UDHAR (Vehicle Cost & Expenses) */}
+                <div className="pdf-vahi-col-udhar">
+                  <div className="pdf-col-hdr">
+                    <span>ઉ. UDHAR (બિલ / ખર્ચ)</span>
+                    <span>{page.udharPageRows.length} {page.totalPages > 1 ? `(Pg ${page.pageNum})` : 'Entries'}</span>
+                  </div>
+
+                  <table className="pdf-vahi-table">
+                    <thead>
+                      <tr>
+                        <th style={{ width: '24px', textAlign: 'center' }}>#</th>
+                        <th>PARTICULARS (વિગત)</th>
+                        <th style={{ width: '80px', textAlign: 'right' }}>રૂપિયા ₹</th>
+                        <th style={{ width: '50px', textAlign: 'center' }}>તારીખ</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {page.udharPageRows.length === 0 ? (
+                        <tr>
+                          <td colSpan="4" style={{ textAlign: 'center', padding: '14px', color: '#94a3b8', fontStyle: 'italic' }}>
+                            {page.isFirst ? 'કોઈ ઉધાર એન્ટ્રી નથી (No Udhar entries)' : '(બધી ઉધાર એન્ટ્રીઓ આગળ દર્શાવેલ છે)'}
+                          </td>
+                        </tr>
+                      ) : (
+                        page.udharPageRows.map((row, idx) => (
+                          <tr key={row.id || idx}>
+                            <td style={{ textAlign: 'center', color: '#64748b', fontWeight: 600 }}>
+                              {page.startIndex + idx + 1}
+                            </td>
+                            <td>
+                              <span style={{ fontWeight: 700, color: '#9a3412' }}>{row.particulars || 'ગાડી ની કિંમત'}</span>
+                            </td>
+                            <td style={{ textAlign: 'right', fontWeight: 700, color: '#d97706' }}>
+                              ₹{Number(row.amount).toLocaleString('en-IN')}/-
+                            </td>
+                            <td style={{ textAlign: 'center', fontWeight: 600, color: '#1e293b' }}>
+                              {row.date ? String(row.date).slice(5).replace('-', '/') : '—'}
+                            </td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+
+                  {page.isLast && (
+                    <div
+                      className="pdf-col-footer"
+                      style={{
+                        marginTop: 'auto',
+                        padding: '6px 8px',
+                        borderTop: '1.5px solid #64748b',
+                        background: '#fffbeb',
+                      }}
+                    >
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '3px', fontSize: '10.5px' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 800 }}>
+                          <span>ટોટલ બિલ / ઉધાર:</span>
+                          <span style={{ color: '#b45309' }}>₹{totalUdhar.toLocaleString('en-IN')}/-</span>
+                        </div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', color: '#64748b' }}>
+                          <span>- ટોટલ જમા (મળેલ):</span>
+                          <span style={{ color: '#16a34a' }}>- ₹{totalJama.toLocaleString('en-IN')}/-</span>
+                        </div>
+                        <div
+                          style={{
+                            display: 'flex',
+                            justifyContent: 'space-between',
+                            fontWeight: 900,
+                            fontSize: '11.5px',
+                            borderTop: '1px solid #cbd5e1',
+                            paddingTop: '3px',
+                          }}
+                        >
+                          <span style={{ color: remainingBalance > 0 ? '#b91c1c' : remainingBalance < 0 ? '#1d4ed8' : '#15803d' }}>
+                            {remainingBalance > 0 ? 'બાકી (Due to Pay):' : remainingBalance < 0 ? 'એડવાન્સ જમા (Advance):' : 'સરભર (Settled):'}
+                          </span>
+                          <span style={{ color: remainingBalance > 0 ? '#b91c1c' : remainingBalance < 0 ? '#1d4ed8' : '#15803d' }}>
+                            ₹{Math.abs(remainingBalance).toLocaleString('en-IN')}/-
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Signatures on Last Page */}
+              {page.isLast && (
+                <div className="khata-pdf-sign-row" style={{ marginTop: '12px' }}>
+                  <div className="sign-col left-sign">
+                    <div className="sign-draw-line"></div>
+                    <span className="sign-owner-lbl">Customer Signature</span>
+                    <span className="sign-sub-lbl">({account?.party_name})</span>
+                  </div>
+                  <div className="sign-col right-sign">
+                    <div className="sign-draw-line"></div>
+                    <span className="sign-owner-lbl">Authorized Signatory</span>
+                    <span className="sign-sub-lbl">Faizan Body Works</span>
+                  </div>
+                </div>
+              )}
+
+              {/* Bottom Statement Footer */}
+              <div className="khata-pdf-bottom-notice" style={{ marginTop: 'auto', paddingTop: '8px' }}>
+                <span>Faizan Body Works • Vehicle Customer Khata • Computerized Statement</span>
+                <span className="pdf-page-num-tag">Page {page.pageNum} of {page.totalPages}</span>
+              </div>
+            </div>
+          ))}
         </div>
       </div>
 
