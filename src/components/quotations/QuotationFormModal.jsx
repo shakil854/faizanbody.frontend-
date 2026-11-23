@@ -6,6 +6,23 @@ import { quotationService } from '../../services/quotationService';
 // Storage keys so configured items and rates persist across all future quotations
 const DEFAULT_ITEMS_STORAGE_KEY = 'faizanbody_quotation_default_items';
 const DEFAULT_BODY_CALC_STORAGE_KEY = 'faizanbody_quotation_default_body_calc';
+const DEFAULT_EXTRA_PERCENT_STORAGE_KEY = 'faizanbody_quotation_default_extra_percent';
+
+// Helper to load persistent extra margin percentage
+const loadSavedExtraPercent = () => {
+  try {
+    const raw = localStorage.getItem(DEFAULT_EXTRA_PERCENT_STORAGE_KEY);
+    if (raw !== null && raw !== undefined) return raw;
+    const rawBody = localStorage.getItem(DEFAULT_BODY_CALC_STORAGE_KEY);
+    if (rawBody) {
+      const parsed = JSON.parse(rawBody);
+      if (parsed?.extra_percent !== undefined && parsed?.extra_percent !== null) {
+        return String(parsed.extra_percent);
+      }
+    }
+  } catch { }
+  return '';
+};
 
 // Helper to load persistent body defaults (rates and weights)
 const loadSavedBodyDefaults = () => {
@@ -372,8 +389,8 @@ export function QuotationFormModal({
   const [items, setItems] = useState(() => [createBlankItem('1')]);
   const [loadingItems, setLoadingItems] = useState(false);
 
-  // Extra and Discount percentage (empty boxes by default)
-  const [extraPercent, setExtraPercent] = useState('');
+  // Extra and Discount percentage (extra margin persists across future quotations)
+  const [extraPercent, setExtraPercent] = useState(() => loadSavedExtraPercent());
   const [discountPercent, setDiscountPercent] = useState('');
 
   const [isSaving, setIsSaving] = useState(false);
@@ -409,7 +426,10 @@ export function QuotationFormModal({
       setTruckChassisNo(initialData.truck_chassis_no || '');
       setStatus(initialData.status || 'Draft');
       setNotes(initialData.notes || '');
-      setExtraPercent(initialData.extra_percent ? String(initialData.extra_percent) : '');
+      const initExtra = initialData.extra_percent !== undefined && initialData.extra_percent !== null && String(initialData.extra_percent) !== '' && Number(initialData.extra_percent) > 0
+        ? String(initialData.extra_percent)
+        : (initialData.extra_percent === 0 || initialData.extra_percent === '0' ? '' : loadSavedExtraPercent());
+      setExtraPercent(initExtra);
       setDiscountPercent(initialData.discount_percent ? String(initialData.discount_percent) : '');
       setBodyCalc(normalizeBodyCalcFromData(initialData.body_calc));
 
@@ -419,7 +439,7 @@ export function QuotationFormModal({
         setItems([createBlankItem('1')]);
       }
     } else {
-      // New Quotation Defaults (Clean Empty Boxes)
+      // New Quotation Defaults (Clean Empty Boxes, Persistent Margin & Body Rates)
       const today = new Date().toISOString().split('T')[0];
       setQuotationDate(today);
       setCustomerName('');
@@ -427,17 +447,23 @@ export function QuotationFormModal({
       setTruckChassisNo('');
       setStatus('Draft');
       setNotes('');
-      setExtraPercent('');
+      setExtraPercent(loadSavedExtraPercent());
       setDiscountPercent('');
       setBodyCalc(createInitialBodyCalc(loadSavedBodyDefaults()));
 
-      // Fetch fresh master body defaults (rates & weights) from Database so they persist across all devices
+      // Fetch fresh master body defaults (rates, weights & margin) from Database so they persist across all devices
       quotationService.getBodyDefaults()
         .then((res) => {
           if (res?.data) {
             try {
               localStorage.setItem(DEFAULT_BODY_CALC_STORAGE_KEY, JSON.stringify(res.data));
+              if (res.data.extra_percent !== undefined && res.data.extra_percent !== null && String(res.data.extra_percent).trim() !== '') {
+                localStorage.setItem(DEFAULT_EXTRA_PERCENT_STORAGE_KEY, String(res.data.extra_percent));
+              }
             } catch { }
+            if (res.data.extra_percent !== undefined && res.data.extra_percent !== null && String(res.data.extra_percent).trim() !== '') {
+              setExtraPercent((prev) => (prev === '' ? String(res.data.extra_percent) : prev));
+            }
             setBodyCalc((prev) => {
               const hasUserEnteredDims = prev.taliyu?.length || prev.taliyu?.width || prev.side?.height;
               if (hasUserEnteredDims) return prev;
@@ -1112,10 +1138,14 @@ export function QuotationFormModal({
           enabled: Boolean(bodyCalc.monofo?.enabled),
           amount: bodyCalc.monofo?.amount,
         },
+        extra_percent: extraPercent !== undefined && extraPercent !== null ? String(extraPercent) : '',
       };
 
       // 1. Save to local storage for instant offline fallback
       localStorage.setItem(DEFAULT_BODY_CALC_STORAGE_KEY, JSON.stringify(defaults));
+      if (extraPercent !== undefined) {
+        localStorage.setItem(DEFAULT_EXTRA_PERCENT_STORAGE_KEY, String(extraPercent || ''));
+      }
 
       // 2. Save permanently to MySQL Database
       await quotationService.saveBodyDefaults(defaults);
@@ -1756,8 +1786,12 @@ export function QuotationFormModal({
               enabled: Boolean(bodyCalc.monofo?.enabled),
               amount: bodyCalc.monofo?.amount || loadSavedBodyDefaults()?.monofo?.amount || '10000',
             },
+            extra_percent: extraPercent !== undefined && extraPercent !== null ? String(extraPercent) : '',
           };
           localStorage.setItem(DEFAULT_BODY_CALC_STORAGE_KEY, JSON.stringify(bodyDefaults));
+          if (extraPercent !== undefined) {
+            localStorage.setItem(DEFAULT_EXTRA_PERCENT_STORAGE_KEY, String(extraPercent || ''));
+          }
           quotationService.saveBodyDefaults(bodyDefaults).catch(() => { });
         } catch { }
       }
@@ -3217,7 +3251,13 @@ export function QuotationFormModal({
                         max="100"
                         className="paper-input extra-percent-box font-mono font-bold"
                         value={extraPercent}
-                        onChange={(e) => setExtraPercent(e.target.value)}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          setExtraPercent(val);
+                          try {
+                            localStorage.setItem(DEFAULT_EXTRA_PERCENT_STORAGE_KEY, val);
+                          } catch { }
+                        }}
                         data-nav-group="summary"
                         data-nav-name="extra"
                         placeholder=""

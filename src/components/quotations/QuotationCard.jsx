@@ -234,6 +234,11 @@ export const QuotationCard = React.memo(function QuotationCard({
               <span className="subtotal-label">
                 Subtotal: ₹{Number(quotation.subtotal).toLocaleString('en-IN')}
               </span>
+              {Number(quotation.extra_percent) > 0 && (
+                <span className="discount-tag" style={{ background: '#eff6ff', color: '#2563eb', borderColor: '#bfdbfe' }}>
+                  +{quotation.extra_percent}% Margin (+₹{Number(quotation.extra_amount).toLocaleString('en-IN')})
+                </span>
+              )}
               {Number(quotation.discount_percent) > 0 && (
                 <span className="discount-tag">
                   -{quotation.discount_percent}% Disc (₹{Number(quotation.discount_amount).toLocaleString('en-IN')})
