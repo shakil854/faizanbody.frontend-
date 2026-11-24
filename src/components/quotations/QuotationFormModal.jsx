@@ -392,6 +392,8 @@ export function QuotationFormModal({
   // Extra and Discount percentage (extra margin persists across future quotations)
   const [extraPercent, setExtraPercent] = useState(() => loadSavedExtraPercent());
   const [discountPercent, setDiscountPercent] = useState('');
+  const [extraPercentSaved, setExtraPercentSaved] = useState(false);
+  const [isSavingExtra, setIsSavingExtra] = useState(false);
 
   const [isSaving, setIsSaving] = useState(false);
   const [templateSavedToast, setTemplateSavedToast] = useState(false);
@@ -1156,6 +1158,53 @@ export function QuotationFormModal({
       console.warn('⚠️ [QuotationForm] Failed to save body defaults to DB, saved locally:', err.message);
       setBodySavedToast(true);
       setTimeout(() => setBodySavedToast(false), 3000);
+    }
+  };
+
+  const handleSaveExtraPercent = async () => {
+    try {
+      setIsSavingExtra(true);
+      const cleanVal = String(extraPercent !== undefined && extraPercent !== null ? extraPercent : '').trim();
+
+      // 1. Instant local storage persistence
+      localStorage.setItem(DEFAULT_EXTRA_PERCENT_STORAGE_KEY, cleanVal);
+
+      try {
+        const rawBody = localStorage.getItem(DEFAULT_BODY_CALC_STORAGE_KEY);
+        const parsed = rawBody ? JSON.parse(rawBody) : {};
+        parsed.extra_percent = cleanVal;
+        localStorage.setItem(DEFAULT_BODY_CALC_STORAGE_KEY, JSON.stringify(parsed));
+      } catch { }
+
+      // 2. Fetch current defaults or construct and save to MySQL database
+      let defaults = null;
+      try {
+        const res = await quotationService.getBodyDefaults();
+        if (res?.data && typeof res.data === 'object') {
+          defaults = { ...res.data };
+        }
+      } catch { }
+
+      if (!defaults) {
+        try {
+          const raw = localStorage.getItem(DEFAULT_BODY_CALC_STORAGE_KEY);
+          defaults = raw ? JSON.parse(raw) : {};
+        } catch {
+          defaults = {};
+        }
+      }
+
+      defaults.extra_percent = cleanVal;
+      await quotationService.saveBodyDefaults(defaults);
+
+      setExtraPercentSaved(true);
+      setTimeout(() => setExtraPercentSaved(false), 2500);
+    } catch (err) {
+      console.warn('⚠️ [QuotationForm] Error saving extra percent to DB, saved locally:', err.message);
+      setExtraPercentSaved(true);
+      setTimeout(() => setExtraPercentSaved(false), 2500);
+    } finally {
+      setIsSavingExtra(false);
     }
   };
 
@@ -3243,7 +3292,7 @@ export function QuotationFormModal({
                     <span className="summary-lbl" style={{ fontWeight: 700, color: '#2563eb' }}>
                       + Extra % (मार्जिन / अतिरिक्त % जोड़):
                     </span>
-                    <div className="discount-box-wrap">
+                    <div className="discount-box-wrap" style={{ display: 'inline-flex', alignItems: 'center', gap: '3px' }}>
                       <input
                         type="number"
                         step="any"
@@ -3254,15 +3303,54 @@ export function QuotationFormModal({
                         onChange={(e) => {
                           const val = e.target.value;
                           setExtraPercent(val);
-                          try {
-                            localStorage.setItem(DEFAULT_EXTRA_PERCENT_STORAGE_KEY, val);
-                          } catch { }
+                        }}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            e.preventDefault();
+                            handleSaveExtraPercent();
+                          }
                         }}
                         data-nav-group="summary"
                         data-nav-name="extra"
                         placeholder=""
                       />
                       <span className="percent-char" style={{ color: '#2563eb' }}>%</span>
+                      <button
+                        type="button"
+                        onClick={handleSaveExtraPercent}
+                        disabled={isSavingExtra}
+                        title="Extra % સેવ કરો (Save as default margin)"
+                        style={{
+                          marginLeft: '6px',
+                          padding: '3px 8px',
+                          fontSize: '0.74rem',
+                          fontWeight: 700,
+                          borderRadius: '6px',
+                          border: extraPercentSaved ? '1px solid #16a34a' : '1px solid #2563eb',
+                          backgroundColor: extraPercentSaved ? '#16a34a' : '#2563eb',
+                          color: '#ffffff',
+                          cursor: isSavingExtra ? 'wait' : 'pointer',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '3px',
+                          lineHeight: '1.2',
+                          boxShadow: '0 1px 3px rgba(37, 99, 235, 0.25)',
+                          transition: 'all 0.15s ease',
+                          whiteSpace: 'nowrap',
+                        }}
+                      >
+                        {extraPercentSaved ? (
+                          <>
+                            <span>✓</span>
+                            <span>Saved</span>
+                          </>
+                        ) : (
+                          <>
+                            <span>💾</span>
+                            <span>{isSavingExtra ? '...' : 'Save'}</span>
+                          </>
+                        )}
+                      </button>
                     </div>
                   </div>
                   <span className="font-mono" style={{ fontWeight: 800, color: '#2563eb' }}>
