@@ -1,18 +1,62 @@
 import React, { useMemo } from 'react';
 
 /**
+ * Safe JSON Object Parser
+ */
+const safeObj = (v) => {
+  if (!v) return {};
+  if (typeof v === 'object') return v;
+  try {
+    const p = JSON.parse(v);
+    return typeof p === 'object' && p !== null ? p : {};
+  } catch {
+    return {};
+  }
+};
+
+/**
+ * Safe Array Parser
+ */
+const safeArr = (v) => {
+  if (!v) return [];
+  if (Array.isArray(v)) return v;
+  try {
+    const p = JSON.parse(v);
+    return Array.isArray(p) ? p : [];
+  } catch {
+    return [];
+  }
+};
+
+/**
+ * Chunk Array Helper
+ */
+const chunkArray = (arr, size) => {
+  if (!arr || arr.length === 0) return [];
+  const chunks = [];
+  for (let i = 0; i < arr.length; i += size) {
+    chunks.push(arr.slice(i, i + size));
+  }
+  return chunks;
+};
+
+/**
  * BackupPdfReport
  * Complete, A-to-Z Multi-Page Printable A4 System Ledger Document
- * Prints ALL application data and EVERY SINGLE ENTRY:
- * - Work Orders
- * - Truck Accounts Master & All Truck Account Entries (All Jama & Udhar)
- * - Workers Master & All Worker Transactions (All Work & Upad)
- * - Rojmed Daily Cashbook Entries (All Aavak & Javak)
- * - Stock Items Master & Stock Movement Transactions
- * - Quotations & Detailed Items
- * - System Users & Access
+ * Prints ALL application data in authentic, module-specific FORM-WISE FORMAT:
+ * - Orders: Complete Job Card Form (Cabin, Inside, Body, Finishing, Accessories, Machro)
+ * - Truck Accounts: Authentic Five Star Notebook 2-Column Ledger (Jama & Udhar)
+ * - Workers: Authentic Worker Khata 2-Column Ledger (Work Credit vs Upad Debit)
+ * - Quotations: Complete Estimate Sheet with Body specs & line items
+ * - Rojmed: Daily Cashbook Register
+ * - Stock: Category Inventory & Movement Audit Log
+ * - Users: Security Access Master
  */
-export function BackupPdfReport({ data, elementId = 'printableFullBackupReport' }) {
+export function BackupPdfReport({
+  data,
+  activeModule = 'all',
+  elementId = 'printableFullBackupReport',
+}) {
   const containerStyle = {
     position: 'fixed',
     top: '0px',
@@ -44,77 +88,87 @@ export function BackupPdfReport({ data, elementId = 'printableFullBackupReport' 
   const quotations = Array.isArray(data.quotations) ? data.quotations : [];
   const users = Array.isArray(data.users) ? data.users : [];
 
-  // Summary statistics
-  const totalTruckUdhar = truckAccounts.reduce((sum, a) => sum + (Number(a.total_udhar ?? a.total_bill) || 0), 0);
-  const totalTruckJama = truckAccounts.reduce((sum, a) => sum + (Number(a.total_jama ?? a.total_paid) || 0), 0);
-  const totalTruckDue = truckAccounts.reduce((sum, a) => sum + (Number(a.balance ?? a.pending_balance) || 0), 0);
+  // Group truck entries by account_id
+  const truckEntriesByAccount = useMemo(() => {
+    const map = {};
+    truckAccounts.forEach((acc) => {
+      map[acc.id] = { jama: [], udhar: [] };
+    });
+    truckAccountEntries.forEach((entry) => {
+      if (!map[entry.account_id]) {
+        map[entry.account_id] = { jama: [], udhar: [] };
+      }
+      if (entry.type === 'jama') {
+        map[entry.account_id].jama.push(entry);
+      } else {
+        map[entry.account_id].udhar.push(entry);
+      }
+    });
+    return map;
+  }, [truckAccounts, truckAccountEntries]);
 
-  const totalWorkerWork = workers.reduce((sum, w) => sum + (Number(w.total_work) || 0), 0);
-  const totalWorkerUpad = workers.reduce((sum, w) => sum + (Number(w.total_upad) || 0), 0);
-  const totalWorkerBalance = workers.reduce((sum, w) => sum + (Number(w.balance) || 0), 0);
+  // Group worker transactions by worker_id
+  const workerTxByWorker = useMemo(() => {
+    const map = {};
+    workers.forEach((w) => {
+      map[w.id] = { credit: [], debit: [] };
+    });
+    workerTransactions.forEach((tx) => {
+      if (!map[tx.worker_id]) {
+        map[tx.worker_id] = { credit: [], debit: [] };
+      }
+      const isCredit = tx.type === 'salary' || tx.type === 'work' || tx.type === 'credit';
+      if (isCredit) {
+        map[tx.worker_id].credit.push(tx);
+      } else {
+        map[tx.worker_id].debit.push(tx);
+      }
+    });
+    return map;
+  }, [workers, workerTransactions]);
 
-  const totalRojmedAavak = rojmedEntries.reduce((sum, r) => {
-    const isIncome = r.entry_type === 'aavak' || r.entry_type === 'income' || r.entry_type === 'jama';
-    return isIncome ? sum + (Number(r.amount) || 0) : sum;
-  }, 0);
-  const totalRojmedJavak = rojmedEntries.reduce((sum, r) => {
-    const isIncome = r.entry_type === 'aavak' || r.entry_type === 'income' || r.entry_type === 'jama';
-    return !isIncome ? sum + (Number(r.amount) || 0) : sum;
-  }, 0);
-
-  const totalQuoteValue = quotations.reduce(
-    (sum, q) => sum + (Number(q.final_price ?? q.total_amount ?? q.subtotal) || 0),
-    0
-  );
-
-  const grandTotalEntries =
-    orders.length +
-    truckAccounts.length +
-    truckAccountEntries.length +
-    workers.length +
-    workerTransactions.length +
-    rojmedEntries.length +
-    stockItems.length +
-    stockTransactions.length +
-    quotations.length +
-    users.length;
-
-  // Pagination chunkers
-  const chunkArray = (arr, size) => {
-    if (!arr || arr.length === 0) return [];
-    const chunks = [];
-    for (let i = 0; i < arr.length; i += size) {
-      chunks.push(arr.slice(i, i + size));
-    }
-    return chunks;
-  };
-
-  const ordersPages = useMemo(() => chunkArray(orders, 14), [orders]);
-  const truckSummaryPages = useMemo(() => chunkArray(truckAccounts, 15), [truckAccounts]);
-  const truckEntryPages = useMemo(() => chunkArray(truckAccountEntries, 20), [truckAccountEntries]);
-  const workerSummaryPages = useMemo(() => chunkArray(workers, 16), [workers]);
-  const workerTxPages = useMemo(() => chunkArray(workerTransactions, 22), [workerTransactions]);
-  const rojmedPages = useMemo(() => chunkArray(rojmedEntries, 18), [rojmedEntries]);
-  const stockPages = useMemo(() => chunkArray(stockItems, 18), [stockItems]);
-  const stockTxPages = useMemo(() => chunkArray(stockTransactions, 20), [stockTransactions]);
-  const quotePages = useMemo(() => chunkArray(quotations, 12), [quotations]);
+  // Chunk helpers for multi-row modules
+  const rojmedPages = useMemo(() => chunkArray(rojmedEntries, 20), [rojmedEntries]);
+  const stockPages = useMemo(() => chunkArray(stockItems, 20), [stockItems]);
+  const stockTxPages = useMemo(() => chunkArray(stockTransactions, 22), [stockTransactions]);
   const userPages = useMemo(() => chunkArray(users, 18), [users]);
 
-  // Total pages calculation: Cover + each non-empty section
-  const totalPages =
-    1 +
-    (ordersPages.length || 1) +
-    (truckSummaryPages.length || 1) +
-    (truckEntryPages.length || 1) +
-    (workerSummaryPages.length || 1) +
-    (workerTxPages.length || 1) +
-    (rojmedPages.length || 1) +
-    (stockPages.length || 1) +
-    (stockTxPages.length || 1) +
-    (quotePages.length || 1) +
-    (userPages.length || 1);
+  // Determine which sections to render based on activeModule
+  const showOrders = activeModule === 'all' || activeModule === 'orders';
+  const showTrucks = activeModule === 'all' || activeModule === 'truck_accounts';
+  const showWorkers = activeModule === 'all' || activeModule === 'workers';
+  const showRojmed = activeModule === 'all' || activeModule === 'rojmed';
+  const showStock = activeModule === 'all' || activeModule === 'stock';
+  const showQuotes = activeModule === 'all' || activeModule === 'quotations';
+  const showUsers = activeModule === 'all' || activeModule === 'users';
 
-  let currentPageNum = 1;
+  // Calculate total pages
+  let totalPages = 1; // Cover Page
+  if (showOrders) totalPages += orders.length;
+  if (showTrucks) {
+    truckAccounts.forEach((acc) => {
+      const entries = truckEntriesByAccount[acc.id] || { jama: [], udhar: [] };
+      const m = Math.max((entries.jama || []).length, (entries.udhar || []).length);
+      totalPages += m === 0 ? 1 : Math.ceil(m / 18);
+    });
+  }
+  if (showWorkers) {
+    workers.forEach((w) => {
+      const txs = workerTxByWorker[w.id] || { credit: [], debit: [] };
+      const m = Math.max((txs.credit || []).length, (txs.debit || []).length);
+      totalPages += m === 0 ? 1 : Math.ceil(m / 18);
+    });
+  }
+  if (showQuotes) totalPages += quotations.length;
+  if (showRojmed) totalPages += rojmedPages.length;
+  if (showStock) totalPages += stockPages.length + (stockTxPages.length > 0 ? stockTxPages.length : 0);
+  if (showUsers) totalPages += userPages.length;
+
+  let pageCounter = 0;
+  const getNextPageNum = () => {
+    pageCounter++;
+    return pageCounter;
+  };
 
   const exportDateStr = data.exportedAt
     ? new Date(data.exportedAt).toLocaleString('en-IN', {
@@ -123,12 +177,12 @@ export function BackupPdfReport({ data, elementId = 'printableFullBackupReport' 
       })
     : new Date().toLocaleString('en-IN');
 
-  // Styles
+  // Shared styles
   const pageStyle = {
     width: '720px',
     minHeight: '1000px',
     boxSizing: 'border-box',
-    padding: '22px 24px',
+    padding: '20px 22px',
     backgroundColor: '#ffffff',
     color: '#0f172a',
     fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif',
@@ -141,10 +195,10 @@ export function BackupPdfReport({ data, elementId = 'printableFullBackupReport' 
   const headerStyle = {
     display: 'flex',
     justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    borderBottom: '2px solid #0284c7',
+    alignItems: 'center',
+    borderBottom: '2px solid #1e3a8a',
     paddingBottom: '8px',
-    marginBottom: '12px',
+    marginBottom: '10px',
   };
 
   const footerStyle = {
@@ -162,21 +216,20 @@ export function BackupPdfReport({ data, elementId = 'printableFullBackupReport' 
   const tableStyle = {
     width: '100%',
     borderCollapse: 'collapse',
-    fontSize: '9.5px',
+    fontSize: '9px',
   };
 
   const thStyle = {
     backgroundColor: '#f1f5f9',
     color: '#1e293b',
-    padding: '5px 5px',
+    padding: '5px 6px',
     border: '1px solid #cbd5e1',
     fontWeight: 800,
     textAlign: 'left',
-    fontSize: '9px',
   };
 
   const tdStyle = {
-    padding: '4.5px 5px',
+    padding: '4px 5px',
     border: '1px solid #e2e8f0',
     color: '#334155',
   };
@@ -185,7 +238,7 @@ export function BackupPdfReport({ data, elementId = 'printableFullBackupReport' 
     <div style={containerStyle} aria-hidden="true">
       <div id={elementId}>
         {/* ================================================================= */}
-        {/* PAGE 1: COVER & EXECUTIVE DASHBOARD                               */}
+        {/* PAGE 1: COVER & SYSTEM DASHBOARD                                  */}
         {/* ================================================================= */}
         <div className="pdf-page" style={pageStyle}>
           <div>
@@ -193,109 +246,102 @@ export function BackupPdfReport({ data, elementId = 'printableFullBackupReport' 
               <h1 style={{ margin: '0 0 3px', fontSize: '24px', fontWeight: 900, color: '#1e3a8a', letterSpacing: '0.8px' }}>
                 FAIZAN BODY BUILDERS
               </h1>
-              <p style={{ margin: '0 0 3px', fontSize: '11.5px', fontWeight: 700, color: '#475569' }}>
+              <p style={{ margin: '0 0 3px', fontSize: '11px', fontWeight: 700, color: '#475569' }}>
                 Commercial Vehicle & Truck Body Fabricators • All Fabrication & Repair Works
               </p>
               <div style={{ display: 'inline-block', backgroundColor: '#eff6ff', color: '#1d4ed8', border: '1.5px solid #93c5fd', borderRadius: '16px', padding: '3px 14px', fontSize: '10.5px', fontWeight: 800, marginTop: '3px' }}>
-                🛡️ COMPLETE SYSTEM ALL-DATA LEDGER REPORT (સમગ્ર ડેટા - તમામે તમામ એન્ટ્રીઓ)
+                {activeModule === 'orders'
+                  ? `🚛 WORK ORDERS REPORT (${orders.length} જોબ કાર્ડ ફોર્મ્સ)`
+                  : activeModule === 'truck_accounts'
+                  ? `📋 TRUCK ACCOUNTS KHATA REPORT (${truckAccounts.length} ખાતાવહી શીટ્સ)`
+                  : activeModule === 'workers'
+                  ? `👥 WORKERS KHATA REPORT (${workers.length} કારીગરો લેજર્સ)`
+                  : activeModule === 'quotations'
+                  ? `📑 QUOTATIONS ESTIMATES REPORT (${quotations.length} ઓફિશિયલ એસ્ટીમેટ્સ)`
+                  : activeModule === 'rojmed'
+                  ? `💰 ROJMED CASHBOOK REGISTER (${rojmedEntries.length} રોજમેળ)`
+                  : activeModule === 'stock'
+                  ? `🔩 STOCK INVENTORY & MOVEMENTS (${stockItems.length} સ્ટોક)`
+                  : '🛡️ COMPLETE SYSTEM ALL-DATA LEDGER REPORT (સમગ્ર ડેટા - ફોર્મ વાઇસ વિગત)'}
               </div>
             </div>
 
             {/* Metadata Card */}
-            <div style={{ backgroundColor: '#f8fafc', border: '1px solid #cbd5e1', borderRadius: '8px', padding: '9px 12px', marginBottom: '14px', display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '10px', fontSize: '10px' }}>
+            <div style={{ backgroundColor: '#f8fafc', border: '1px solid #cbd5e1', borderRadius: '8px', padding: '10px 12px', marginBottom: '14px', display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '10px', fontSize: '10px' }}>
               <div>
                 <span style={{ color: '#64748b', display: 'block', fontWeight: 600 }}>📅 રિપોર્ટ તારીખ:</span>
                 <strong style={{ color: '#0f172a' }}>{exportDateStr}</strong>
               </div>
               <div>
-                <span style={{ color: '#64748b', display: 'block', fontWeight: 600 }}>📁 કુલ એન્ટ્રીઓ (All Records):</span>
-                <strong style={{ color: '#16a34a' }}>{grandTotalEntries.toLocaleString('en-IN')} Entries</strong>
+                <span style={{ color: '#64748b', display: 'block', fontWeight: 600 }}>📁 ફોર્મેટ:</span>
+                <strong style={{ color: '#16a34a' }}>Form-Wise Individual Sheets</strong>
               </div>
               <div>
                 <span style={{ color: '#64748b', display: 'block', fontWeight: 600 }}>🔒 સ્કોપ:</span>
-                <strong style={{ color: '#0369a1' }}>All 12 Database Tables • A to Z Entry Ledger</strong>
+                <strong style={{ color: '#0369a1' }}>All 12 Database Tables</strong>
               </div>
             </div>
 
-            {/* Section Summary KPI Grid */}
+            {/* Module Overview Cards */}
             <h3 style={{ fontSize: '12px', fontWeight: 800, color: '#1e293b', margin: '0 0 8px', borderBottom: '1px solid #e2e8f0', paddingBottom: '4px' }}>
-              📊 સમગ્ર એપ્લિકેશન સારાંશ (System Summary KPIs)
+              📊 એપ્લિકેશન મોડ્યુલ ઓવરવ્યૂ (Module-Wise Overview)
             </h3>
 
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '8px', marginBottom: '14px' }}>
-              {/* Box 1: Work Orders */}
+              {/* Box 1 */}
               <div style={{ border: '1px solid #bfdbfe', backgroundColor: '#f0f9ff', borderRadius: '8px', padding: '8px 10px' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '3px' }}>
-                  <span style={{ fontWeight: 800, fontSize: '11px', color: '#0369a1' }}>🚛 Work Orders (ઓર્ડર્સ)</span>
-                  <span style={{ backgroundColor: '#0284c7', color: '#ffffff', borderRadius: '10px', padding: '1px 6px', fontSize: '9px', fontWeight: 800 }}>
-                    {orders.length} Records
-                  </span>
-                </div>
-                <div style={{ fontSize: '9.5px', color: '#334155', lineHeight: 1.4 }}>
-                  <div>કુલ ગાડીઓ: <strong>{orders.length}</strong> | ચાલુ: <strong>{orders.filter((o) => o.status === 'In Progress' || !o.status).length}</strong></div>
-                  <div>પૂર્ણ/ડિલિવર થયેલ: <strong style={{ color: '#15803d' }}>{orders.filter((o) => o.status === 'Completed' || o.status === 'Delivered').length}</strong></div>
+                <span style={{ fontWeight: 800, fontSize: '11px', color: '#0369a1', display: 'block', marginBottom: '3px' }}>
+                  🚛 Work Orders (ઓર્ડર્સ ફોર્મ્સ)
+                </span>
+                <div style={{ fontSize: '9.5px', color: '#334155' }}>
+                  કુલ <strong>{orders.length}</strong> ઓર્ડર્સ (કેબિન, બોડી, અંદરનું કામ, ફિનિશિંગ, એક્સેસરીઝ સહિત તમામ ફોર્મ વિગત)
                 </div>
               </div>
 
-              {/* Box 2: Truck Accounts */}
+              {/* Box 2 */}
               <div style={{ border: '1px solid #fed7aa', backgroundColor: '#fff7ed', borderRadius: '8px', padding: '8px 10px' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '3px' }}>
-                  <span style={{ fontWeight: 800, fontSize: '11px', color: '#c2410c' }}>📋 Truck Accounts (ખાતાવહી)</span>
-                  <span style={{ backgroundColor: '#ea580c', color: '#ffffff', borderRadius: '10px', padding: '1px 6px', fontSize: '9px', fontWeight: 800 }}>
-                    {truckAccounts.length} Ledgers • {truckAccountEntries.length} Entries
-                  </span>
-                </div>
-                <div style={{ fontSize: '9.5px', color: '#334155', lineHeight: 1.4 }}>
-                  <div>કુલ ઉધાર/બિલ: <strong style={{ color: '#b45309' }}>₹{totalTruckUdhar.toLocaleString('en-IN')}</strong></div>
-                  <div>કુલ જમા: <strong style={{ color: '#15803d' }}>₹{totalTruckJama.toLocaleString('en-IN')}</strong> | બાકી: <strong style={{ color: '#b91c1c' }}>₹{totalTruckDue.toLocaleString('en-IN')}</strong></div>
+                <span style={{ fontWeight: 800, fontSize: '11px', color: '#c2410c', display: 'block', marginBottom: '3px' }}>
+                  📋 Truck Accounts (ગાડી વાળા નું ખાતાવહી)
+                </span>
+                <div style={{ fontSize: '9.5px', color: '#334155' }}>
+                  કુલ <strong>{truckAccounts.length}</strong> પાર્ટી ખાતાવહી • <strong>{truckAccountEntries.length}</strong> તમામ જમા-ઉધાર એન્ટ્રીઓ
                 </div>
               </div>
 
-              {/* Box 3: Workers */}
+              {/* Box 3 */}
               <div style={{ border: '1px solid #bbf7d0', backgroundColor: '#f0fdf4', borderRadius: '8px', padding: '8px 10px' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '3px' }}>
-                  <span style={{ fontWeight: 800, fontSize: '11px', color: '#15803d' }}>👥 Workers (કારીગરો)</span>
-                  <span style={{ backgroundColor: '#16a34a', color: '#ffffff', borderRadius: '10px', padding: '1px 6px', fontSize: '9px', fontWeight: 800 }}>
-                    {workers.length} Staff • {workerTransactions.length} Entries
-                  </span>
-                </div>
-                <div style={{ fontSize: '9.5px', color: '#334155', lineHeight: 1.4 }}>
-                  <div>કુલ કામ: <strong style={{ color: '#15803d' }}>₹{totalWorkerWork.toLocaleString('en-IN')}</strong> | ઉપાડ: <strong style={{ color: '#b45309' }}>₹{totalWorkerUpad.toLocaleString('en-IN')}</strong></div>
-                  <div>ચોખ્ખો બાકી હિસાબ: <strong style={{ color: '#0f172a' }}>₹{totalWorkerBalance.toLocaleString('en-IN')}</strong></div>
+                <span style={{ fontWeight: 800, fontSize: '11px', color: '#15803d', display: 'block', marginBottom: '3px' }}>
+                  👥 Workers (કારીગરો હિસાબ ખાતાવહી)
+                </span>
+                <div style={{ fontSize: '9.5px', color: '#334155' }}>
+                  કુલ <strong>{workers.length}</strong> કારીગરો • <strong>{workerTransactions.length}</strong> મજૂરી-કામ અને ઉપાડ લેજર એન્ટ્રીઓ
                 </div>
               </div>
 
-              {/* Box 4: Rojmed & Stock */}
+              {/* Box 4 */}
               <div style={{ border: '1px solid #e9d5ff', backgroundColor: '#faf5ff', borderRadius: '8px', padding: '8px 10px' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '3px' }}>
-                  <span style={{ fontWeight: 800, fontSize: '11px', color: '#7e22ce' }}>💰 Rojmed & 🔩 Stock</span>
-                  <span style={{ backgroundColor: '#9333ea', color: '#ffffff', borderRadius: '10px', padding: '1px 6px', fontSize: '9px', fontWeight: 800 }}>
-                    {rojmedEntries.length + stockItems.length} Entries
-                  </span>
-                </div>
-                <div style={{ fontSize: '9.5px', color: '#334155', lineHeight: 1.4 }}>
-                  <div>રોજમેળ આવક: <strong style={{ color: '#15803d' }}>₹{totalRojmedAavak.toLocaleString('en-IN')}</strong> | જાવક: <strong style={{ color: '#b91c1c' }}>₹{totalRojmedJavak.toLocaleString('en-IN')}</strong></div>
-                  <div>સ્ટોક: <strong>{stockItems.length} Items ({stockTransactions.length} Movement Entries)</strong></div>
+                <span style={{ fontWeight: 800, fontSize: '11px', color: '#7e22ce', display: 'block', marginBottom: '3px' }}>
+                  💰 Rojmed, 🔩 Stock & 📑 Quotations
+                </span>
+                <div style={{ fontSize: '9.5px', color: '#334155' }}>
+                  રોજમેળ <strong>{rojmedEntries.length}</strong> એન્ટ્રી • સ્ટોક <strong>{stockItems.length}</strong> આઇટમ્સ • <strong>{quotations.length}</strong> કોટેશન્સ
                 </div>
               </div>
             </div>
 
             {/* Table of Contents */}
-            <div style={{ border: '1px solid #e2e8f0', borderRadius: '8px', padding: '9px 12px', backgroundColor: '#ffffff' }}>
-              <h4 style={{ margin: '0 0 5px', fontSize: '11px', fontWeight: 800, color: '#334155' }}>
-                📑 રિપોર્ટ અનુક્રમણિકા (Detailed Table of Contents)
+            <div style={{ border: '1px solid #e2e8f0', borderRadius: '8px', padding: '10px 12px', backgroundColor: '#ffffff' }}>
+              <h4 style={{ margin: '0 0 6px', fontSize: '11px', fontWeight: 800, color: '#334155' }}>
+                📑 અનુક્રમણિકા (Table of Contents)
               </h4>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '5px', fontSize: '9.5px', color: '#475569' }}>
-                <div>• Section 1: Work Orders ({orders.length} ઓર્ડર્સ)</div>
-                <div>• Section 2A: Truck Accounts Summary ({truckAccounts.length} ખાતાવહી)</div>
-                <div>• Section 2B: Truck Entries Ledger ({truckAccountEntries.length} તમામ એન્ટ્રીઓ)</div>
-                <div>• Section 3A: Workers Master Summary ({workers.length} કારીગરો)</div>
-                <div>• Section 3B: Worker Transactions Ledger ({workerTransactions.length} તમામ એન્ટ્રીઓ)</div>
-                <div>• Section 4: Rojmed Daily Cashbook ({rojmedEntries.length} રોજમેળ એન્ટ્રીઓ)</div>
-                <div>• Section 5A: Stock Master Inventory ({stockItems.length} સ્ટોક માલ)</div>
-                <div>• Section 5B: Stock Movement Log ({stockTransactions.length} આવક/જાવક)</div>
-                <div>• Section 6: Quotations Register ({quotations.length} કોટેશન્સ)</div>
-                <div>• Section 7: System Users & Security ({users.length} સિસ્ટમ યુઝર્સ)</div>
+                <div>• Section 1: Work Orders ({orders.length} જોબ કાર્ડ ફોર્મ્સ)</div>
+                <div>• Section 2: Truck Accounts ({truckAccounts.length} ખાતાવહી શીટ્સ)</div>
+                <div>• Section 3: Workers Khata ({workers.length} કારીગરો લેજર્સ)</div>
+                <div>• Section 4: Quotations ({quotations.length} ઓફિશિયલ એસ્ટીમેટ્સ)</div>
+                <div>• Section 5: Rojmed Daily Cashbook ({rojmedEntries.length} રોજમેળ)</div>
+                <div>• Section 6: Stock Master & Movements ({stockItems.length} સ્ટોક)</div>
+                <div>• Section 7: Users & Security ({users.length} સિસ્ટમ યુઝર્સ)</div>
                 <div style={{ gridColumn: 'span 2', fontWeight: 800, color: '#0f172a', paddingTop: '4px', borderTop: '1px dashed #cbd5e1' }}>
                   • Total Complete Document Pages: <strong>{totalPages} Pages</strong>
                 </div>
@@ -303,586 +349,940 @@ export function BackupPdfReport({ data, elementId = 'printableFullBackupReport' 
             </div>
           </div>
 
-          {/* Footer */}
           <div style={footerStyle}>
-            <span>Faizan Body Works • Complete System All-Data Archive</span>
+            <span>Faizan Body Works • Form-Wise System Ledger Document</span>
             <span>Generated: {exportDateStr}</span>
-            <span style={{ fontWeight: 800, color: '#0f172a' }}>Page 1 of {totalPages}</span>
+            <span style={{ fontWeight: 800, color: '#0f172a' }}>Page {getNextPageNum()} of {totalPages}</span>
           </div>
         </div>
 
         {/* ================================================================= */}
-        {/* SECTION 1: WORK ORDERS                                            */}
+        {/* SECTION 1: WORK ORDERS (જોબ કાર્ડ ફોર્મ વાઇસ)                       */}
         {/* ================================================================= */}
-        {(ordersPages.length > 0 ? ordersPages : [[]]).map((pageRows, pIdx) => {
-          currentPageNum++;
-          const pageNumber = currentPageNum;
+        {showOrders &&
+          orders.map((order, oIdx) => {
+            const pageNum = getNextPageNum();
+            const cabin = safeObj(order.cabin_work);
+            const inside = safeObj(order.inside_work);
+            const body = safeObj(order.body_work);
+            const access = safeObj(order.accessories);
+            const finish = safeObj(order.finishing_work);
+            const machro = safeObj(order.machro);
 
-          return (
-            <div key={`orders-p-${pIdx}`} className="pdf-page" style={pageStyle}>
-              <div>
-                <div style={headerStyle}>
-                  <div>
-                    <h2 style={{ margin: '0 0 2px', fontSize: '15px', fontWeight: 900, color: '#1e3a8a' }}>
-                      FAIZAN BODY BUILDERS
-                    </h2>
-                    <span style={{ fontSize: '10px', fontWeight: 700, color: '#0369a1' }}>
-                      🚛 SECTION 1: WORK ORDERS (વાહન અને બોડી ઓર્ડર્સ)
-                    </span>
+            const cabinItems = cabin.items || {};
+            const insideItems = inside.items || {};
+            const bodyItems = body.items || {};
+            const accessItems = access.items || {};
+            const machroItems = machro.items || {};
+
+            const isDone = order.status === 'Completed' || order.status === 'Delivered';
+
+            return (
+              <div key={`order-form-${order.id || oIdx}`} className="pdf-page" style={pageStyle}>
+                <div>
+                  {/* Top Order Job Card Header */}
+                  <div style={headerStyle}>
+                    <div>
+                      <h2 style={{ margin: '0 0 2px', fontSize: '15px', fontWeight: 900, color: '#1e3a8a' }}>
+                        FAIZAN BODY BUILDERS • WORK ORDER #{order.order_no || order.id}
+                      </h2>
+                      <span style={{ fontSize: '9.5px', fontWeight: 700, color: '#0369a1' }}>
+                        🚛 SECTION 1: વાહન અને બોડી જોબ કાર્ડ (Order {oIdx + 1} of {orders.length})
+                      </span>
+                    </div>
+                    <div>
+                      <span
+                        style={{
+                          display: 'inline-block',
+                          padding: '2px 8px',
+                          borderRadius: '4px',
+                          backgroundColor: isDone ? '#dcfce7' : '#eff6ff',
+                          color: isDone ? '#15803d' : '#1d4ed8',
+                          fontSize: '10px',
+                          fontWeight: 800,
+                        }}
+                      >
+                        {order.status || 'In Progress'}
+                      </span>
+                    </div>
                   </div>
-                  <div style={{ textAlign: 'right', fontSize: '9px', color: '#64748b' }}>
-                    <span>{exportDateStr}</span>
-                    <div style={{ fontWeight: 700, color: '#0f172a' }}>Total Orders: {orders.length}</div>
+
+                  {/* Order Details Master Grid */}
+                  <div
+                    style={{
+                      border: '1.5px solid #0284c7',
+                      borderRadius: '6px',
+                      padding: '8px 10px',
+                      backgroundColor: '#f8fafc',
+                      marginBottom: '10px',
+                      display: 'grid',
+                      gridTemplateColumns: 'repeat(4, 1fr)',
+                      gap: '6px',
+                      fontSize: '9.5px',
+                    }}
+                  >
+                    <div>
+                      <span style={{ color: '#64748b', display: 'block', fontSize: '8.5px', fontWeight: 600 }}>Order Date:</span>
+                      <strong style={{ color: '#0f172a' }}>{order.order_date ? String(order.order_date).slice(0, 10) : '—'}</strong>
+                    </div>
+                    <div>
+                      <span style={{ color: '#64748b', display: 'block', fontSize: '8.5px', fontWeight: 600 }}>Condition:</span>
+                      <strong style={{ color: '#0f172a' }}>{order.condition_text || 'Regular'}</strong>
+                    </div>
+                    <div style={{ gridColumn: 'span 2' }}>
+                      <span style={{ color: '#64748b', display: 'block', fontSize: '8.5px', fontWeight: 600 }}>Owner Name:</span>
+                      <strong style={{ color: '#1e3a8a', fontSize: '11px' }}>{order.owner_name || '—'}</strong>
+                      {order.mobile_number && <span style={{ color: '#475569', marginLeft: '6px' }}>({order.mobile_number})</span>}
+                    </div>
+                    <div>
+                      <span style={{ color: '#64748b', display: 'block', fontSize: '8.5px', fontWeight: 600 }}>Entry Date:</span>
+                      <strong style={{ color: '#0f172a' }}>{order.entry_date ? String(order.entry_date).slice(0, 10) : '—'}</strong>
+                    </div>
+                    <div>
+                      <span style={{ color: '#64748b', display: 'block', fontSize: '8.5px', fontWeight: 600 }}>Delivery Date:</span>
+                      <strong style={{ color: '#15803d' }}>{order.delivery_date ? String(order.delivery_date).slice(0, 10) : '—'}</strong>
+                    </div>
+                    <div>
+                      <span style={{ color: '#64748b', display: 'block', fontSize: '8.5px', fontWeight: 600 }}>Truck / Chassis No:</span>
+                      <strong style={{ color: '#0f172a', fontSize: '10.5px' }}>{order.truck_chassis_no || '—'}</strong>
+                    </div>
+                    <div>
+                      <span style={{ color: '#64748b', display: 'block', fontSize: '8.5px', fontWeight: 600 }}>Shade No:</span>
+                      <strong style={{ color: '#b45309', fontSize: '10.5px', backgroundColor: '#fef3c7', padding: '1px 5px', borderRadius: '3px' }}>
+                        {order.shade_no ? `Shade ${order.shade_no}` : '—'}
+                      </strong>
+                    </div>
+                  </div>
+
+                  {/* 6 Work Specification Sections Form Layout */}
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '8px', marginBottom: '8px' }}>
+                    {/* LEFT COLUMN: Cabin Work, Inside Work, Accessories */}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                      {/* 1. કેબિન વર્ક */}
+                      <div style={{ border: '1px solid #cbd5e1', borderRadius: '6px', padding: '6px 8px', backgroundColor: '#ffffff' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #e2e8f0', paddingBottom: '3px', marginBottom: '4px' }}>
+                          <span style={{ fontWeight: 800, fontSize: '10px', color: '#1e3a8a' }}>કેબિન વર્ક (CABIN WORK)</span>
+                          <span style={{ fontSize: '8.5px', color: '#64748b' }}>
+                            {safeArr(cabin.boxes).filter(Boolean).join(' • ') || '—'}
+                          </span>
+                        </div>
+                        <div style={{ fontSize: '8.5px', lineHeight: 1.45, color: '#334155' }}>
+                          <div>• મોરો: <strong>{cabinItems.moro?.value || '—'}</strong> {cabinItems.moro?.done ? '✓' : ''}</div>
+                          <div>• પીઠ: <strong>{cabinItems.peeth?.value || '—'}</strong> {cabinItems.peeth?.done ? '✓' : ''}</div>
+                          <div>• પાનલ/દરવાજા ની છાપણી: <strong>{cabinItems.panal_chhapni?.value || '—'}</strong> {cabinItems.panal_chhapni?.done ? '✓' : ''}</div>
+                          <div>• પગા ની ખિડકી: <strong>{cabinItems.paga_khidki?.value || '—'}</strong> {cabinItems.paga_khidki?.done ? '✓' : ''}</div>
+                          <div>• ડેશબોર્ડ પ્રકાર: <strong>{cabinItems.dashboard_prakar?.value || '—'}</strong> {cabinItems.dashboard_prakar?.done ? '✓' : ''}</div>
+                          <div>• અન્ય કામ: <strong>{cabinItems.anya_kaam?.value || '—'}</strong> {cabinItems.anya_kaam?.done ? '✓' : ''}</div>
+                        </div>
+                      </div>
+
+                      {/* 2. અંદરનું કામ */}
+                      <div style={{ border: '1px solid #cbd5e1', borderRadius: '6px', padding: '6px 8px', backgroundColor: '#ffffff' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #e2e8f0', paddingBottom: '3px', marginBottom: '4px' }}>
+                          <span style={{ fontWeight: 800, fontSize: '10px', color: '#0369a1' }}>અંદરનું કામ (INSIDE WORK)</span>
+                          <span style={{ fontSize: '8.5px', color: '#64748b' }}>
+                            {safeArr(inside.boxes).filter(Boolean).join(' • ') || '—'}
+                          </span>
+                        </div>
+                        <div style={{ fontSize: '8.5px', lineHeight: 1.45, color: '#334155' }}>
+                          <div>• ફર્નિચર / ફોર ટી: <strong>{insideItems.niyamit_furniture_four_t?.value || '—'}</strong> {insideItems.niyamit_furniture_four_t?.done ? '✓' : ''}</div>
+                          <div>• સ્પીકર સાઈઝ: <strong>{insideItems.speaker_size?.value || '—'}</strong> {insideItems.speaker_size?.done ? '✓' : ''}</div>
+                          <div>• સોફા સીટ: <strong>{insideItems.sofa_seat?.value || '—'}</strong> {insideItems.sofa_seat?.done ? '✓' : ''}</div>
+                          <div>• કેરિયલ / કેરિયર: <strong>{insideItems.carrier?.value || '—'}</strong> {insideItems.carrier?.done ? '✓' : ''}</div>
+                          <div>• અન્ય કામ: <strong>{insideItems.anya_kaam?.value || '—'}</strong> {insideItems.anya_kaam?.done ? '✓' : ''}</div>
+                        </div>
+                      </div>
+
+                      {/* 3. એક્સેસરીઝ */}
+                      <div style={{ border: '1px solid #cbd5e1', borderRadius: '6px', padding: '6px 8px', backgroundColor: '#ffffff' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #e2e8f0', paddingBottom: '3px', marginBottom: '4px' }}>
+                          <span style={{ fontWeight: 800, fontSize: '10px', color: '#c2410c' }}>એક્સેસરીઝ (ACCESSORIES)</span>
+                          <span style={{ fontSize: '8.5px', color: '#64748b' }}>
+                            {safeArr(access.boxes).filter(Boolean).join(' • ') || '—'}
+                          </span>
+                        </div>
+                        <div style={{ fontSize: '8.5px', lineHeight: 1.45, color: '#334155' }}>
+                          <div>• નિયમિત: <strong>{accessItems.niyamit?.value || '—'}</strong> {accessItems.niyamit?.done ? '✓' : ''}</div>
+                          <div>• બારી પ્રકાર: <strong>{accessItems.bari_prakar?.value || '—'}</strong> {accessItems.bari_prakar?.done ? '✓' : ''}</div>
+                          <div>• અન્ય કામ: <strong>{accessItems.anya_kaam?.value || '—'}</strong> {accessItems.anya_kaam?.done ? '✓' : ''}</div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* RIGHT COLUMN: Body Work, Finishing, Machro */}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                      {/* 4. બોડી વર્ક */}
+                      <div style={{ border: '1px solid #cbd5e1', borderRadius: '6px', padding: '6px 8px', backgroundColor: '#ffffff' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #e2e8f0', paddingBottom: '3px', marginBottom: '4px' }}>
+                          <span style={{ fontWeight: 800, fontSize: '10px', color: '#15803d' }}>બોડી વર્ક (BODY WORK)</span>
+                          <span style={{ fontSize: '8.5px', color: '#64748b' }}>
+                            {safeArr(body.boxes).filter(Boolean).join(' • ') || '—'}
+                          </span>
+                        </div>
+                        <div style={{ fontSize: '8.5px', lineHeight: 1.45, color: '#334155' }}>
+                          <div>• રનર: <strong>{bodyItems.runner?.value || '—'}</strong> {bodyItems.runner?.done ? '✓' : ''}</div>
+                          <div>• પાછળની વેલ: <strong>{bodyItems.peeche_vel?.value || '—'}</strong> {bodyItems.peeche_vel?.done ? '✓' : ''}</div>
+                          <div>• સાઈડ ખિડકી: <strong>{bodyItems.side_khidki?.value || '—'}</strong> {bodyItems.side_khidki?.done ? '✓' : ''}</div>
+                          <div>• સાઈડ પ્રકાર: <strong>{bodyItems.side_prakar?.value || '—'}</strong> {bodyItems.side_prakar?.done ? '✓' : ''}</div>
+                          <div>• ફાલકા પ્રકાર: <strong>{bodyItems.falka_prakar?.value || '—'}</strong> {bodyItems.falka_prakar?.done ? '✓' : ''}</div>
+                          <div>• સાઈડ ઊંચાઈ: <strong>{bodyItems.side_oonchai?.value || '—'}</strong> {bodyItems.side_oonchai?.done ? '✓' : ''}</div>
+                          <div>• પ્લેટ મોટાઈ: <strong>{bodyItems.plate_motai_mm?.value || '—'}</strong> {bodyItems.plate_motai_mm?.done ? '✓' : ''}</div>
+                          <div>• ધોકા લંબાઈ / માત્રા: <strong>{bodyItems.dhokha_lambai_matra?.value || '—'}</strong> {bodyItems.dhokha_lambai_matra?.done ? '✓' : ''}</div>
+                          <div>• પાછળની જાળી પ્રકાર: <strong>{bodyItems.peeche_jaali_prakar?.value || '—'}</strong> {bodyItems.peeche_jaali_prakar?.done ? '✓' : ''}</div>
+                          <div>• અન્ય કામ: <strong>{bodyItems.anya_kaam?.value || '—'}</strong> {bodyItems.anya_kaam?.done ? '✓' : ''}</div>
+                        </div>
+                      </div>
+
+                      {/* 5. ફિનિશિંગ વર્ક */}
+                      <div style={{ border: '1px solid #cbd5e1', borderRadius: '6px', padding: '6px 8px', backgroundColor: '#ffffff' }}>
+                        <div style={{ borderBottom: '1px solid #e2e8f0', paddingBottom: '3px', marginBottom: '4px' }}>
+                          <span style={{ fontWeight: 800, fontSize: '10px', color: '#7e22ce' }}>ફિનિશિંગ વર્ક (FINISHING)</span>
+                        </div>
+                        <div style={{ fontSize: '8.5px', lineHeight: 1.45, color: '#334155' }}>
+                          <div>• કલર: <strong>{finish.color?.value || '—'}</strong> {finish.color?.done ? '✓' : ''}</div>
+                          <div>• રેડિયમ: <strong>{finish.redium?.value || '—'}</strong> {finish.redium?.done ? '✓' : ''}</div>
+                          <div>• વાયરીંગ: <strong>{finish.vayring?.value || '—'}</strong> {finish.vayring?.done ? '✓' : ''}</div>
+                          <div>• પેઇન્ટિંગ: <strong>{finish.painting?.value || '—'}</strong> {finish.painting?.done ? '✓' : ''}</div>
+                        </div>
+                      </div>
+
+                      {/* 6. માછરો */}
+                      <div style={{ border: '1px solid #cbd5e1', borderRadius: '6px', padding: '6px 8px', backgroundColor: '#ffffff' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #e2e8f0', paddingBottom: '3px', marginBottom: '4px' }}>
+                          <span style={{ fontWeight: 800, fontSize: '10px', color: '#0f766e' }}>માછરો (MACHRO)</span>
+                          <span style={{ fontSize: '8.5px', color: '#64748b' }}>
+                            {safeArr(machro.boxes).filter(Boolean).join(' • ') || '—'}
+                          </span>
+                        </div>
+                        <div style={{ fontSize: '8.5px', lineHeight: 1.45, color: '#334155' }}>
+                          <div>• ધાર: <strong>{machroItems.dhar?.value || '—'}</strong> {machroItems.dhar?.done ? '✓' : ''}</div>
+                          <div>• ભાયા માત્રા / પ્રકાર: <strong>{machroItems.bhaya_matra_prakar?.value || '—'}</strong> {machroItems.bhaya_matra_prakar?.done ? '✓' : ''}</div>
+                          <div>• ટોપ પાઇપ / એંગલ: <strong>{machroItems.top_pipe_angle_prakar?.value || '—'}</strong> {machroItems.top_pipe_angle_prakar?.done ? '✓' : ''}</div>
+                          <div>• પ્લેટ ઊંચાઈ થાંભલા: <strong>{machroItems.plate_oonchai_thambhla?.value || '—'}</strong> {machroItems.plate_oonchai_thambhla?.done ? '✓' : ''}</div>
+                          <div>• સાઈડ પાઇપ: <strong>{machroItems.side_pipe_matra_prakar?.value || '—'}</strong> {machroItems.side_pipe_matra_prakar?.done ? '✓' : ''}</div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Order Notes & Signature Box */}
+                  <div style={{ border: '1px solid #cbd5e1', borderRadius: '6px', padding: '6px 8px', backgroundColor: '#f8fafc', display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '9px' }}>
+                    <div style={{ flex: 1, paddingRight: '12px' }}>
+                      <span style={{ fontWeight: 700, color: '#475569', display: 'block' }}>વિશેષ નોંધ (Special Notes):</span>
+                      <span style={{ color: '#0f172a' }}>{order.notes || 'કોઈ વિશેષ નોંધ નથી.'}</span>
+                    </div>
+                    <div style={{ display: 'flex', gap: '20px' }}>
+                      <div style={{ textAlign: 'center', minWidth: '90px', borderTop: '1px dashed #64748b', paddingTop: '3px', marginTop: '14px', fontSize: '8px', color: '#64748b' }}>
+                        MD Signature (સહી)
+                      </div>
+                      <div style={{ textAlign: 'center', minWidth: '90px', borderTop: '1px dashed #64748b', paddingTop: '3px', marginTop: '14px', fontSize: '8px', color: '#64748b' }}>
+                        Party Signature (ગ્રાહક સહી)
+                      </div>
+                    </div>
                   </div>
                 </div>
 
-                {pageRows.length === 0 ? (
-                  <div style={{ textAlign: 'center', padding: '30px', color: '#94a3b8', fontStyle: 'italic', fontSize: '11px' }}>
-                    કોઈ ઓર્ડર ઉપલબ્ધ નથી
-                  </div>
-                ) : (
-                  <table style={tableStyle}>
-                    <thead>
-                      <tr>
-                        <th style={{ ...thStyle, width: '22px', textAlign: 'center' }}>#</th>
-                        <th style={thStyle}>Truck / Chassis No.</th>
-                        <th style={thStyle}>Owner Name (માલિકનું નામ)</th>
-                        <th style={{ ...thStyle, width: '85px' }}>Mobile</th>
-                        <th style={{ ...thStyle, width: '60px', textAlign: 'center' }}>Shade</th>
-                        <th style={{ ...thStyle, width: '70px', textAlign: 'center' }}>Order Date</th>
-                        <th style={{ ...thStyle, width: '70px', textAlign: 'center' }}>Delivery</th>
-                        <th style={{ ...thStyle, width: '75px', textAlign: 'center' }}>Status</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {pageRows.map((o, idx) => {
-                        const isEven = idx % 2 === 1;
-                        const chassis = o.truck_chassis_no || o.chassis_no || o.order_no || '—';
-                        const owner = o.owner_name || o.customer_name || '—';
-                        const mobile = o.mobile_number || o.customer_mobile || o.mobile || '—';
-                        const shade = o.shade_no ? `Shade ${o.shade_no}` : (o.condition_text || '—');
-                        const orderDate = o.order_date ? String(o.order_date).slice(0, 10) : (o.entry_date ? String(o.entry_date).slice(0, 10) : '—');
-                        const deliveryDate = o.delivery_date ? String(o.delivery_date).slice(0, 10) : '—';
-                        const isDone = o.status === 'Completed' || o.status === 'Delivered';
-
-                        return (
-                          <tr key={o.id || idx} style={{ backgroundColor: isEven ? '#f8fafc' : '#ffffff' }}>
-                            <td style={{ ...tdStyle, textAlign: 'center', fontWeight: 700 }}>
-                              {pIdx * 14 + idx + 1}
-                            </td>
-                            <td style={{ ...tdStyle, fontWeight: 700, color: '#1e3a8a' }}>{chassis}</td>
-                            <td style={{ ...tdStyle, fontWeight: 700, color: '#0f172a' }}>{owner}</td>
-                            <td style={{ ...tdStyle, fontSize: '9px', color: '#475569' }}>{mobile}</td>
-                            <td style={{ ...tdStyle, textAlign: 'center', fontSize: '9px', fontWeight: 600 }}>{shade}</td>
-                            <td style={{ ...tdStyle, textAlign: 'center', fontSize: '9px' }}>{orderDate}</td>
-                            <td style={{ ...tdStyle, textAlign: 'center', fontSize: '9px' }}>{deliveryDate}</td>
-                            <td style={{ ...tdStyle, textAlign: 'center', fontSize: '9px', fontWeight: 700 }}>
-                              <span
-                                style={{
-                                  display: 'inline-block',
-                                  padding: '1px 6px',
-                                  borderRadius: '4px',
-                                  backgroundColor: isDone ? '#dcfce7' : '#eff6ff',
-                                  color: isDone ? '#15803d' : '#1d4ed8',
-                                }}
-                              >
-                                {o.status || 'In Progress'}
-                              </span>
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                )}
+                <div style={footerStyle}>
+                  <span>Faizan Body Works • Work Order Job Card #{order.order_no}</span>
+                  <span>Section 1 • Order {oIdx + 1}</span>
+                  <span style={{ fontWeight: 800, color: '#0f172a' }}>Page {pageNum} of {totalPages}</span>
+                </div>
               </div>
-
-              <div style={footerStyle}>
-                <span>Faizan Body Works • Work Orders Register</span>
-                <span>Section 1</span>
-                <span style={{ fontWeight: 800, color: '#0f172a' }}>Page {pageNumber} of {totalPages}</span>
-              </div>
-            </div>
-          );
-        })}
+            );
+          })}
 
         {/* ================================================================= */}
-        {/* SECTION 2A: TRUCK ACCOUNTS MASTER SUMMARY                         */}
+        {/* SECTION 2: TRUCK ACCOUNTS (ગાડી વાળા નું ખાતાવહી - FIVE STAR FORM)  */}
         {/* ================================================================= */}
-        {(truckSummaryPages.length > 0 ? truckSummaryPages : [[]]).map((pageRows, pIdx) => {
-          currentPageNum++;
-          const pageNumber = currentPageNum;
-          const isLast = pIdx === truckSummaryPages.length - 1;
+        {showTrucks &&
+          truckAccounts.map((account, aIdx) => {
+            const entries = truckEntriesByAccount[account.id] || { jama: [], udhar: [] };
+            const jamaRows = entries.jama || [];
+            const udharRows = entries.udhar || [];
 
-          return (
-            <div key={`trucks-summary-p-${pIdx}`} className="pdf-page" style={pageStyle}>
-              <div>
-                <div style={headerStyle}>
+            const totalUdhar = udharRows.reduce((sum, r) => sum + (Number(r.amount) || 0), 0);
+            const totalJama = jamaRows.reduce((sum, r) => sum + (Number(r.amount) || 0), 0);
+            const balanceDue = totalUdhar - totalJama;
+            const isSettled = balanceDue === 0;
+
+            const maxRows = Math.max(jamaRows.length, udharRows.length);
+            const rowsPerPage = 18;
+            const totalAccountPages = maxRows === 0 ? 1 : Math.ceil(maxRows / rowsPerPage);
+            const pageIndices = Array.from({ length: totalAccountPages }, (_, i) => i);
+
+            return pageIndices.map((pIdx) => {
+              const pageNum = getNextPageNum();
+              const pageJama = jamaRows.slice(pIdx * rowsPerPage, (pIdx + 1) * rowsPerPage);
+              const pageUdhar = udharRows.slice(pIdx * rowsPerPage, (pIdx + 1) * rowsPerPage);
+              const isLastPage = pIdx === totalAccountPages - 1;
+
+              return (
+                <div key={`truck-form-${account.id || aIdx}-p-${pIdx}`} className="pdf-page" style={pageStyle}>
                   <div>
-                    <h2 style={{ margin: '0 0 2px', fontSize: '15px', fontWeight: 900, color: '#1e3a8a' }}>
-                      FAIZAN BODY BUILDERS
-                    </h2>
-                    <span style={{ fontSize: '10px', fontWeight: 700, color: '#c2410c' }}>
-                      📋 SECTION 2A: TRUCK ACCOUNTS MASTER (ગાડી વાળા નું ખાતાવહી - સમરી)
-                    </span>
+                    {/* Brand & Notebook Top Header Banner */}
+                    <div style={headerStyle}>
+                      <div>
+                        <h2 style={{ margin: '0 0 2px', fontSize: '15px', fontWeight: 900, color: '#1e3a8a' }}>
+                          FAIZAN BODY WORKS • TRUCK KHATA VAHI
+                        </h2>
+                        <span style={{ fontSize: '9.5px', fontWeight: 700, color: '#c2410c' }}>
+                          📋 SECTION 2: ગાડી વાળા નું ખાતાવહી (Ledger {aIdx + 1} of {truckAccounts.length}{totalAccountPages > 1 ? ` • Part ${pIdx + 1}/${totalAccountPages}` : ''})
+                        </span>
+                      </div>
+                      <div style={{ border: '1.5px solid #0f172a', padding: '2px 8px', borderRadius: '4px', textAlign: 'center', backgroundColor: '#f8fafc' }}>
+                        <div style={{ fontSize: '7.5px', fontWeight: 800, color: '#64748b' }}>PAGE</div>
+                        <div style={{ fontSize: '13px', fontWeight: 900, color: '#0f172a' }}>{account.page_no || '—'}</div>
+                      </div>
+                    </div>
+
+                    {/* Customer Notebook Header Info */}
+                    <div
+                      style={{
+                        border: '1.5px solid #cbd5e1',
+                        borderRadius: '6px',
+                        padding: '8px 10px',
+                        backgroundColor: '#fff7ed',
+                        marginBottom: '10px',
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                        fontSize: '9.5px',
+                      }}
+                    >
+                      <div>
+                        <div style={{ fontSize: '12px', fontWeight: 900, color: '#9a3412', marginBottom: '2px' }}>
+                          Name / નામ: {account.party_name}
+                        </div>
+                        <div style={{ color: '#475569', fontSize: '9px' }}>
+                          {account.truck_no ? `Truck: ${account.truck_no} • ` : ''}
+                          {account.phone ? `Phone: ${account.phone} • ` : ''}
+                          {account.address ? `City: ${account.address} • ` : ''}
+                          Round: {account.current_cycle || 1}
+                        </div>
+                      </div>
+                      <div>
+                        <span
+                          style={{
+                            display: 'inline-block',
+                            padding: '2px 8px',
+                            borderRadius: '4px',
+                            backgroundColor: isSettled ? '#dcfce7' : '#fee2e2',
+                            color: isSettled ? '#15803d' : '#b91c1c',
+                            fontWeight: 800,
+                            fontSize: '10px',
+                          }}
+                        >
+                          {isSettled ? 'સરભર (Settled)' : `બાકી: ₹${balanceDue.toLocaleString('en-IN')}`}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Authentic 2-Column Five Star Ledger Grid */}
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '10px', marginBottom: '10px' }}>
+                      {/* Left Column: જ. JAMA (રોકડા જમા / રકમ જમા) */}
+                      <div style={{ border: '1px solid #86efac', borderRadius: '6px', overflow: 'hidden' }}>
+                        <div style={{ backgroundColor: '#f0fdf4', borderBottom: '1px solid #86efac', padding: '4px 6px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <span style={{ fontWeight: 800, fontSize: '9.5px', color: '#166534' }}>જ. JAMA (રકમ જમા)</span>
+                          <span style={{ fontSize: '8.5px', color: '#15803d', fontWeight: 700 }}>
+                            {jamaRows.length} Entries {totalAccountPages > 1 ? `(${pIdx * rowsPerPage + 1}-${Math.min((pIdx + 1) * rowsPerPage, jamaRows.length)})` : ''}
+                          </span>
+                        </div>
+                        <table style={tableStyle}>
+                          <thead>
+                            <tr>
+                              <th style={{ ...thStyle, width: '20px', textAlign: 'center' }}>#</th>
+                              <th style={{ ...thStyle, width: '50px' }}>તારીખ</th>
+                              <th style={thStyle}>PARTICULARS (વિગત)</th>
+                              <th style={{ ...thStyle, textAlign: 'right', width: '65px' }}>રૂપિયા ₹</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {pageJama.length === 0 ? (
+                              <tr>
+                                <td colSpan="4" style={{ textAlign: 'center', padding: '16px', color: '#94a3b8', fontStyle: 'italic', fontSize: '9px' }}>
+                                  {pIdx === 0 ? 'કોઈ જમા એન્ટ્રી નથી' : 'આ પેજ પર જમા એન્ટ્રી નથી'}
+                                </td>
+                              </tr>
+                            ) : (
+                              pageJama.map((r, i) => (
+                                <tr key={r.id || i}>
+                                  <td style={{ ...tdStyle, textAlign: 'center', fontWeight: 600 }}>{pIdx * rowsPerPage + i + 1}</td>
+                                  <td style={{ ...tdStyle, fontSize: '8.5px' }}>{r.date ? String(r.date).slice(5).replace('-', '/') : '—'}</td>
+                                  <td style={{ ...tdStyle, fontWeight: 600 }}>{r.particulars || 'રોકડા જમા'}</td>
+                                  <td style={{ ...tdStyle, textAlign: 'right', fontWeight: 700, color: '#16a34a' }}>
+                                    ₹{Number(r.amount).toLocaleString('en-IN')}
+                                  </td>
+                                </tr>
+                              ))
+                            )}
+                          </tbody>
+                        </table>
+                        {isLastPage && (
+                          <div style={{ backgroundColor: '#f0fdf4', borderTop: '1px solid #86efac', padding: '4px 6px', display: 'flex', justifyContent: 'space-between', fontWeight: 800, fontSize: '9px', color: '#15803d' }}>
+                            <span>ટોટલ જમા (Received):</span>
+                            <span>₹{totalJama.toLocaleString('en-IN')}/-</span>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Right Column: ઉ. UDHAR (ગાડી ની કિંમત / ખર્ચ / બિલ) */}
+                      <div style={{ border: '1px solid #fca5a5', borderRadius: '6px', overflow: 'hidden' }}>
+                        <div style={{ backgroundColor: '#fef2f2', borderBottom: '1px solid #fca5a5', padding: '4px 6px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <span style={{ fontWeight: 800, fontSize: '9.5px', color: '#991b1b' }}>ઉ. UDHAR (બિલ / ખર્ચ)</span>
+                          <span style={{ fontSize: '8.5px', color: '#b91c1c', fontWeight: 700 }}>
+                            {udharRows.length} Entries {totalAccountPages > 1 ? `(${pIdx * rowsPerPage + 1}-${Math.min((pIdx + 1) * rowsPerPage, udharRows.length)})` : ''}
+                          </span>
+                        </div>
+                        <table style={tableStyle}>
+                          <thead>
+                            <tr>
+                              <th style={{ ...thStyle, width: '20px', textAlign: 'center' }}>#</th>
+                              <th style={thStyle}>PARTICULARS (વિગત)</th>
+                              <th style={{ ...thStyle, textAlign: 'right', width: '65px' }}>રૂપિયા ₹</th>
+                              <th style={{ ...thStyle, width: '50px' }}>તારીખ</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {pageUdhar.length === 0 ? (
+                              <tr>
+                                <td colSpan="4" style={{ textAlign: 'center', padding: '16px', color: '#94a3b8', fontStyle: 'italic', fontSize: '9px' }}>
+                                  {pIdx === 0 ? 'કોઈ ઉધાર એન્ટ્રી નથી' : 'આ પેજ પર ઉધાર એન્ટ્રી નથી'}
+                                </td>
+                              </tr>
+                            ) : (
+                              pageUdhar.map((r, i) => (
+                                <tr key={r.id || i}>
+                                  <td style={{ ...tdStyle, textAlign: 'center', fontWeight: 600 }}>{pIdx * rowsPerPage + i + 1}</td>
+                                  <td style={{ ...tdStyle, fontWeight: 600 }}>{r.particulars || 'ગાડી ની કિંમત / ખર્ચ'}</td>
+                                  <td style={{ ...tdStyle, textAlign: 'right', fontWeight: 700, color: '#b45309' }}>
+                                    ₹{Number(r.amount).toLocaleString('en-IN')}
+                                  </td>
+                                  <td style={{ ...tdStyle, fontSize: '8.5px' }}>{r.date ? String(r.date).slice(5).replace('-', '/') : '—'}</td>
+                                </tr>
+                              ))
+                            )}
+                          </tbody>
+                        </table>
+                        {isLastPage && (
+                          <div style={{ backgroundColor: '#fef2f2', borderTop: '1px solid #fca5a5', padding: '4px 6px', display: 'flex', justifyContent: 'space-between', fontWeight: 800, fontSize: '9px', color: '#b45309' }}>
+                            <span>ટોટલ ઉધાર / બિલ:</span>
+                            <span>₹{totalUdhar.toLocaleString('en-IN')}/-</span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Bottom Notebook Calculation Box (Matches Five Star Notebook) */}
+                    {isLastPage ? (
+                      <div
+                        style={{
+                          border: '1.5px solid #0f172a',
+                          borderRadius: '8px',
+                          padding: '8px 12px',
+                          backgroundColor: '#ffffff',
+                          maxWidth: '380px',
+                          marginLeft: 'auto',
+                          fontSize: '10px',
+                          boxShadow: '0 1px 4px rgba(0,0,0,0.05)',
+                        }}
+                      >
+                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '3px' }}>
+                          <span style={{ fontWeight: 700, color: '#334155' }}>ટોટલ બિલ / ઉધાર:</span>
+                          <strong style={{ color: '#b45309' }}>₹{totalUdhar.toLocaleString('en-IN')}/-</strong>
+                        </div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '3px', borderBottom: '1.5px solid #0f172a', paddingBottom: '3px' }}>
+                          <span style={{ fontWeight: 700, color: '#334155' }}>- ટોટલ જમા (મળેલ):</span>
+                          <strong style={{ color: '#15803d' }}>- ₹{totalJama.toLocaleString('en-IN')}/-</strong>
+                        </div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', paddingTop: '3px', fontSize: '11px', fontWeight: 900 }}>
+                          <span style={{ color: isSettled ? '#15803d' : '#b91c1c' }}>
+                            {isSettled ? 'સરભર (Settled):' : 'બાકી રકમ (Balance Due):'}
+                          </span>
+                          <span style={{ color: isSettled ? '#15803d' : '#b91c1c' }}>
+                            ₹{Math.abs(balanceDue).toLocaleString('en-IN')}/-
+                          </span>
+                        </div>
+                      </div>
+                    ) : (
+                      <div style={{ textAlign: 'right', fontSize: '9px', color: '#64748b', fontStyle: 'italic', padding: '4px' }}>
+                        બાકી હિસાબ આગળના પેજ પર ચાલુ... (Continued on next page)
+                      </div>
+                    )}
                   </div>
-                  <div style={{ textAlign: 'right', fontSize: '9px', color: '#64748b' }}>
-                    <span>{exportDateStr}</span>
-                    <div style={{ fontWeight: 700, color: '#0f172a' }}>Total Ledgers: {truckAccounts.length}</div>
+
+                  <div style={footerStyle}>
+                    <span>Faizan Body Works • Five Star Truck Khata Ledger</span>
+                    <span>Section 2 • {account.party_name}{totalAccountPages > 1 ? ` (Part ${pIdx + 1}/${totalAccountPages})` : ''}</span>
+                    <span style={{ fontWeight: 800, color: '#0f172a' }}>Page {pageNum} of {totalPages}</span>
                   </div>
                 </div>
+              );
+            });
+          })}
 
-                {pageRows.length === 0 ? (
-                  <div style={{ textAlign: 'center', padding: '30px', color: '#94a3b8', fontStyle: 'italic', fontSize: '11px' }}>
-                    કોઈ ખાતાવહી રેકોર્ડ ઉપલબ્ધ નથી
+        {/* ================================================================= */}
+        {/* SECTION 3: WORKERS KHATA (કારીગરો હિસાબ - KHATA VAHI FORM)           */}
+        {/* ================================================================= */}
+        {showWorkers &&
+          workers.map((worker, wIdx) => {
+            const txs = workerTxByWorker[worker.id] || { credit: [], debit: [] };
+            const creditRows = txs.credit || [];
+            const debitRows = txs.debit || [];
+
+            const totalWork = creditRows.reduce((sum, r) => sum + (Number(r.amount) || 0), 0);
+            const totalUpad = debitRows.reduce((sum, r) => sum + (Number(r.amount) || 0), 0);
+            const netBalance = totalWork - totalUpad;
+            const isPresent = !worker.going_date;
+
+            const maxRows = Math.max(creditRows.length, debitRows.length);
+            const rowsPerPage = 18;
+            const totalWorkerPages = maxRows === 0 ? 1 : Math.ceil(maxRows / rowsPerPage);
+            const pageIndices = Array.from({ length: totalWorkerPages }, (_, i) => i);
+
+            return pageIndices.map((wpIdx) => {
+              const pageNum = getNextPageNum();
+              const pageCredit = creditRows.slice(wpIdx * rowsPerPage, (wpIdx + 1) * rowsPerPage);
+              const pageDebit = debitRows.slice(wpIdx * rowsPerPage, (wpIdx + 1) * rowsPerPage);
+              const isLastPage = wpIdx === totalWorkerPages - 1;
+
+              return (
+                <div key={`worker-form-${worker.id || wIdx}-p-${wpIdx}`} className="pdf-page" style={pageStyle}>
+                  <div>
+                    {/* Top Worker Khata Header */}
+                    <div style={headerStyle}>
+                      <div>
+                        <h2 style={{ margin: '0 0 2px', fontSize: '15px', fontWeight: 900, color: '#1e3a8a' }}>
+                          FAIZAN BODY BUILDERS • WORKER KHATA VAHI
+                        </h2>
+                        <span style={{ fontSize: '9.5px', fontWeight: 700, color: '#15803d' }}>
+                          👥 SECTION 3: કારીગરો હિસાબ ખાતાવહી (Worker {wIdx + 1} of {workers.length}{totalWorkerPages > 1 ? ` • Part ${wpIdx + 1}/${totalWorkerPages}` : ''})
+                        </span>
+                      </div>
+                      <div>
+                        <span
+                          style={{
+                            display: 'inline-block',
+                            padding: '2px 8px',
+                            borderRadius: '4px',
+                            backgroundColor: isPresent ? '#dcfce7' : '#fee2e2',
+                            color: isPresent ? '#15803d' : '#b91c1c',
+                            fontWeight: 800,
+                            fontSize: '9.5px',
+                          }}
+                        >
+                          {isPresent ? 'Active On Duty (હાજર)' : 'Inactive / Left'}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Worker Profile Card */}
+                    <div
+                      style={{
+                        border: '1.5px solid #bbf7d0',
+                        borderRadius: '6px',
+                        padding: '8px 10px',
+                        backgroundColor: '#f0fdf4',
+                        marginBottom: '10px',
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                        fontSize: '9.5px',
+                      }}
+                    >
+                      <div>
+                        <div style={{ fontSize: '12px', fontWeight: 900, color: '#14532d', marginBottom: '2px' }}>
+                          Worker Name: {worker.name}
+                        </div>
+                        <div style={{ color: '#475569', fontSize: '9px' }}>
+                          {worker.mobile ? `Mobile: ${worker.mobile} • ` : ''}
+                          Coming: {worker.coming_date ? String(worker.coming_date).slice(0, 10) : '—'} •{' '}
+                          Going: {worker.going_date ? String(worker.going_date).slice(0, 10) : 'હાજર'}
+                        </div>
+                      </div>
+                      <div>
+                        <span
+                          style={{
+                            display: 'inline-block',
+                            padding: '2px 8px',
+                            borderRadius: '4px',
+                            backgroundColor: netBalance >= 0 ? '#dcfce7' : '#fee2e2',
+                            color: netBalance >= 0 ? '#15803d' : '#b91c1c',
+                            fontWeight: 800,
+                            fontSize: '10px',
+                          }}
+                        >
+                          {netBalance >= 0 ? `બાકી પાવતી: ₹${netBalance.toLocaleString('en-IN')}` : `ઉપાડ બાકી: ₹${Math.abs(netBalance).toLocaleString('en-IN')}`}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* 2-Column Worker Ledger Grid */}
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '10px', marginBottom: '10px' }}>
+                      {/* Left: કામ / મજૂરી / પગાર (Credit) */}
+                      <div style={{ border: '1px solid #86efac', borderRadius: '6px', overflow: 'hidden' }}>
+                        <div style={{ backgroundColor: '#f0fdf4', borderBottom: '1px solid #86efac', padding: '4px 6px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <span style={{ fontWeight: 800, fontSize: '9.5px', color: '#166534' }}>કામ / મજૂરી / પગાર (Credit)</span>
+                          <span style={{ fontSize: '8.5px', color: '#15803d', fontWeight: 700 }}>
+                            {creditRows.length} Entries {totalWorkerPages > 1 ? `(${wpIdx * rowsPerPage + 1}-${Math.min((wpIdx + 1) * rowsPerPage, creditRows.length)})` : ''}
+                          </span>
+                        </div>
+                        <table style={tableStyle}>
+                          <thead>
+                            <tr>
+                              <th style={{ ...thStyle, width: '20px', textAlign: 'center' }}>#</th>
+                              <th style={{ ...thStyle, width: '55px' }}>તારીખ</th>
+                              <th style={thStyle}>વિગત / નોંધ (Work Done)</th>
+                              <th style={{ ...thStyle, textAlign: 'right', width: '65px' }}>રૂપિયા ₹</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {pageCredit.length === 0 ? (
+                              <tr>
+                                <td colSpan="4" style={{ textAlign: 'center', padding: '16px', color: '#94a3b8', fontStyle: 'italic', fontSize: '9px' }}>
+                                  {wpIdx === 0 ? 'કોઈ કામ / પગાર એન્ટ્રી નથી' : 'આ પેજ પર કામ એન્ટ્રી નથી'}
+                                </td>
+                              </tr>
+                            ) : (
+                              pageCredit.map((r, i) => (
+                                <tr key={r.id || i}>
+                                  <td style={{ ...tdStyle, textAlign: 'center', fontWeight: 600 }}>{wpIdx * rowsPerPage + i + 1}</td>
+                                  <td style={{ ...tdStyle, fontSize: '8.5px' }}>{r.date ? String(r.date).slice(0, 10) : '—'}</td>
+                                  <td style={{ ...tdStyle, fontWeight: 600 }}>{r.notes || 'કામ / પગાર જમા'}</td>
+                                  <td style={{ ...tdStyle, textAlign: 'right', fontWeight: 700, color: '#16a34a' }}>
+                                    ₹{Number(r.amount).toLocaleString('en-IN')}
+                                  </td>
+                                </tr>
+                              ))
+                            )}
+                          </tbody>
+                        </table>
+                        {isLastPage && (
+                          <div style={{ backgroundColor: '#f0fdf4', borderTop: '1px solid #86efac', padding: '4px 6px', display: 'flex', justifyContent: 'space-between', fontWeight: 800, fontSize: '9px', color: '#15803d' }}>
+                            <span>કુલ કામ (Total Work):</span>
+                            <span>₹{totalWork.toLocaleString('en-IN')}/-</span>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Right: ઉપાડ / એડવાન્સ (Debit) */}
+                      <div style={{ border: '1px solid #fed7aa', borderRadius: '6px', overflow: 'hidden' }}>
+                        <div style={{ backgroundColor: '#fff7ed', borderBottom: '1px solid #fed7aa', padding: '4px 6px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <span style={{ fontWeight: 800, fontSize: '9.5px', color: '#c2410c' }}>ઉપાડ / એડવાન્સ (Debit)</span>
+                          <span style={{ fontSize: '8.5px', color: '#ea580c', fontWeight: 700 }}>
+                            {debitRows.length} Entries {totalWorkerPages > 1 ? `(${wpIdx * rowsPerPage + 1}-${Math.min((wpIdx + 1) * rowsPerPage, debitRows.length)})` : ''}
+                          </span>
+                        </div>
+                        <table style={tableStyle}>
+                          <thead>
+                            <tr>
+                              <th style={{ ...thStyle, width: '20px', textAlign: 'center' }}>#</th>
+                              <th style={{ ...thStyle, width: '55px' }}>તારીખ</th>
+                              <th style={thStyle}>વિગત / નોંધ (Advance)</th>
+                              <th style={{ ...thStyle, textAlign: 'right', width: '65px' }}>રૂપિયા ₹</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {pageDebit.length === 0 ? (
+                              <tr>
+                                <td colSpan="4" style={{ textAlign: 'center', padding: '16px', color: '#94a3b8', fontStyle: 'italic', fontSize: '9px' }}>
+                                  {wpIdx === 0 ? 'કોઈ ઉપાડ એન્ટ્રી નથી' : 'આ પેજ પર ઉપાડ એન્ટ્રી નથી'}
+                                </td>
+                              </tr>
+                            ) : (
+                              pageDebit.map((r, i) => (
+                                <tr key={r.id || i}>
+                                  <td style={{ ...tdStyle, textAlign: 'center', fontWeight: 600 }}>{wpIdx * rowsPerPage + i + 1}</td>
+                                  <td style={{ ...tdStyle, fontSize: '8.5px' }}>{r.date ? String(r.date).slice(0, 10) : '—'}</td>
+                                  <td style={{ ...tdStyle, fontWeight: 600 }}>{r.notes || 'રોકડા ઉપાડ'}</td>
+                                  <td style={{ ...tdStyle, textAlign: 'right', fontWeight: 700, color: '#b45309' }}>
+                                    ₹{Number(r.amount).toLocaleString('en-IN')}
+                                  </td>
+                                </tr>
+                              ))
+                            )}
+                          </tbody>
+                        </table>
+                        {isLastPage && (
+                          <div style={{ backgroundColor: '#fff7ed', borderTop: '1px solid #fed7aa', padding: '4px 6px', display: 'flex', justifyContent: 'space-between', fontWeight: 800, fontSize: '9px', color: '#b45309' }}>
+                            <span>કુલ ઉપાડ (Total Upad):</span>
+                            <span>₹{totalUpad.toLocaleString('en-IN')}/-</span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Bottom Worker Khata Calculation Box */}
+                    {isLastPage ? (
+                      <div
+                        style={{
+                          border: '1.5px solid #0f172a',
+                          borderRadius: '8px',
+                          padding: '8px 12px',
+                          backgroundColor: '#ffffff',
+                          maxWidth: '380px',
+                          marginLeft: 'auto',
+                          fontSize: '10px',
+                        }}
+                      >
+                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '3px' }}>
+                          <span style={{ fontWeight: 700, color: '#334155' }}>કુલ કામ (Total Work):</span>
+                          <strong style={{ color: '#15803d' }}>₹{totalWork.toLocaleString('en-IN')}/-</strong>
+                        </div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '3px', borderBottom: '1.5px solid #0f172a', paddingBottom: '3px' }}>
+                          <span style={{ fontWeight: 700, color: '#334155' }}>- કુલ ઉપાડ (Total Advance):</span>
+                          <strong style={{ color: '#b45309' }}>- ₹{totalUpad.toLocaleString('en-IN')}/-</strong>
+                        </div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', paddingTop: '3px', fontSize: '11px', fontWeight: 900 }}>
+                          <span style={{ color: netBalance >= 0 ? '#15803d' : '#b91c1c' }}>
+                            {netBalance >= 0 ? 'ચોખ્ખો બાકી હિસાબ (Payable):' : 'ઉપાડ બાકી (Advance Due):'}
+                          </span>
+                          <span style={{ color: netBalance >= 0 ? '#15803d' : '#b91c1c' }}>
+                            ₹{Math.abs(netBalance).toLocaleString('en-IN')}/-
+                          </span>
+                        </div>
+                      </div>
+                    ) : (
+                      <div style={{ textAlign: 'right', fontSize: '9px', color: '#64748b', fontStyle: 'italic', padding: '4px' }}>
+                        બાકી હિસાબ આગળના પેજ પર ચાલુ... (Continued on next page)
+                      </div>
+                    )}
                   </div>
-                ) : (
-                  <table style={tableStyle}>
-                    <thead>
-                      <tr>
-                        <th style={{ ...thStyle, width: '22px', textAlign: 'center' }}>#</th>
-                        <th style={thStyle}>Party Name (પાર્ટીનું નામ)</th>
-                        <th style={thStyle}>Truck No.</th>
-                        <th style={{ ...thStyle, width: '85px' }}>Mobile</th>
-                        <th style={{ ...thStyle, width: '45px', textAlign: 'center' }}>Page</th>
-                        <th style={{ ...thStyle, textAlign: 'right' }}>ઉધાર / બિલ (₹)</th>
-                        <th style={{ ...thStyle, textAlign: 'right' }}>જમા / ચૂકવેલ (₹)</th>
-                        <th style={{ ...thStyle, textAlign: 'right' }}>બાકી રકમ (₹)</th>
-                        <th style={{ ...thStyle, width: '65px', textAlign: 'center' }}>સ્થિતિ</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {pageRows.map((a, idx) => {
-                        const udhar = Number(a.total_udhar ?? a.total_bill) || 0;
-                        const jama = Number(a.total_jama ?? a.total_paid) || 0;
-                        const bal = Number(a.balance ?? a.pending_balance) || (udhar - jama);
-                        const isEven = idx % 2 === 1;
 
-                        return (
-                          <tr key={a.id || idx} style={{ backgroundColor: isEven ? '#f8fafc' : '#ffffff' }}>
-                            <td style={{ ...tdStyle, textAlign: 'center', fontWeight: 700 }}>
-                              {pIdx * 15 + idx + 1}
-                            </td>
-                            <td style={{ ...tdStyle, fontWeight: 700, color: '#0f172a' }}>{a.party_name || '—'}</td>
-                            <td style={{ ...tdStyle, fontWeight: 600, color: '#1e3a8a' }}>{a.truck_no || '—'}</td>
-                            <td style={{ ...tdStyle, fontSize: '9px', color: '#64748b' }}>{a.phone || a.mobile || '—'}</td>
-                            <td style={{ ...tdStyle, textAlign: 'center', fontSize: '9px', fontWeight: 600 }}>
-                              {a.page_no ? `P-${a.page_no}` : '—'}
-                            </td>
-                            <td style={{ ...tdStyle, textAlign: 'right', fontWeight: 700, color: '#b45309' }}>
-                              ₹{udhar.toLocaleString('en-IN')}
-                            </td>
-                            <td style={{ ...tdStyle, textAlign: 'right', fontWeight: 700, color: '#15803d' }}>
-                              ₹{jama.toLocaleString('en-IN')}
-                            </td>
-                            <td style={{ ...tdStyle, textAlign: 'right', fontWeight: 800, color: bal > 0 ? '#b91c1c' : '#15803d' }}>
-                              ₹{bal.toLocaleString('en-IN')}
-                            </td>
-                            <td style={{ ...tdStyle, textAlign: 'center', fontSize: '9px', fontWeight: 700 }}>
-                              <span
-                                style={{
-                                  display: 'inline-block',
-                                  padding: '1px 6px',
-                                  borderRadius: '4px',
-                                  backgroundColor: bal === 0 ? '#dcfce7' : '#fee2e2',
-                                  color: bal === 0 ? '#15803d' : '#b91c1c',
-                                }}
-                              >
-                                {bal === 0 ? 'સરભર' : 'બાકી'}
-                              </span>
-                            </td>
+                  <div style={footerStyle}>
+                    <span>Faizan Body Works • Worker Khata Statement</span>
+                    <span>Section 3 • {worker.name}{totalWorkerPages > 1 ? ` (Part ${wpIdx + 1}/${totalWorkerPages})` : ''}</span>
+                    <span style={{ fontWeight: 800, color: '#0f172a' }}>Page {pageNum} of {totalPages}</span>
+                  </div>
+                </div>
+              );
+            });
+          })}
+
+        {/* ================================================================= */}
+        {/* SECTION 4: QUOTATIONS (કોટેશન્સ - ઓફિશિયલ એસ્ટીમેટ ફોર્મ)           */}
+        {/* ================================================================= */}
+        {showQuotes &&
+          quotations.map((quote, qIdx) => {
+            const pageNum = getNextPageNum();
+            const items = safeArr(quote.items);
+            const bodyCalc = safeObj(quote.body_calc);
+            const total = Number(quote.final_price ?? quote.total_amount ?? quote.subtotal) || 0;
+
+            return (
+              <div key={`quote-form-${quote.id || qIdx}`} className="pdf-page" style={pageStyle}>
+                <div>
+                  {/* Brand Header */}
+                  <div style={headerStyle}>
+                    <div>
+                      <h2 style={{ margin: '0 0 2px', fontSize: '15px', fontWeight: 900, color: '#1e3a8a' }}>
+                        FAIZAN BODY BUILDERS • QUOTATION #{quote.quotation_no || quote.id}
+                      </h2>
+                      <span style={{ fontSize: '9.5px', fontWeight: 700, color: '#d97706' }}>
+                        📑 SECTION 4: ઓફિશિયલ એસ્ટીમેટ શીટ (Quotation {qIdx + 1} of {quotations.length})
+                      </span>
+                    </div>
+                    <div>
+                      <span style={{ fontSize: '10px', fontWeight: 800, color: '#1e3a8a', backgroundColor: '#eff6ff', padding: '2px 8px', borderRadius: '4px' }}>
+                        {quote.status || 'Draft'}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Customer Meta */}
+                  <div
+                    style={{
+                      border: '1.5px solid #cbd5e1',
+                      borderRadius: '6px',
+                      padding: '8px 10px',
+                      backgroundColor: '#f8fafc',
+                      marginBottom: '10px',
+                      display: 'grid',
+                      gridTemplateColumns: 'repeat(4, 1fr)',
+                      gap: '8px',
+                      fontSize: '9.5px',
+                    }}
+                  >
+                    <div style={{ gridColumn: 'span 2' }}>
+                      <span style={{ color: '#64748b', display: 'block', fontSize: '8.5px', fontWeight: 600 }}>Customer Name:</span>
+                      <strong style={{ color: '#0f172a', fontSize: '11px' }}>{quote.customer_name}</strong>
+                    </div>
+                    <div>
+                      <span style={{ color: '#64748b', display: 'block', fontSize: '8.5px', fontWeight: 600 }}>Quotation Date:</span>
+                      <strong style={{ color: '#0f172a' }}>{quote.quotation_date ? String(quote.quotation_date).slice(0, 10) : '—'}</strong>
+                    </div>
+                    <div>
+                      <span style={{ color: '#64748b', display: 'block', fontSize: '8.5px', fontWeight: 600 }}>Contact:</span>
+                      <strong style={{ color: '#0f172a' }}>{quote.mobile_number || '—'}</strong>
+                    </div>
+                    <div style={{ gridColumn: 'span 2' }}>
+                      <span style={{ color: '#64748b', display: 'block', fontSize: '8.5px', fontWeight: 600 }}>Truck / Chassis No:</span>
+                      <strong style={{ color: '#1e3a8a', fontSize: '10.5px' }}>{quote.truck_chassis_no || '—'}</strong>
+                    </div>
+                    <div style={{ gridColumn: 'span 2' }}>
+                      <span style={{ color: '#64748b', display: 'block', fontSize: '8.5px', fontWeight: 600 }}>Total Weight:</span>
+                      <strong style={{ color: '#0f172a' }}>{quote.total_weight ? `${quote.total_weight} KG` : '—'}</strong>
+                    </div>
+                  </div>
+
+                  {/* Body Fabrication Specifications Table */}
+                  {bodyCalc.has_data && (
+                    <div style={{ marginBottom: '10px' }}>
+                      <span style={{ fontWeight: 800, fontSize: '9.5px', color: '#1e3a8a', display: 'block', marginBottom: '4px' }}>
+                        🚛 બોડી વર્ક વિગત (Body Fabrication Specifications)
+                      </span>
+                      <table style={tableStyle}>
+                        <thead>
+                          <tr>
+                            <th style={{ ...thStyle, width: '24px', textAlign: 'center' }}>#</th>
+                            <th style={thStyle}>Part Description</th>
+                            <th style={{ ...thStyle, width: '130px', textAlign: 'center' }}>Dimensions / Label</th>
+                            <th style={{ ...thStyle, textAlign: 'right', width: '80px' }}>Amount ₹</th>
                           </tr>
-                        );
-                      })}
+                        </thead>
+                        <tbody>
+                          {bodyCalc.taliyu?.amount > 0 && (
+                            <tr>
+                              <td style={{ ...tdStyle, textAlign: 'center' }}>1</td>
+                              <td style={tdStyle}>પ્લેટફોર્મ / તળિયું ({bodyCalc.taliyu.selected_label || 'પ્લેટ'})</td>
+                              <td style={{ ...tdStyle, textAlign: 'center', fontSize: '8.5px' }}>{bodyCalc.taliyu.length}ft × {bodyCalc.taliyu.width}ft</td>
+                              <td style={{ ...tdStyle, textAlign: 'right', fontWeight: 700 }}>₹{Number(bodyCalc.taliyu.amount).toLocaleString('en-IN')}</td>
+                            </tr>
+                          )}
+                          {bodyCalc.side?.amount > 0 && (
+                            <tr>
+                              <td style={{ ...tdStyle, textAlign: 'center' }}>2</td>
+                              <td style={tdStyle}>સાઈડ ફાલકા ({bodyCalc.side.selected_label || 'ગેજ'})</td>
+                              <td style={{ ...tdStyle, textAlign: 'center', fontSize: '8.5px' }}>{bodyCalc.side.length}ft × {bodyCalc.side.height}ft</td>
+                              <td style={{ ...tdStyle, textAlign: 'right', fontWeight: 700 }}>₹{Number(bodyCalc.side.amount).toLocaleString('en-IN')}</td>
+                            </tr>
+                          )}
+                          {bodyCalc.dhoka?.amount > 0 && (
+                            <tr>
+                              <td style={{ ...tdStyle, textAlign: 'center' }}>3</td>
+                              <td style={tdStyle}>ધોકા ({bodyCalc.dhoka.qty} નંગ)</td>
+                              <td style={{ ...tdStyle, textAlign: 'center', fontSize: '8.5px' }}>{bodyCalc.dhoka.weight_per_piece} KG/નંગ</td>
+                              <td style={{ ...tdStyle, textAlign: 'right', fontWeight: 700 }}>₹{Number(bodyCalc.dhoka.amount).toLocaleString('en-IN')}</td>
+                            </tr>
+                          )}
+                          {bodyCalc.monofo?.amount > 0 && (
+                            <tr>
+                              <td style={{ ...tdStyle, textAlign: 'center' }}>4</td>
+                              <td style={tdStyle}>મોનોફો / કેબિન વર્ક</td>
+                              <td style={{ ...tdStyle, textAlign: 'center', fontSize: '8.5px' }}>સામેલ</td>
+                              <td style={{ ...tdStyle, textAlign: 'right', fontWeight: 700 }}>₹{Number(bodyCalc.monofo.amount).toLocaleString('en-IN')}</td>
+                            </tr>
+                          )}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
 
-                      {isLast && (
-                        <tr style={{ backgroundColor: '#f1f5f9', fontWeight: 800 }}>
-                          <td colSpan="5" style={{ ...tdStyle, textAlign: 'right', fontWeight: 800, padding: '6px' }}>
-                            ખાતાવહી કુલ સરવાળો (Total Ledgers):
-                          </td>
-                          <td style={{ ...tdStyle, textAlign: 'right', fontWeight: 800, color: '#b45309' }}>
-                            ₹{totalTruckUdhar.toLocaleString('en-IN')}
-                          </td>
-                          <td style={{ ...tdStyle, textAlign: 'right', fontWeight: 800, color: '#15803d' }}>
-                            ₹{totalTruckJama.toLocaleString('en-IN')}
-                          </td>
-                          <td style={{ ...tdStyle, textAlign: 'right', fontWeight: 800, color: '#b91c1c' }}>
-                            ₹{totalTruckDue.toLocaleString('en-IN')}
-                          </td>
-                          <td style={tdStyle}></td>
+                  {/* Selected Line Items Table */}
+                  <div style={{ marginBottom: '10px' }}>
+                    <span style={{ fontWeight: 800, fontSize: '9.5px', color: '#1e3a8a', display: 'block', marginBottom: '4px' }}>
+                      📋 સાધન સામગ્રી અને પાર્ટ્સ (Line Items)
+                    </span>
+                    <table style={tableStyle}>
+                      <thead>
+                        <tr>
+                          <th style={{ ...thStyle, width: '24px', textAlign: 'center' }}>#</th>
+                          <th style={thStyle}>Item Name</th>
+                          <th style={{ ...thStyle, textAlign: 'right', width: '60px' }}>Rate (₹)</th>
+                          <th style={{ ...thStyle, textAlign: 'center', width: '45px' }}>Qty</th>
+                          <th style={{ ...thStyle, textAlign: 'right', width: '80px' }}>Amount (₹)</th>
                         </tr>
-                      )}
-                    </tbody>
-                  </table>
-                )}
-              </div>
-
-              <div style={footerStyle}>
-                <span>Faizan Body Works • Truck Accounts Master</span>
-                <span>Section 2A</span>
-                <span style={{ fontWeight: 800, color: '#0f172a' }}>Page {pageNumber} of {totalPages}</span>
-              </div>
-            </div>
-          );
-        })}
-
-        {/* ================================================================= */}
-        {/* SECTION 2B: TRUCK ACCOUNT DETAILED ENTRIES (તમામ એન્ટ્રીઓ)           */}
-        {/* ================================================================= */}
-        {(truckEntryPages.length > 0 ? truckEntryPages : [[]]).map((pageRows, pIdx) => {
-          currentPageNum++;
-          const pageNumber = currentPageNum;
-
-          return (
-            <div key={`trucks-entries-p-${pIdx}`} className="pdf-page" style={pageStyle}>
-              <div>
-                <div style={headerStyle}>
-                  <div>
-                    <h2 style={{ margin: '0 0 2px', fontSize: '15px', fontWeight: 900, color: '#1e3a8a' }}>
-                      FAIZAN BODY BUILDERS
-                    </h2>
-                    <span style={{ fontSize: '10px', fontWeight: 700, color: '#c2410c' }}>
-                      📋 SECTION 2B: TRUCK ACCOUNT DETAILED ENTRIES (ગાડી વાળા ની તમામ એન્ટ્રીઓ - સંપૂર્ણ લેજર)
-                    </span>
-                  </div>
-                  <div style={{ textAlign: 'right', fontSize: '9px', color: '#64748b' }}>
-                    <span>{exportDateStr}</span>
-                    <div style={{ fontWeight: 700, color: '#0f172a' }}>Total Entries: {truckAccountEntries.length}</div>
-                  </div>
-                </div>
-
-                {pageRows.length === 0 ? (
-                  <div style={{ textAlign: 'center', padding: '30px', color: '#94a3b8', fontStyle: 'italic', fontSize: '11px' }}>
-                    કોઈ એન્ટ્રી ઉપલબ્ધ નથી
-                  </div>
-                ) : (
-                  <table style={tableStyle}>
-                    <thead>
-                      <tr>
-                        <th style={{ ...thStyle, width: '22px', textAlign: 'center' }}>#</th>
-                        <th style={{ ...thStyle, width: '68px', textAlign: 'center' }}>તારીખ</th>
-                        <th style={thStyle}>Party Name (પાર્ટીનું નામ)</th>
-                        <th style={{ ...thStyle, width: '75px' }}>Truck No.</th>
-                        <th style={{ ...thStyle, width: '38px', textAlign: 'center' }}>Page</th>
-                        <th style={{ ...thStyle, width: '55px', textAlign: 'center' }}>પ્રકાર</th>
-                        <th style={thStyle}>વિગત (Particulars)</th>
-                        <th style={{ ...thStyle, width: '50px', textAlign: 'center' }}>મોડ</th>
-                        <th style={{ ...thStyle, textAlign: 'right', width: '75px' }}>રકમ (₹)</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {pageRows.map((e, idx) => {
-                        const isJama = e.type === 'jama';
-                        const amt = Number(e.amount) || 0;
-                        const isEven = idx % 2 === 1;
-
-                        return (
-                          <tr key={e.id || idx} style={{ backgroundColor: isEven ? '#f8fafc' : '#ffffff' }}>
-                            <td style={{ ...tdStyle, textAlign: 'center', fontWeight: 700 }}>
-                              {pIdx * 20 + idx + 1}
-                            </td>
-                            <td style={{ ...tdStyle, textAlign: 'center', fontSize: '8.5px' }}>
-                              {e.date ? String(e.date).slice(0, 10) : '—'}
-                            </td>
-                            <td style={{ ...tdStyle, fontWeight: 700, color: '#0f172a' }}>
-                              {e.party_name || '—'}
-                            </td>
-                            <td style={{ ...tdStyle, color: '#1e3a8a', fontSize: '8.5px' }}>
-                              {e.truck_no || '—'}
-                            </td>
-                            <td style={{ ...tdStyle, textAlign: 'center', fontSize: '8.5px' }}>
-                              {e.page_no ? `P-${e.page_no}` : '—'}
-                            </td>
-                            <td style={{ ...tdStyle, textAlign: 'center', fontSize: '8.5px', fontWeight: 800 }}>
-                              <span
-                                style={{
-                                  display: 'inline-block',
-                                  padding: '1px 5px',
-                                  borderRadius: '3px',
-                                  backgroundColor: isJama ? '#dcfce7' : '#fee2e2',
-                                  color: isJama ? '#15803d' : '#b91c1c',
-                                }}
-                              >
-                                {isJama ? 'જમા' : 'ઉધાર'}
-                              </span>
-                            </td>
-                            <td style={{ ...tdStyle, color: '#1e293b' }}>
-                              {e.particulars || '—'}
-                            </td>
-                            <td style={{ ...tdStyle, textAlign: 'center', fontSize: '8.5px', color: '#64748b' }}>
-                              {e.payment_mode || 'Cash'}
-                            </td>
-                            <td style={{ ...tdStyle, textAlign: 'right', fontWeight: 800, color: isJama ? '#15803d' : '#b45309' }}>
-                              {isJama ? '+' : '-'}₹{amt.toLocaleString('en-IN')}
+                      </thead>
+                      <tbody>
+                        {items.length === 0 ? (
+                          <tr>
+                            <td colSpan="5" style={{ textAlign: 'center', padding: '10px', color: '#94a3b8', fontStyle: 'italic' }}>
+                              કોઈ આઇટમ સામેલ નથી
                             </td>
                           </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                )}
-              </div>
-
-              <div style={footerStyle}>
-                <span>Faizan Body Works • Truck Accounts Detailed Ledger Entries</span>
-                <span>Section 2B</span>
-                <span style={{ fontWeight: 800, color: '#0f172a' }}>Page {pageNumber} of {totalPages}</span>
-              </div>
-            </div>
-          );
-        })}
-
-        {/* ================================================================= */}
-        {/* SECTION 3A: WORKERS MASTER SUMMARY                                */}
-        {/* ================================================================= */}
-        {(workerSummaryPages.length > 0 ? workerSummaryPages : [[]]).map((pageRows, pIdx) => {
-          currentPageNum++;
-          const pageNumber = currentPageNum;
-          const isLast = pIdx === workerSummaryPages.length - 1;
-
-          return (
-            <div key={`workers-summary-p-${pIdx}`} className="pdf-page" style={pageStyle}>
-              <div>
-                <div style={headerStyle}>
-                  <div>
-                    <h2 style={{ margin: '0 0 2px', fontSize: '15px', fontWeight: 900, color: '#1e3a8a' }}>
-                      FAIZAN BODY BUILDERS
-                    </h2>
-                    <span style={{ fontSize: '10px', fontWeight: 700, color: '#15803d' }}>
-                      👥 SECTION 3A: WORKERS MASTER (કારીગરો અને હિસાબ સમરી)
-                    </span>
+                        ) : (
+                          items.map((it, idx) => (
+                            <tr key={it.id || idx}>
+                              <td style={{ ...tdStyle, textAlign: 'center', fontWeight: 600 }}>{idx + 1}</td>
+                              <td style={{ ...tdStyle, fontWeight: 700, color: '#0f172a' }}>{it.name}</td>
+                              <td style={{ ...tdStyle, textAlign: 'right' }}>₹{Number(it.rate || 0).toLocaleString('en-IN')}</td>
+                              <td style={{ ...tdStyle, textAlign: 'center' }}>{it.qty}</td>
+                              <td style={{ ...tdStyle, textAlign: 'right', fontWeight: 700 }}>₹{Number(it.amount || 0).toLocaleString('en-IN')}</td>
+                            </tr>
+                          ))
+                        )}
+                      </tbody>
+                    </table>
                   </div>
-                  <div style={{ textAlign: 'right', fontSize: '9px', color: '#64748b' }}>
-                    <span>{exportDateStr}</span>
-                    <div style={{ fontWeight: 700, color: '#0f172a' }}>Total Staff: {workers.length}</div>
-                  </div>
-                </div>
 
-                {pageRows.length === 0 ? (
-                  <div style={{ textAlign: 'center', padding: '30px', color: '#94a3b8', fontStyle: 'italic', fontSize: '11px' }}>
-                    કોઈ કારીગર રેકોર્ડ મળેલ નથી
-                  </div>
-                ) : (
-                  <table style={tableStyle}>
-                    <thead>
-                      <tr>
-                        <th style={{ ...thStyle, width: '22px', textAlign: 'center' }}>#</th>
-                        <th style={thStyle}>Worker Name (નામ)</th>
-                        <th style={{ ...thStyle, width: '85px' }}>Mobile</th>
-                        <th style={{ ...thStyle, width: '70px', textAlign: 'center' }}>જોડાવાની તારીખ</th>
-                        <th style={{ ...thStyle, width: '70px', textAlign: 'center' }}>જવાની તારીખ</th>
-                        <th style={{ ...thStyle, textAlign: 'right' }}>કુલ કામ (₹)</th>
-                        <th style={{ ...thStyle, textAlign: 'right' }}>ઉપાડ (₹)</th>
-                        <th style={{ ...thStyle, textAlign: 'right' }}>બાકી હિસાબ (₹)</th>
-                        <th style={{ ...thStyle, width: '60px', textAlign: 'center' }}>સ્થિતિ</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {pageRows.map((w, idx) => {
-                        const work = Number(w.total_work) || 0;
-                        const upad = Number(w.total_upad) || 0;
-                        const bal = Number(w.balance) || (work - upad);
-                        const isEven = idx % 2 === 1;
-                        const isPresent = !w.going_date;
-
-                        return (
-                          <tr key={w.id || idx} style={{ backgroundColor: isEven ? '#f8fafc' : '#ffffff' }}>
-                            <td style={{ ...tdStyle, textAlign: 'center', fontWeight: 700 }}>
-                              {pIdx * 16 + idx + 1}
-                            </td>
-                            <td style={{ ...tdStyle, fontWeight: 700, color: '#0f172a' }}>{w.name || '—'}</td>
-                            <td style={{ ...tdStyle, fontSize: '9px', color: '#475569' }}>{w.mobile || '—'}</td>
-                            <td style={{ ...tdStyle, textAlign: 'center', fontSize: '8.5px' }}>
-                              {w.coming_date ? String(w.coming_date).slice(0, 10) : (w.joining_date ? String(w.joining_date).slice(0, 10) : '—')}
-                            </td>
-                            <td style={{ ...tdStyle, textAlign: 'center', fontSize: '8.5px', color: isPresent ? '#15803d' : '#b91c1c' }}>
-                              {w.going_date ? String(w.going_date).slice(0, 10) : 'હાજર'}
-                            </td>
-                            <td style={{ ...tdStyle, textAlign: 'right', fontWeight: 700, color: '#15803d' }}>
-                              ₹{work.toLocaleString('en-IN')}
-                            </td>
-                            <td style={{ ...tdStyle, textAlign: 'right', fontWeight: 700, color: '#b45309' }}>
-                              ₹{upad.toLocaleString('en-IN')}
-                            </td>
-                            <td style={{ ...tdStyle, textAlign: 'right', fontWeight: 800, color: bal !== 0 ? '#b91c1c' : '#15803d' }}>
-                              ₹{bal.toLocaleString('en-IN')}
-                            </td>
-                            <td style={{ ...tdStyle, textAlign: 'center', fontSize: '8.5px', fontWeight: 700 }}>
-                              <span
-                                style={{
-                                  display: 'inline-block',
-                                  padding: '1px 5px',
-                                  borderRadius: '3px',
-                                  backgroundColor: isPresent ? '#dcfce7' : '#fee2e2',
-                                  color: isPresent ? '#15803d' : '#b91c1c',
-                                }}
-                              >
-                                {isPresent ? 'હાજર' : 'છૂટા'}
-                              </span>
-                            </td>
-                          </tr>
-                        );
-                      })}
-
-                      {isLast && (
-                        <tr style={{ backgroundColor: '#f1f5f9', fontWeight: 800 }}>
-                          <td colSpan="5" style={{ ...tdStyle, textAlign: 'right', fontWeight: 800, padding: '6px' }}>
-                            કારીગરો કુલ હિસાબ (Workers Total):
-                          </td>
-                          <td style={{ ...tdStyle, textAlign: 'right', fontWeight: 800, color: '#15803d' }}>
-                            ₹{totalWorkerWork.toLocaleString('en-IN')}
-                          </td>
-                          <td style={{ ...tdStyle, textAlign: 'right', fontWeight: 800, color: '#b45309' }}>
-                            ₹{totalWorkerUpad.toLocaleString('en-IN')}
-                          </td>
-                          <td style={{ ...tdStyle, textAlign: 'right', fontWeight: 800, color: '#b91c1c' }}>
-                            ₹{totalWorkerBalance.toLocaleString('en-IN')}
-                          </td>
-                          <td style={tdStyle}></td>
-                        </tr>
-                      )}
-                    </tbody>
-                  </table>
-                )}
-              </div>
-
-              <div style={footerStyle}>
-                <span>Faizan Body Works • Workers Master Summary</span>
-                <span>Section 3A</span>
-                <span style={{ fontWeight: 800, color: '#0f172a' }}>Page {pageNumber} of {totalPages}</span>
-              </div>
-            </div>
-          );
-        })}
-
-        {/* ================================================================= */}
-        {/* SECTION 3B: WORKER TRANSACTIONS DETAILED LEDGER (૬૯૫ એન્ટ્રીઓ)        */}
-        {/* ================================================================= */}
-        {(workerTxPages.length > 0 ? workerTxPages : [[]]).map((pageRows, pIdx) => {
-          currentPageNum++;
-          const pageNumber = currentPageNum;
-
-          return (
-            <div key={`workers-tx-p-${pIdx}`} className="pdf-page" style={pageStyle}>
-              <div>
-                <div style={headerStyle}>
-                  <div>
-                    <h2 style={{ margin: '0 0 2px', fontSize: '15px', fontWeight: 900, color: '#1e3a8a' }}>
-                      FAIZAN BODY BUILDERS
-                    </h2>
-                    <span style={{ fontSize: '10px', fontWeight: 700, color: '#15803d' }}>
-                      👥 SECTION 3B: WORKER TRANSACTIONS (કારીગરોની તમામ એન્ટ્રીઓ - ઉપાડ અને પગાર હિસાબ)
-                    </span>
-                  </div>
-                  <div style={{ textAlign: 'right', fontSize: '9px', color: '#64748b' }}>
-                    <span>{exportDateStr}</span>
-                    <div style={{ fontWeight: 700, color: '#0f172a' }}>Total Entries: {workerTransactions.length}</div>
+                  {/* Calculations Summary */}
+                  <div
+                    style={{
+                      border: '1.5px solid #0f172a',
+                      borderRadius: '8px',
+                      padding: '8px 12px',
+                      backgroundColor: '#ffffff',
+                      maxWidth: '350px',
+                      marginLeft: 'auto',
+                      fontSize: '10px',
+                    }}
+                  >
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '3px' }}>
+                      <span style={{ fontWeight: 700, color: '#475569' }}>સબટોટલ (Subtotal):</span>
+                      <strong>₹{Number(quote.subtotal || total).toLocaleString('en-IN')}</strong>
+                    </div>
+                    {Number(quote.extra_amount) > 0 && (
+                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '3px', color: '#b45309' }}>
+                        <span>એક્સ્ટ્રા ચાર્જ ({quote.extra_percent}%):</span>
+                        <strong>+ ₹{Number(quote.extra_amount).toLocaleString('en-IN')}</strong>
+                      </div>
+                    )}
+                    {Number(quote.discount_amount) > 0 && (
+                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '3px', color: '#15803d' }}>
+                        <span>ડિસ્કાઉન્ટ ({quote.discount_percent}%):</span>
+                        <strong>- ₹{Number(quote.discount_amount).toLocaleString('en-IN')}</strong>
+                      </div>
+                    )}
+                    <div style={{ display: 'flex', justifyContent: 'space-between', paddingTop: '4px', borderTop: '1.5px solid #0f172a', fontSize: '12px', fontWeight: 900, color: '#1e3a8a' }}>
+                      <span>કુલ ફાઈનલ કિંમત (Final Price):</span>
+                      <span>₹{total.toLocaleString('en-IN')}</span>
+                    </div>
                   </div>
                 </div>
 
-                {pageRows.length === 0 ? (
-                  <div style={{ textAlign: 'center', padding: '30px', color: '#94a3b8', fontStyle: 'italic', fontSize: '11px' }}>
-                    કોઈ એન્ટ્રી ઉપલબ્ધ નથી
-                  </div>
-                ) : (
-                  <table style={tableStyle}>
-                    <thead>
-                      <tr>
-                        <th style={{ ...thStyle, width: '22px', textAlign: 'center' }}>#</th>
-                        <th style={{ ...thStyle, width: '70px', textAlign: 'center' }}>તારીખ</th>
-                        <th style={{ ...thStyle, width: '130px' }}>Worker Name (કારીગર)</th>
-                        <th style={{ ...thStyle, width: '65px', textAlign: 'center' }}>પ્રકાર</th>
-                        <th style={thStyle}>વિગત / નોંધ (Notes)</th>
-                        <th style={{ ...thStyle, width: '50px', textAlign: 'center' }}>મોડ</th>
-                        <th style={{ ...thStyle, textAlign: 'right', width: '80px' }}>રકમ (₹)</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {pageRows.map((t, idx) => {
-                        const isCredit = t.type === 'salary' || t.type === 'work' || t.type === 'credit';
-                        const amt = Number(t.amount) || 0;
-                        const isEven = idx % 2 === 1;
-
-                        return (
-                          <tr key={t.id || idx} style={{ backgroundColor: isEven ? '#f8fafc' : '#ffffff' }}>
-                            <td style={{ ...tdStyle, textAlign: 'center', fontWeight: 700 }}>
-                              {pIdx * 22 + idx + 1}
-                            </td>
-                            <td style={{ ...tdStyle, textAlign: 'center', fontSize: '8.5px' }}>
-                              {t.date ? String(t.date).slice(0, 10) : '—'}
-                            </td>
-                            <td style={{ ...tdStyle, fontWeight: 700, color: '#0f172a' }}>
-                              {t.worker_name || '—'}
-                            </td>
-                            <td style={{ ...tdStyle, textAlign: 'center', fontSize: '8.5px', fontWeight: 800 }}>
-                              <span
-                                style={{
-                                  display: 'inline-block',
-                                  padding: '1px 5px',
-                                  borderRadius: '3px',
-                                  backgroundColor: isCredit ? '#dcfce7' : '#fee2e2',
-                                  color: isCredit ? '#15803d' : '#b91c1c',
-                                }}
-                              >
-                                {isCredit ? 'મજૂરી/કામ' : 'ઉપાડ'}
-                              </span>
-                            </td>
-                            <td style={{ ...tdStyle, color: '#1e293b' }}>
-                              {t.notes || '—'}
-                            </td>
-                            <td style={{ ...tdStyle, textAlign: 'center', fontSize: '8.5px', color: '#64748b' }}>
-                              {t.payment_mode || 'Cash'}
-                            </td>
-                            <td style={{ ...tdStyle, textAlign: 'right', fontWeight: 800, color: isCredit ? '#15803d' : '#b45309' }}>
-                              {isCredit ? '+' : '-'}₹{amt.toLocaleString('en-IN')}
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                )}
-              </div>
-
-              <div style={footerStyle}>
-                <span>Faizan Body Works • Worker Transactions Detailed Ledger</span>
-                <span>Section 3B</span>
-                <span style={{ fontWeight: 800, color: '#0f172a' }}>Page {pageNumber} of {totalPages}</span>
-              </div>
-            </div>
-          );
-        })}
-
-        {/* ================================================================= */}
-        {/* SECTION 4: ROJMED (રોજમેળ - તમામે તમામ રોકડ એન્ટ્રીઓ)                  */}
-        {/* ================================================================= */}
-        {(rojmedPages.length > 0 ? rojmedPages : [[]]).map((pageRows, pIdx) => {
-          currentPageNum++;
-          const pageNumber = currentPageNum;
-
-          return (
-            <div key={`rojmed-p-${pIdx}`} className="pdf-page" style={pageStyle}>
-              <div>
-                <div style={headerStyle}>
-                  <div>
-                    <h2 style={{ margin: '0 0 2px', fontSize: '15px', fontWeight: 900, color: '#1e3a8a' }}>
-                      FAIZAN BODY BUILDERS
-                    </h2>
-                    <span style={{ fontSize: '10px', fontWeight: 700, color: '#7e22ce' }}>
-                      💰 SECTION 4: ROJMED CASHBOOK (રોજમેળ - રોકડ હિસાબ તમામ એન્ટ્રીઓ)
-                    </span>
-                  </div>
-                  <div style={{ textAlign: 'right', fontSize: '9px', color: '#64748b' }}>
-                    <span>{exportDateStr}</span>
-                    <div style={{ fontWeight: 700, color: '#0f172a' }}>Total Entries: {rojmedEntries.length}</div>
-                  </div>
+                <div style={footerStyle}>
+                  <span>Faizan Body Works • Quotation Estimate</span>
+                  <span>Section 4 • {quote.customer_name}</span>
+                  <span style={{ fontWeight: 800, color: '#0f172a' }}>Page {pageNum} of {totalPages}</span>
                 </div>
+              </div>
+            );
+          })}
 
-                {pageRows.length === 0 ? (
-                  <div style={{ textAlign: 'center', padding: '30px', color: '#94a3b8', fontStyle: 'italic', fontSize: '11px' }}>
-                    કોઈ રોજમેળ એન્ટ્રી ઉપલબ્ધ નથી
+        {/* ================================================================= */}
+        {/* SECTION 5: ROJMED (રોજમેળ - દૈનિક રોકડમેળ ફોર્મ)                     */}
+        {/* ================================================================= */}
+        {showRojmed &&
+          rojmedPages.map((pageRows, pIdx) => {
+            const pageNum = getNextPageNum();
+
+            return (
+              <div key={`rojmed-p-${pIdx}`} className="pdf-page" style={pageStyle}>
+                <div>
+                  <div style={headerStyle}>
+                    <div>
+                      <h2 style={{ margin: '0 0 2px', fontSize: '15px', fontWeight: 900, color: '#1e3a8a' }}>
+                        FAIZAN BODY BUILDERS • ROJMED CASHBOOK
+                      </h2>
+                      <span style={{ fontSize: '9.5px', fontWeight: 700, color: '#7e22ce' }}>
+                        💰 SECTION 5: રોજમેળ રોકડ હિસાબ (Page {pIdx + 1} of {rojmedPages.length})
+                      </span>
+                    </div>
+                    <div style={{ textAlign: 'right', fontSize: '9px', color: '#64748b' }}>
+                      <span>{exportDateStr}</span>
+                      <div style={{ fontWeight: 700, color: '#0f172a' }}>Total Entries: {rojmedEntries.length}</div>
+                    </div>
                   </div>
-                ) : (
+
                   <table style={tableStyle}>
                     <thead>
                       <tr>
@@ -890,7 +1290,7 @@ export function BackupPdfReport({ data, elementId = 'printableFullBackupReport' 
                         <th style={{ ...thStyle, width: '70px', textAlign: 'center' }}>તારીખ</th>
                         <th style={{ ...thStyle, width: '75px', textAlign: 'center' }}>પ્રકાર</th>
                         <th style={thStyle}>વિગત (Particulars / Description)</th>
-                        <th style={{ ...thStyle, width: '60px', textAlign: 'center' }}>મોડ</th>
+                        <th style={{ ...thStyle, width: '55px', textAlign: 'center' }}>મોડ</th>
                         <th style={{ ...thStyle, textAlign: 'right', width: '85px' }}>રકમ (₹)</th>
                       </tr>
                     </thead>
@@ -903,7 +1303,7 @@ export function BackupPdfReport({ data, elementId = 'printableFullBackupReport' 
                         return (
                           <tr key={r.id || idx} style={{ backgroundColor: isEven ? '#f8fafc' : '#ffffff' }}>
                             <td style={{ ...tdStyle, textAlign: 'center', fontWeight: 700 }}>
-                              {pIdx * 18 + idx + 1}
+                              {pIdx * 20 + idx + 1}
                             </td>
                             <td style={{ ...tdStyle, textAlign: 'center', fontSize: '8.5px' }}>
                               {r.date ? String(r.date).slice(0, 10) : '—'}
@@ -935,58 +1335,52 @@ export function BackupPdfReport({ data, elementId = 'printableFullBackupReport' 
                       })}
                     </tbody>
                   </table>
-                )}
-              </div>
-
-              <div style={footerStyle}>
-                <span>Faizan Body Works • Daily Cashbook Register</span>
-                <span>Section 4</span>
-                <span style={{ fontWeight: 800, color: '#0f172a' }}>Page {pageNumber} of {totalPages}</span>
-              </div>
-            </div>
-          );
-        })}
-
-        {/* ================================================================= */}
-        {/* SECTION 5A: STOCK ITEMS MASTER (સ્ટોક માલ સામાન)                    */}
-        {/* ================================================================= */}
-        {(stockPages.length > 0 ? stockPages : [[]]).map((pageRows, pIdx) => {
-          currentPageNum++;
-          const pageNumber = currentPageNum;
-
-          return (
-            <div key={`stock-items-p-${pIdx}`} className="pdf-page" style={pageStyle}>
-              <div>
-                <div style={headerStyle}>
-                  <div>
-                    <h2 style={{ margin: '0 0 2px', fontSize: '15px', fontWeight: 900, color: '#1e3a8a' }}>
-                      FAIZAN BODY BUILDERS
-                    </h2>
-                    <span style={{ fontSize: '10px', fontWeight: 700, color: '#0284c7' }}>
-                      🔩 SECTION 5A: STOCK MASTER (સ્ટોક માલ સામાન યાદી)
-                    </span>
-                  </div>
-                  <div style={{ textAlign: 'right', fontSize: '9px', color: '#64748b' }}>
-                    <span>{exportDateStr}</span>
-                    <div style={{ fontWeight: 700, color: '#0f172a' }}>Total Items: {stockItems.length}</div>
-                  </div>
                 </div>
 
-                {pageRows.length === 0 ? (
-                  <div style={{ textAlign: 'center', padding: '30px', color: '#94a3b8', fontStyle: 'italic', fontSize: '11px' }}>
-                    કોઈ સ્ટોક માલ ઉપલબ્ધ નથી
+                <div style={footerStyle}>
+                  <span>Faizan Body Works • Daily Cashbook Register</span>
+                  <span>Section 5</span>
+                  <span style={{ fontWeight: 800, color: '#0f172a' }}>Page {pageNum} of {totalPages}</span>
+                </div>
+              </div>
+            );
+          })}
+
+        {/* ================================================================= */}
+        {/* SECTION 6A: STOCK INVENTORY (સ્ટોક માલ સામાન)                       */}
+        {/* ================================================================= */}
+        {showStock &&
+          stockPages.map((pageRows, pIdx) => {
+            const pageNum = getNextPageNum();
+
+            return (
+              <div key={`stock-items-p-${pIdx}`} className="pdf-page" style={pageStyle}>
+                <div>
+                  <div style={headerStyle}>
+                    <div>
+                      <h2 style={{ margin: '0 0 2px', fontSize: '15px', fontWeight: 900, color: '#1e3a8a' }}>
+                        FAIZAN BODY BUILDERS • STOCK INVENTORY
+                      </h2>
+                      <span style={{ fontSize: '9.5px', fontWeight: 700, color: '#0284c7' }}>
+                        🔩 SECTION 6A: સ્ટોક માલ સામાન યાદી (Page {pIdx + 1} of {stockPages.length})
+                      </span>
+                    </div>
+                    <div style={{ textAlign: 'right', fontSize: '9px', color: '#64748b' }}>
+                      <span>{exportDateStr}</span>
+                      <div style={{ fontWeight: 700, color: '#0f172a' }}>Total Items: {stockItems.length}</div>
+                    </div>
                   </div>
-                ) : (
+
                   <table style={tableStyle}>
                     <thead>
                       <tr>
                         <th style={{ ...thStyle, width: '22px', textAlign: 'center' }}>#</th>
                         <th style={thStyle}>Item Name (માલનું નામ)</th>
                         <th style={thStyle}>Category (કેટેગરી)</th>
-                        <th style={{ ...thStyle, textAlign: 'right' }}>Current Qty</th>
+                        <th style={{ ...thStyle, textAlign: 'right', width: '75px' }}>Current Qty</th>
                         <th style={{ ...thStyle, width: '45px', textAlign: 'center' }}>Unit</th>
-                        <th style={{ ...thStyle, textAlign: 'right' }}>Min Alert</th>
-                        <th style={{ ...thStyle, textAlign: 'right' }}>Unit Price (₹)</th>
+                        <th style={{ ...thStyle, textAlign: 'right', width: '65px' }}>Min Alert</th>
+                        <th style={{ ...thStyle, textAlign: 'right', width: '80px' }}>Unit Price (₹)</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -1000,7 +1394,7 @@ export function BackupPdfReport({ data, elementId = 'printableFullBackupReport' 
                         return (
                           <tr key={s.id || idx} style={{ backgroundColor: isEven ? '#f8fafc' : '#ffffff' }}>
                             <td style={{ ...tdStyle, textAlign: 'center', fontWeight: 700 }}>
-                              {pIdx * 18 + idx + 1}
+                              {pIdx * 20 + idx + 1}
                             </td>
                             <td style={{ ...tdStyle, fontWeight: 700, color: '#0f172a' }}>{s.name || '—'}</td>
                             <td style={{ ...tdStyle, color: '#475569' }}>{s.category_name || 'General'}</td>
@@ -1017,48 +1411,42 @@ export function BackupPdfReport({ data, elementId = 'printableFullBackupReport' 
                       })}
                     </tbody>
                   </table>
-                )}
-              </div>
-
-              <div style={footerStyle}>
-                <span>Faizan Body Works • Stock Inventory Register</span>
-                <span>Section 5A</span>
-                <span style={{ fontWeight: 800, color: '#0f172a' }}>Page {pageNumber} of {totalPages}</span>
-              </div>
-            </div>
-          );
-        })}
-
-        {/* ================================================================= */}
-        {/* SECTION 5B: STOCK TRANSACTIONS MOVEMENT LOG                        */}
-        {/* ================================================================= */}
-        {(stockTxPages.length > 0 ? stockTxPages : [[]]).map((pageRows, pIdx) => {
-          currentPageNum++;
-          const pageNumber = currentPageNum;
-
-          return (
-            <div key={`stock-tx-p-${pIdx}`} className="pdf-page" style={pageStyle}>
-              <div>
-                <div style={headerStyle}>
-                  <div>
-                    <h2 style={{ margin: '0 0 2px', fontSize: '15px', fontWeight: 900, color: '#1e3a8a' }}>
-                      FAIZAN BODY BUILDERS
-                    </h2>
-                    <span style={{ fontSize: '10px', fontWeight: 700, color: '#0284c7' }}>
-                      🔩 SECTION 5B: STOCK MOVEMENT LOG (સ્ટોક આવક-જાવક એન્ટ્રીઓ)
-                    </span>
-                  </div>
-                  <div style={{ textAlign: 'right', fontSize: '9px', color: '#64748b' }}>
-                    <span>{exportDateStr}</span>
-                    <div style={{ fontWeight: 700, color: '#0f172a' }}>Total Movements: {stockTransactions.length}</div>
-                  </div>
                 </div>
 
-                {pageRows.length === 0 ? (
-                  <div style={{ textAlign: 'center', padding: '30px', color: '#94a3b8', fontStyle: 'italic', fontSize: '11px' }}>
-                    કોઈ સ્ટોક મુવમેન્ટ ઉપલબ્ધ નથી
+                <div style={footerStyle}>
+                  <span>Faizan Body Works • Stock Inventory Register</span>
+                  <span>Section 6A</span>
+                  <span style={{ fontWeight: 800, color: '#0f172a' }}>Page {pageNum} of {totalPages}</span>
+                </div>
+              </div>
+            );
+          })}
+
+        {/* ================================================================= */}
+        {/* SECTION 6B: STOCK MOVEMENT LOG (સ્ટોક આવક-જાવક હિસ્ટ્રી)            */}
+        {/* ================================================================= */}
+        {showStock &&
+          stockTxPages.map((pageRows, pIdx) => {
+            const pageNum = getNextPageNum();
+
+            return (
+              <div key={`stock-tx-p-${pIdx}`} className="pdf-page" style={pageStyle}>
+                <div>
+                  <div style={headerStyle}>
+                    <div>
+                      <h2 style={{ margin: '0 0 2px', fontSize: '15px', fontWeight: 900, color: '#1e3a8a' }}>
+                        FAIZAN BODY BUILDERS • STOCK MOVEMENT LOG
+                      </h2>
+                      <span style={{ fontSize: '9.5px', fontWeight: 700, color: '#0284c7' }}>
+                        🔩 SECTION 6B: સ્ટોક મુવમેન્ટ અને ઓડિટ લોગ (Page {pIdx + 1} of {stockTxPages.length})
+                      </span>
+                    </div>
+                    <div style={{ textAlign: 'right', fontSize: '9px', color: '#64748b' }}>
+                      <span>{exportDateStr}</span>
+                      <div style={{ fontWeight: 700, color: '#0f172a' }}>Total Movements: {stockTransactions.length}</div>
+                    </div>
                   </div>
-                ) : (
+
                   <table style={tableStyle}>
                     <thead>
                       <tr>
@@ -1079,14 +1467,12 @@ export function BackupPdfReport({ data, elementId = 'printableFullBackupReport' 
                         return (
                           <tr key={tx.id || idx} style={{ backgroundColor: isEven ? '#f8fafc' : '#ffffff' }}>
                             <td style={{ ...tdStyle, textAlign: 'center', fontWeight: 700 }}>
-                              {pIdx * 20 + idx + 1}
+                              {pIdx * 22 + idx + 1}
                             </td>
                             <td style={{ ...tdStyle, textAlign: 'center', fontSize: '8.5px' }}>
                               {tx.date ? String(tx.date).slice(0, 10) : '—'}
                             </td>
-                            <td style={{ ...tdStyle, fontWeight: 700, color: '#0f172a' }}>
-                              {tx.item_name || '—'}
-                            </td>
+                            <td style={{ ...tdStyle, fontWeight: 700, color: '#0f172a' }}>{tx.item_name || '—'}</td>
                             <td style={{ ...tdStyle, textAlign: 'center', fontSize: '8.5px', fontWeight: 800 }}>
                               <span
                                 style={{
@@ -1100,161 +1486,50 @@ export function BackupPdfReport({ data, elementId = 'printableFullBackupReport' 
                                 {tx.type || 'IN'}
                               </span>
                             </td>
-                            <td style={{ ...tdStyle, textAlign: 'right', fontWeight: 700 }}>
-                              {tx.quantity}
-                            </td>
-                            <td style={{ ...tdStyle, textAlign: 'center', fontSize: '8.5px', color: '#64748b' }}>
-                              {tx.unit || 'Pcs'}
-                            </td>
-                            <td style={{ ...tdStyle, color: '#475569' }}>
-                              {tx.reference_note || '—'}
-                            </td>
+                            <td style={{ ...tdStyle, textAlign: 'right', fontWeight: 700 }}>{tx.quantity}</td>
+                            <td style={{ ...tdStyle, textAlign: 'center', fontSize: '8.5px', color: '#64748b' }}>{tx.unit || 'Pcs'}</td>
+                            <td style={{ ...tdStyle, color: '#475569' }}>{tx.reference_note || '—'}</td>
                           </tr>
                         );
                       })}
                     </tbody>
                   </table>
-                )}
-              </div>
-
-              <div style={footerStyle}>
-                <span>Faizan Body Works • Stock Movement Audit Register</span>
-                <span>Section 5B</span>
-                <span style={{ fontWeight: 800, color: '#0f172a' }}>Page {pageNumber} of {totalPages}</span>
-              </div>
-            </div>
-          );
-        })}
-
-        {/* ================================================================= */}
-        {/* SECTION 6: QUOTATIONS REGISTER                                    */}
-        {/* ================================================================= */}
-        {(quotePages.length > 0 ? quotePages : [[]]).map((pageRows, pIdx) => {
-          currentPageNum++;
-          const pageNumber = currentPageNum;
-          const isLast = pIdx === quotePages.length - 1;
-
-          return (
-            <div key={`quotes-p-${pIdx}`} className="pdf-page" style={pageStyle}>
-              <div>
-                <div style={headerStyle}>
-                  <div>
-                    <h2 style={{ margin: '0 0 2px', fontSize: '15px', fontWeight: 900, color: '#1e3a8a' }}>
-                      FAIZAN BODY BUILDERS
-                    </h2>
-                    <span style={{ fontSize: '10px', fontWeight: 700, color: '#d97706' }}>
-                      📑 SECTION 6: QUOTATIONS (કોટેશન્સ અને વિગતવાર આઇટમ્સ)
-                    </span>
-                  </div>
-                  <div style={{ textAlign: 'right', fontSize: '9px', color: '#64748b' }}>
-                    <span>{exportDateStr}</span>
-                    <div style={{ fontWeight: 700, color: '#0f172a' }}>Total Quotes: {quotations.length}</div>
-                  </div>
                 </div>
 
-                {pageRows.length === 0 ? (
-                  <div style={{ textAlign: 'center', padding: '30px', color: '#94a3b8', fontStyle: 'italic', fontSize: '11px' }}>
-                    કોઈ કોટેશન રેકોર્ડ મળેલ નથી
-                  </div>
-                ) : (
-                  <table style={tableStyle}>
-                    <thead>
-                      <tr>
-                        <th style={{ ...thStyle, width: '22px', textAlign: 'center' }}>#</th>
-                        <th style={thStyle}>Quotation No.</th>
-                        <th style={{ ...thStyle, width: '70px', textAlign: 'center' }}>તારીખ</th>
-                        <th style={thStyle}>Customer Name & Mobile</th>
-                        <th style={thStyle}>Vehicle Model</th>
-                        <th style={{ ...thStyle, textAlign: 'right' }}>Total Estimated (₹)</th>
-                        <th style={{ ...thStyle, width: '65px', textAlign: 'center' }}>Status</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {pageRows.map((q, idx) => {
-                        const total = Number(q.final_price ?? q.total_amount ?? q.subtotal) || 0;
-                        const isEven = idx % 2 === 1;
-                        const dateStr = q.quotation_date ? String(q.quotation_date).slice(0, 10) : (q.date ? String(q.date).slice(0, 10) : '—');
-                        const mobile = q.mobile_number || q.customer_mobile || '';
-
-                        return (
-                          <tr key={q.id || idx} style={{ backgroundColor: isEven ? '#f8fafc' : '#ffffff' }}>
-                            <td style={{ ...tdStyle, textAlign: 'center', fontWeight: 700 }}>
-                              {pIdx * 12 + idx + 1}
-                            </td>
-                            <td style={{ ...tdStyle, fontWeight: 700, color: '#1e3a8a' }}>{q.quotation_no || `Q-${q.id}`}</td>
-                            <td style={{ ...tdStyle, textAlign: 'center', fontSize: '8.5px' }}>{dateStr}</td>
-                            <td style={tdStyle}>
-                              <div style={{ fontWeight: 700 }}>{q.customer_name || '—'}</div>
-                              {mobile && <div style={{ fontSize: '8.5px', color: '#64748b' }}>{mobile}</div>}
-                            </td>
-                            <td style={{ ...tdStyle, color: '#334155' }}>{q.truck_chassis_no || q.vehicle_model || '—'}</td>
-                            <td style={{ ...tdStyle, textAlign: 'right', fontWeight: 800, color: '#0f172a' }}>
-                              ₹{total.toLocaleString('en-IN')}
-                            </td>
-                            <td style={{ ...tdStyle, textAlign: 'center', fontSize: '8.5px', fontWeight: 700 }}>
-                              <span style={{ display: 'inline-block', padding: '1px 5px', borderRadius: '3px', backgroundColor: '#eff6ff', color: '#1d4ed8' }}>
-                                {q.status || 'Draft'}
-                              </span>
-                            </td>
-                          </tr>
-                        );
-                      })}
-
-                      {isLast && (
-                        <tr style={{ backgroundColor: '#f1f5f9', fontWeight: 800 }}>
-                          <td colSpan="5" style={{ ...tdStyle, textAlign: 'right', fontWeight: 800, padding: '6px' }}>
-                            કુલ કોટેશન રકમ (Total Quotations Value):
-                          </td>
-                          <td style={{ ...tdStyle, textAlign: 'right', fontWeight: 800, color: '#0f172a' }}>
-                            ₹{totalQuoteValue.toLocaleString('en-IN')}
-                          </td>
-                          <td style={tdStyle}></td>
-                        </tr>
-                      )}
-                    </tbody>
-                  </table>
-                )}
-              </div>
-
-              <div style={footerStyle}>
-                <span>Faizan Body Works • Quotations Register</span>
-                <span>Section 6</span>
-                <span style={{ fontWeight: 800, color: '#0f172a' }}>Page {pageNumber} of {totalPages}</span>
-              </div>
-            </div>
-          );
-        })}
-
-        {/* ================================================================= */}
-        {/* SECTION 7: SYSTEM USERS                                           */}
-        {/* ================================================================= */}
-        {(userPages.length > 0 ? userPages : [[]]).map((pageRows, pIdx) => {
-          currentPageNum++;
-          const pageNumber = currentPageNum;
-
-          return (
-            <div key={`users-p-${pIdx}`} className="pdf-page" style={pageStyle}>
-              <div>
-                <div style={headerStyle}>
-                  <div>
-                    <h2 style={{ margin: '0 0 2px', fontSize: '15px', fontWeight: 900, color: '#1e3a8a' }}>
-                      FAIZAN BODY BUILDERS
-                    </h2>
-                    <span style={{ fontSize: '10px', fontWeight: 700, color: '#475569' }}>
-                      👤 SECTION 7: SYSTEM USERS & ACCESS (સિસ્ટમ યુઝર્સ)
-                    </span>
-                  </div>
-                  <div style={{ textAlign: 'right', fontSize: '9px', color: '#64748b' }}>
-                    <span>{exportDateStr}</span>
-                    <div style={{ fontWeight: 700, color: '#0f172a' }}>Total Users: {users.length}</div>
-                  </div>
+                <div style={footerStyle}>
+                  <span>Faizan Body Works • Stock Movement Audit Register</span>
+                  <span>Section 6B</span>
+                  <span style={{ fontWeight: 800, color: '#0f172a' }}>Page {pageNum} of {totalPages}</span>
                 </div>
+              </div>
+            );
+          })}
 
-                {pageRows.length === 0 ? (
-                  <div style={{ textAlign: 'center', padding: '30px', color: '#94a3b8', fontStyle: 'italic', fontSize: '11px' }}>
-                    કોઈ યુઝર રેકોર્ડ મળેલ નથી
+        {/* ================================================================= */}
+        {/* SECTION 7: USERS & SECURITY ACCESS                                */}
+        {/* ================================================================= */}
+        {showUsers &&
+          userPages.map((pageRows, pIdx) => {
+            const pageNum = getNextPageNum();
+
+            return (
+              <div key={`users-p-${pIdx}`} className="pdf-page" style={pageStyle}>
+                <div>
+                  <div style={headerStyle}>
+                    <div>
+                      <h2 style={{ margin: '0 0 2px', fontSize: '15px', fontWeight: 900, color: '#1e3a8a' }}>
+                        FAIZAN BODY BUILDERS • SYSTEM USERS & ACCESS
+                      </h2>
+                      <span style={{ fontSize: '9.5px', fontWeight: 700, color: '#475569' }}>
+                        👤 SECTION 7: સિસ્ટમ યુઝર્સ અને સુરક્ષા પરમિશન
+                      </span>
+                    </div>
+                    <div style={{ textAlign: 'right', fontSize: '9px', color: '#64748b' }}>
+                      <span>{exportDateStr}</span>
+                      <div style={{ fontWeight: 700, color: '#0f172a' }}>Total Users: {users.length}</div>
+                    </div>
                   </div>
-                ) : (
+
                   <table style={tableStyle}>
                     <thead>
                       <tr>
@@ -1311,40 +1586,39 @@ export function BackupPdfReport({ data, elementId = 'printableFullBackupReport' 
                       })}
                     </tbody>
                   </table>
-                )}
 
-                {/* Maintenance Verification Box */}
-                <div
-                  style={{
-                    marginTop: '20px',
-                    border: '1.5px dashed #0284c7',
-                    borderRadius: '8px',
-                    backgroundColor: '#f0f9ff',
-                    padding: '10px 12px',
-                    fontSize: '9.5px',
-                    color: '#0369a1',
-                    lineHeight: 1.5,
-                  }}
-                >
-                  <div style={{ fontWeight: 800, fontSize: '10.5px', marginBottom: '3px', color: '#075985' }}>
-                    🛡️ SYSTEM INTEGRITY & MAINTENANCE VERIFICATION
-                  </div>
-                  <div>
-                    આ PDF રિપોર્ટ Faizan Body Management System ના તમામ ૧૨ ડેટાબેઝ મોડ્યુલ્સનો અને તમામે તમામ એન્ટ્રીઓનો
-                    સંપૂર્ણ લેખિત રેકોર્ડ છે. સર્વર મેન્ટેનન્સ કે ઈન્ટરનેટ બંધ દરમિયાન કોઈ પણ હિસાબ, ઓર્ડર, કારીગર હિસાબ
-                    કે ગાડી વાળા ની ખાતાવહીની તપાસ માટે આ દસ્તાવેજ સંપૂર્ણ અધિકૃત ગણવામાં આવશે.
+                  {/* Verification Box */}
+                  <div
+                    style={{
+                      marginTop: '20px',
+                      border: '1.5px dashed #0284c7',
+                      borderRadius: '8px',
+                      backgroundColor: '#f0f9ff',
+                      padding: '10px 12px',
+                      fontSize: '9.5px',
+                      color: '#0369a1',
+                      lineHeight: 1.5,
+                    }}
+                  >
+                    <div style={{ fontWeight: 800, fontSize: '10.5px', marginBottom: '3px', color: '#075985' }}>
+                      🛡️ SYSTEM INTEGRITY & MAINTENANCE VERIFICATION
+                    </div>
+                    <div>
+                      આ PDF રિપોર્ટ Faizan Body Management System ના તમામ મોડ્યુલ્સનો ફોર્મ-વાઇસ સંપૂર્ણ લેખિત
+                      દસ્તાવેજ છે. ઓર્ડર્સના જોબ કાર્ડ્સ, ગાડી વાળા નું ખાતાવહી, કારીગરોના હિસાબો અને રોજમેળ સહિત
+                      તમામ વિગતવાર એન્ટ્રીઓ આ દસ્તાવેજમાં સુરક્ષિત રીતે સંગ્રહિત છે.
+                    </div>
                   </div>
                 </div>
-              </div>
 
-              <div style={footerStyle}>
-                <span>Faizan Body Works • End of System All-Data Ledger Report</span>
-                <span>Section 7 (Final)</span>
-                <span style={{ fontWeight: 800, color: '#0f172a' }}>Page {pageNumber} of {totalPages}</span>
+                <div style={footerStyle}>
+                  <span>Faizan Body Works • End of Complete System Ledger Report</span>
+                  <span>Section 7 (Final)</span>
+                  <span style={{ fontWeight: 800, color: '#0f172a' }}>Page {pageNum} of {totalPages}</span>
+                </div>
               </div>
-            </div>
-          );
-        })}
+            );
+          })}
       </div>
     </div>
   );

@@ -250,8 +250,8 @@ export async function generatePdfBlob(element, customFileName = 'Order_Slip.pdf'
     const margin = 6;
     const printWidth = pdfWidth - (margin * 2);
     const availableHeight = pdfHeight - (margin * 2);
-    // For large multi-page reports (e.g. all entries), 1.5x scale provides sharp 300dpi without memory overhead
-    const renderScale = allPdfPages.length > 8 ? 1.5 : 2;
+    // For large multi-page reports (e.g. all entries), 1.25x - 1.5x scale provides sharp 300dpi without memory overhead
+    const renderScale = allPdfPages.length > 30 ? 1.25 : allPdfPages.length > 8 ? 1.5 : 2;
 
     for (let i = 0; i < allPdfPages.length; i++) {
       if (onProgress) {

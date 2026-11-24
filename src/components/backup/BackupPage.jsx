@@ -19,6 +19,7 @@ export function BackupPage({ onBackToHome }) {
   const [isExportingPdf, setIsExportingPdf] = useState(false);
   const [pdfProgressMsg, setPdfProgressMsg] = useState('');
   const [fullPdfData, setFullPdfData] = useState(null);
+  const [exportModule, setExportModule] = useState('all');
 
   // Google Drive automated backup state
   const [driveSettings, setDriveSettings] = useState(null);
@@ -148,8 +149,17 @@ export function BackupPage({ onBackToHome }) {
       // Wait for React to render printable DOM elements
       await new Promise((r) => setTimeout(r, 600));
 
+      const moduleLabels = {
+        all: 'All_Data',
+        orders: 'Orders_Forms',
+        truck_accounts: 'Truck_Accounts_Khata',
+        workers: 'Workers_Khata',
+        quotations: 'Quotations_Estimates',
+        rojmed: 'Rojmed_Cashbook',
+        stock: 'Stock_Inventory',
+      };
       const dateStr = new Date().toISOString().slice(0, 10);
-      const fileName = `FaizanBody_All_Data_Backup_${dateStr}.pdf`;
+      const fileName = `FaizanBody_${moduleLabels[exportModule] || 'Data'}_Backup_${dateStr}.pdf`;
 
       await downloadPdfFile({
         elementId: 'printableFullBackupReport',
@@ -159,7 +169,7 @@ export function BackupPage({ onBackToHome }) {
         },
       });
 
-      showToast('✓ સમગ્ર એપ્લિકેશન ડેટાની PDF ડાઉનલોડ થઈ ગઈ છે! હવે મેન્ટેનન્સ દરમિયાન પણ બધો ડેટા વાંચી શકાશે.');
+      showToast('✓ PDF સફળતાપૂર્વક ડાઉનલોડ થઈ ગઈ છે!');
     } catch (err) {
       console.error('Full PDF export error:', err);
       showToast('પીડીએફ બનાવવામાં નિષ્ફળ. કૃપા કરીને ફરી પ્રયાસ કરો.', 'error');
@@ -180,8 +190,17 @@ export function BackupPage({ onBackToHome }) {
 
       await new Promise((r) => setTimeout(r, 600));
 
+      const moduleLabels = {
+        all: 'All_Data',
+        orders: 'Orders_Forms',
+        truck_accounts: 'Truck_Accounts_Khata',
+        workers: 'Workers_Khata',
+        quotations: 'Quotations_Estimates',
+        rojmed: 'Rojmed_Cashbook',
+        stock: 'Stock_Inventory',
+      };
       const dateStr = new Date().toISOString().slice(0, 10);
-      const fileName = `FaizanBody_All_Data_Backup_${dateStr}.pdf`;
+      const fileName = `FaizanBody_${moduleLabels[exportModule] || 'Data'}_Backup_${dateStr}.pdf`;
 
       const result = await sharePdfFile({
         elementId: 'printableFullBackupReport',
@@ -192,7 +211,7 @@ export function BackupPage({ onBackToHome }) {
       });
 
       if (result?.success || result?.method === 'downloaded') {
-        showToast('✓ સંપૂર્ણ ડેટા PDF સફળતાપૂર્વક શેર / ડાઉનલોડ થઈ ગઈ!');
+        showToast('✓ PDF સફળતાપૂર્વક શેર / ડાઉનલોડ થઈ ગઈ!');
       }
     } catch (err) {
       console.error('WhatsApp PDF share error:', err);
@@ -612,8 +631,66 @@ export function BackupPage({ onBackToHome }) {
         </div>
 
         <p className="backup-card-desc" style={{ color: '#334155' }}>
-          જો ક્યારેય સિસ્ટમ મેન્ટેનન્સમાં હોય કે ઇન્ટરનેટ બંધ હોય, તો પણ આ એક જ <strong>સંપૂર્ણ PDF</strong> ડાઉનલોડ કરી રાખવાથી તમારા <strong>ઓર્ડર્સ, ગાડી વાળા નું ખાતાવહી, કારીગરો, રોજમેળ, સ્ટોક અને કોટેશન</strong> નો તમામ ડેટા સુંદર કોષ્ટકમાં વાંચી શકાશે.
+          જો ક્યારેય સિસ્ટમ મેન્ટેનન્સમાં હોય કે ઇન્ટરનેટ બંધ હોય, તો પણ આ <strong>PDF</strong> ડાઉનલોડ કરી રાખવાથી તમારા <strong>ઓર્ડર્સ જોબ કાર્ડ, ગાડી વાળા નું ખાતાવહી, કારીગરો, રોજમેળ, સ્ટોક અને કોટેશન</strong> નો તમામ ડેટા સુંદર ફોર્મ વાઇસ કોષ્ટકમાં વાંચી શકાશે.
         </p>
+
+        {/* Module Selection Pills */}
+        <div style={{ margin: '0.85rem 0 0.5rem' }}>
+          <div style={{ fontSize: '0.74rem', fontWeight: 800, color: '#334155', marginBottom: '0.35rem' }}>
+            કયા મોડ્યુલનો ડેટા PDF માં જોઈએ છે તે પસંદ કરો:
+          </div>
+          <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
+            {[
+              { id: 'all', label: 'બધા મોડ્યુલ્સ (સંપૂર્ણ ડેટા)', icon: '📑' },
+              { id: 'orders', label: 'ઓર્ડર્સ ફોર્મ્સ', icon: '🚛', count: stats?.tableStats?.work_orders },
+              { id: 'truck_accounts', label: 'ગાડી ખાતાવહી', icon: '📋', count: stats?.tableStats?.truck_accounts },
+              { id: 'workers', label: 'કારીગરો હિસાબ', icon: '👥', count: stats?.tableStats?.workers },
+              { id: 'quotations', label: 'કોટેશન્સ', icon: '📑', count: stats?.tableStats?.quotations },
+              { id: 'rojmed', label: 'રોજમેળ', icon: '💰', count: stats?.tableStats?.rojmed_entries },
+              { id: 'stock', label: 'સ્ટોક', icon: '🔩', count: stats?.tableStats?.stock_items },
+            ].map((mod) => {
+              const isSelected = exportModule === mod.id;
+              return (
+                <button
+                  key={mod.id}
+                  type="button"
+                  onClick={() => setExportModule(mod.id)}
+                  style={{
+                    backgroundColor: isSelected ? '#0284c7' : '#f1f5f9',
+                    color: isSelected ? '#ffffff' : '#334155',
+                    border: isSelected ? '1px solid #0284c7' : '1px solid #cbd5e1',
+                    borderRadius: '20px',
+                    padding: '0.3rem 0.65rem',
+                    fontSize: '0.73rem',
+                    fontWeight: isSelected ? 800 : 600,
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.3rem',
+                    transition: 'all 0.15s ease',
+                  }}
+                >
+                  <span>{mod.icon}</span>
+                  <span>{mod.label}</span>
+                  {typeof mod.count === 'number' && (
+                    <span
+                      style={{
+                        backgroundColor: isSelected ? 'rgba(255,255,255,0.25)' : '#e2e8f0',
+                        color: isSelected ? '#ffffff' : '#475569',
+                        padding: '1px 5px',
+                        borderRadius: '10px',
+                        fontSize: '0.66rem',
+                        fontWeight: 800,
+                      }}
+                    >
+                      {mod.count}
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+        </div>
 
         {isExportingPdf && (
           <div style={{ margin: '0.75rem 0', padding: '0.65rem 0.85rem', background: '#e0f2fe', border: '1px solid #bae6fd', borderRadius: '8px', fontSize: '0.78rem', color: '#0369a1', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
@@ -637,7 +714,23 @@ export function BackupPage({ onBackToHome }) {
             }}
           >
             <span>📄</span>
-            <span>{isExportingPdf ? 'PDF બની રહી છે...' : 'ડાઉનલોડ સંપૂર્ણ ડેટા PDF (All App Data)'}</span>
+            <span>
+              {isExportingPdf
+                ? 'PDF બની રહી છે...'
+                : exportModule === 'all'
+                ? 'ડાઉનલોડ સંપૂર્ણ ડેટા PDF (All App Data)'
+                : exportModule === 'orders'
+                ? 'ડાઉનલોડ ઓર્ડર્સ જોબ કાર્ડ PDF'
+                : exportModule === 'truck_accounts'
+                ? 'ડાઉનલોડ ગાડી ખાતાવહી PDF'
+                : exportModule === 'workers'
+                ? 'ડાઉનલોડ કારીગરો હિસાબ PDF'
+                : exportModule === 'quotations'
+                ? 'ડાઉનલોડ કોટેશન્સ PDF'
+                : exportModule === 'rojmed'
+                ? 'ડાઉનલોડ રોજમેળ PDF'
+                : 'ડાઉનલોડ સ્ટોક PDF'}
+            </span>
           </button>
 
           <button
@@ -856,7 +949,11 @@ export function BackupPage({ onBackToHome }) {
       )}
 
       {/* Hidden / Offscreen Multi-Page Printable Full App Backup Document */}
-      <BackupPdfReport data={fullPdfData} elementId="printableFullBackupReport" />
+      <BackupPdfReport
+        data={fullPdfData}
+        activeModule={exportModule}
+        elementId="printableFullBackupReport"
+      />
     </div>
   );
 }
