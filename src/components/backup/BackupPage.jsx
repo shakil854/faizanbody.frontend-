@@ -154,6 +154,9 @@ export function BackupPage({ onBackToHome }) {
       await downloadPdfFile({
         elementId: 'printableFullBackupReport',
         fileName,
+        onProgress: ({ current, total }) => {
+          setPdfProgressMsg(`પીડીએફ પેજ ${current} / ${total} તૈયાર થઈ રહ્યું છે...`);
+        },
       });
 
       showToast('✓ સમગ્ર એપ્લિકેશન ડેટાની PDF ડાઉનલોડ થઈ ગઈ છે! હવે મેન્ટેનન્સ દરમિયાન પણ બધો ડેટા વાંચી શકાશે.');
@@ -183,6 +186,9 @@ export function BackupPage({ onBackToHome }) {
       const result = await sharePdfFile({
         elementId: 'printableFullBackupReport',
         fileName,
+        onProgress: ({ current, total }) => {
+          setPdfProgressMsg(`WhatsApp PDF પેજ ${current} / ${total} તૈયાર થઈ રહ્યું છે...`);
+        },
       });
 
       if (result?.success || result?.method === 'downloaded') {

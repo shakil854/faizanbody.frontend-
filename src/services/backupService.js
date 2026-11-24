@@ -218,15 +218,68 @@ export const backupService = {
           return mapped;
         });
 
+        // Enriched truck entries with party & truck info
+        const truckLookup = {};
+        rawTrucks.forEach((t) => {
+          truckLookup[t.id] = t;
+        });
+        const enrichedTruckEntries = rawTruckEntries.map((e) => {
+          const acc = truckLookup[e.account_id] || {};
+          return {
+            ...e,
+            party_name: acc.party_name || '—',
+            truck_no: acc.truck_no || '—',
+            page_no: acc.page_no || '',
+          };
+        });
+        // Sort latest first
+        enrichedTruckEntries.sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0));
+
+        // Enriched worker transactions with worker name
+        const workerLookup = {};
+        rawWorkers.forEach((w) => {
+          workerLookup[w.id] = w;
+        });
+        const enrichedWorkerTx = rawWorkerTx.map((tx) => {
+          const w = workerLookup[tx.worker_id] || {};
+          return {
+            ...tx,
+            worker_name: w.name || '—',
+            worker_mobile: w.mobile || '',
+          };
+        });
+        // Sort latest first
+        enrichedWorkerTx.sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0));
+
+        // Enriched stock transactions with item name & unit
+        const rawStock = Array.isArray(tables.stock_items) ? tables.stock_items : [];
+        const rawStockTx = Array.isArray(tables.stock_transactions) ? tables.stock_transactions : [];
+        const stockLookup = {};
+        rawStock.forEach((s) => {
+          stockLookup[s.id] = s;
+        });
+        const enrichedStockTx = rawStockTx.map((tx) => {
+          const item = stockLookup[tx.item_id] || {};
+          return {
+            ...tx,
+            item_name: item.name || '—',
+            unit: item.unit || 'Pcs',
+          };
+        });
+        enrichedStockTx.sort((a, b) => new Date(b.date || b.created_at || 0) - new Date(a.date || a.created_at || 0));
+
         return {
           exportedAt: raw.exportedAt || new Date().toISOString(),
           database: raw.database || 'faizanbody',
           summary: raw.summary || {},
           orders: Array.isArray(tables.work_orders) ? tables.work_orders : [],
           truckAccounts,
+          truckAccountEntries: enrichedTruckEntries,
           workers,
+          workerTransactions: enrichedWorkerTx,
           rojmedEntries: Array.isArray(tables.rojmed_entries) ? tables.rojmed_entries : [],
-          stockItems: Array.isArray(tables.stock_items) ? tables.stock_items : [],
+          stockItems: rawStock,
+          stockTransactions: enrichedStockTx,
           quotations: Array.isArray(tables.quotations) ? tables.quotations : [],
           users: Array.isArray(tables.users) ? tables.users : [],
         };

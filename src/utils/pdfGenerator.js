@@ -107,7 +107,7 @@ export async function ensureHtml2PdfLoaded() {
 /**
  * Generate PDF Blob from an HTML element using an isolated sandbox
  */
-export async function generatePdfBlob(element, customFileName = 'Order_Slip.pdf') {
+export async function generatePdfBlob(element, customFileName = 'Order_Slip.pdf', onProgress = null) {
   await ensureHtml2PdfLoaded();
 
   const getJsPdf = () => {
@@ -119,7 +119,7 @@ export async function generatePdfBlob(element, customFileName = 'Order_Slip.pdf'
   const JsPdf = getJsPdf();
   const html2canvas = window.html2canvas;
 
-  const renderPageCanvas = async (domElem) => {
+  const renderPageCanvas = async (domElem, customScale = 2) => {
     if (!domElem) throw new Error('Target element is null');
 
     // Wait for fonts to finish loading so text is crisp and visible
@@ -219,7 +219,7 @@ export async function generatePdfBlob(element, customFileName = 'Order_Slip.pdf'
 
       // Fixed x:0, y:0, width:720 prevents html2canvas from scrolling off-screen to blank white!
       const cvs = await html2canvas(clone, {
-        scale: 2,
+        scale: customScale,
         useCORS: true,
         allowTaint: true,
         backgroundColor: '#ffffff',
@@ -250,11 +250,16 @@ export async function generatePdfBlob(element, customFileName = 'Order_Slip.pdf'
     const margin = 6;
     const printWidth = pdfWidth - (margin * 2);
     const availableHeight = pdfHeight - (margin * 2);
+    // For large multi-page reports (e.g. all entries), 1.5x scale provides sharp 300dpi without memory overhead
+    const renderScale = allPdfPages.length > 8 ? 1.5 : 2;
 
     for (let i = 0; i < allPdfPages.length; i++) {
+      if (onProgress) {
+        onProgress({ current: i + 1, total: allPdfPages.length });
+      }
       if (i > 0) pdf.addPage();
-      const canvas = await renderPageCanvas(allPdfPages[i]);
-      const imgData = canvas.toDataURL('image/jpeg', 0.98);
+      const canvas = await renderPageCanvas(allPdfPages[i], renderScale);
+      const imgData = canvas.toDataURL('image/jpeg', 0.95);
       const printHeight = (canvas.height * printWidth) / canvas.width;
       if (printHeight <= availableHeight) {
         pdf.addImage(imgData, 'JPEG', margin, margin, printWidth, printHeight);
@@ -265,6 +270,11 @@ export async function generatePdfBlob(element, customFileName = 'Order_Slip.pdf'
         const xOffset = margin + (printWidth - finalWidth) / 2;
         pdf.addImage(imgData, 'JPEG', xOffset, margin, finalWidth, finalHeight);
       }
+      // Clean canvas memory
+      canvas.width = 0;
+      canvas.height = 0;
+      // Yield to UI thread
+      await new Promise((r) => setTimeout(r, 10));
     }
     return pdf.output('blob');
   }
@@ -345,13 +355,14 @@ export async function generatePdfBlob(element, customFileName = 'Order_Slip.pdf'
 export async function sharePdfFile({
   elementId = 'printableSheet',
   fileName = 'FaizanBody_JobSheet.pdf',
+  onProgress = null,
 }) {
   const element = document.getElementById(elementId);
   if (!element) {
     throw new Error('Printable sheet element not found');
   }
 
-  const pdfBlob = await generatePdfBlob(element, fileName);
+  const pdfBlob = await generatePdfBlob(element, fileName, onProgress);
   const cleanFileName = (fileName || 'FaizanBody_JobSheet.pdf')
     .replace(/[^\w\.-]/gi, '_')
     .replace(/_+/g, '_');
@@ -433,13 +444,14 @@ export async function sharePdfFile({
 export async function downloadPdfFile({
   elementId = 'printableSheet',
   fileName = 'FaizanBody_JobSheet.pdf',
+  onProgress = null,
 }) {
   const element = document.getElementById(elementId);
   if (!element) {
     throw new Error('Printable sheet element not found');
   }
 
-  const pdfBlob = await generatePdfBlob(element, fileName);
+  const pdfBlob = await generatePdfBlob(element, fileName, onProgress);
   const cleanFileName = (fileName || 'FaizanBody_JobSheet.pdf')
     .replace(/[^\w\.-]/gi, '_')
     .replace(/_+/g, '_');
