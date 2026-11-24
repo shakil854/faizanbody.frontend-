@@ -146,7 +146,7 @@ export function BackupPage({ onBackToHome }) {
 
       setPdfProgressMsg('પીડીએફ પેજીસ તૈયાર થઈ રહ્યાં છે...');
       // Wait for React to render printable DOM elements
-      await new Promise((r) => setTimeout(r, 350));
+      await new Promise((r) => setTimeout(r, 600));
 
       const dateStr = new Date().toISOString().slice(0, 10);
       const fileName = `FaizanBody_All_Data_Backup_${dateStr}.pdf`;
@@ -175,7 +175,7 @@ export function BackupPage({ onBackToHome }) {
       const allData = await backupService.getFullAppDataForExport();
       setFullPdfData(allData);
 
-      await new Promise((r) => setTimeout(r, 350));
+      await new Promise((r) => setTimeout(r, 600));
 
       const dateStr = new Date().toISOString().slice(0, 10);
       const fileName = `FaizanBody_All_Data_Backup_${dateStr}.pdf`;

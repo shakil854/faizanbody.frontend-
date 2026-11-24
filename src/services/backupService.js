@@ -171,17 +171,60 @@ export const backupService = {
   async getFullAppDataForExport() {
     // 1. Try fetching full database snapshot from backend
     try {
-      const res = await axiosInstance.get(ENDPOINTS.BACKUP.FULL_DATA, { timeout: 10000 });
+      const res = await axiosInstance.get(ENDPOINTS.BACKUP.FULL_DATA, { timeout: 15000 });
       if (res?.data?.success && res.data.data) {
         const raw = res.data.data;
         const tables = raw.data || {};
+
+        // Aggregate truck accounts with their entries
+        const rawTrucks = Array.isArray(tables.truck_accounts) ? tables.truck_accounts : [];
+        const rawTruckEntries = Array.isArray(tables.truck_account_entries) ? tables.truck_account_entries : [];
+        const truckMap = {};
+        rawTrucks.forEach((t) => {
+          truckMap[t.id] = { ...t, total_udhar: 0, total_jama: 0, balance: 0 };
+        });
+        rawTruckEntries.forEach((entry) => {
+          const acc = truckMap[entry.account_id];
+          if (acc) {
+            const amt = Number(entry.amount) || 0;
+            if (entry.type === 'udhar') acc.total_udhar += amt;
+            else if (entry.type === 'jama') acc.total_jama += amt;
+          }
+        });
+        const truckAccounts = rawTrucks.map((t) => {
+          const acc = truckMap[t.id] || { ...t, total_udhar: 0, total_jama: 0 };
+          acc.balance = (acc.total_udhar || 0) - (acc.total_jama || 0);
+          return acc;
+        });
+
+        // Aggregate workers with their transactions
+        const rawWorkers = Array.isArray(tables.workers) ? tables.workers : [];
+        const rawWorkerTx = Array.isArray(tables.worker_transactions) ? tables.worker_transactions : [];
+        const workerMap = {};
+        rawWorkers.forEach((w) => {
+          workerMap[w.id] = { ...w, total_work: 0, total_upad: 0, balance: 0 };
+        });
+        rawWorkerTx.forEach((tx) => {
+          const w = workerMap[tx.worker_id];
+          if (w) {
+            const amt = Number(tx.amount) || 0;
+            if (tx.type === 'work' || tx.type === 'credit') w.total_work += amt;
+            else if (tx.type === 'upad' || tx.type === 'advance' || tx.type === 'debit') w.total_upad += amt;
+          }
+        });
+        const workers = rawWorkers.map((w) => {
+          const mapped = workerMap[w.id] || { ...w, total_work: 0, total_upad: 0 };
+          mapped.balance = (mapped.total_work || 0) - (mapped.total_upad || 0);
+          return mapped;
+        });
+
         return {
           exportedAt: raw.exportedAt || new Date().toISOString(),
           database: raw.database || 'faizanbody',
           summary: raw.summary || {},
           orders: Array.isArray(tables.work_orders) ? tables.work_orders : [],
-          truckAccounts: Array.isArray(tables.truck_accounts) ? tables.truck_accounts : [],
-          workers: Array.isArray(tables.workers) ? tables.workers : [],
+          truckAccounts,
+          workers,
           rojmedEntries: Array.isArray(tables.rojmed_entries) ? tables.rojmed_entries : [],
           stockItems: Array.isArray(tables.stock_items) ? tables.stock_items : [],
           quotations: Array.isArray(tables.quotations) ? tables.quotations : [],

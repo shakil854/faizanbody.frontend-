@@ -54,7 +54,26 @@ export async function ensureHtml2PdfLoaded() {
     });
   }
 
-  // 2. Ensure html2pdf & html2canvas are loaded
+  // 2. Ensure html2canvas is loaded
+  if (!window.html2canvas) {
+    await new Promise((resolve) => {
+      const existing = document.querySelector('script[src*="html2canvas"]');
+      if (existing) {
+        if (window.html2canvas) return resolve();
+        existing.addEventListener('load', resolve);
+        existing.addEventListener('error', resolve);
+        setTimeout(resolve, 600);
+        return;
+      }
+      const script = document.createElement('script');
+      script.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js';
+      script.onload = resolve;
+      script.onerror = resolve;
+      document.head.appendChild(script);
+    });
+  }
+
+  // 3. Ensure html2pdf is loaded
   if (window.html2pdf && window.html2canvas) return window.html2pdf;
 
   return new Promise((resolve, reject) => {
