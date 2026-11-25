@@ -214,6 +214,45 @@ export const APP_MODULES = [
     ],
   },
   {
+    id: 'vyapari',
+    name: 'Vyapari Khata (વેપારી ખાતાવહી)',
+    description: 'Merchant & supplier khata, single page ledger, Jama (payments) & Udhar (bills)',
+    icon: 'vyapari',
+    color: '#0d9488',
+    permissions: [
+      {
+        key: 'vyapari:view',
+        label: 'View Vyapari Accounts',
+        description: 'Browse vyapari/merchant accounts and open ledger sheets',
+      },
+      {
+        key: 'vyapari:create',
+        label: 'Add Vyapari Account',
+        description: 'Create new vyapari/merchant account with page number',
+      },
+      {
+        key: 'vyapari:edit',
+        label: 'Edit Vyapari Account',
+        description: 'Modify party name, firm name, phone, address, and page number',
+      },
+      {
+        key: 'vyapari:khata',
+        label: 'Manage Vyapari Khata Ledger',
+        description: 'Record Jama (payments) and Udhar (bills/purchases) entries',
+      },
+      {
+        key: 'vyapari:print',
+        label: 'WhatsApp Share & PDF',
+        description: 'Share vyapari ledger on WhatsApp and export PDF statement',
+      },
+      {
+        key: 'vyapari:delete',
+        label: 'Delete Vyapari Account',
+        description: 'Permanently remove vyapari accounts from the system',
+      },
+    ],
+  },
+  {
     id: 'rojmed',
     name: 'Daily Rojmed (રોજમેળ)',
     description: 'Daily cash book (Silak, Aavak, Javak) synced with Worker & Truck Khata',

@@ -72,6 +72,28 @@ function getSourceBadgeMeta(entry) {
     };
   }
 
+  if (entry.source_type === 'vyapari_account') {
+    const label = entry.vyapari_party_name
+      ? entry.vyapari_firm_name
+        ? `${entry.vyapari_party_name} (${entry.vyapari_firm_name})`
+        : entry.vyapari_party_name
+      : 'Vyapari Account';
+    if (entry.entry_type === 'aavak') {
+      return {
+        label: `🏪 ${label} • જમા`,
+        bg: '#ccfbf1',
+        color: '#0f766e',
+        border: '#99f6e4',
+      };
+    }
+    return {
+      label: `🏪 ${label} • ઉધાર`,
+      bg: '#fef3c7',
+      color: '#92400e',
+      border: '#fde68a',
+    };
+  }
+
   return null;
 }
 
@@ -103,7 +125,7 @@ export function RojmedPage({ onBackToHome }) {
   const [loading, setLoading] = useState(true);
 
   // Linked account options (workers & truck accounts)
-  const [accountOptions, setAccountOptions] = useState({ workers: [], truck_accounts: [] });
+  const [accountOptions, setAccountOptions] = useState({ workers: [], truck_accounts: [], vyapari_accounts: [] });
 
   // Monthly summary state
   const [selectedMonth, setSelectedMonth] = useState(() => todayStr.slice(0, 7));
@@ -186,6 +208,7 @@ export function RojmedPage({ onBackToHome }) {
       setAccountOptions({
         workers: Array.isArray(opts?.workers) ? opts.workers : [],
         truck_accounts: Array.isArray(opts?.truck_accounts) ? opts.truck_accounts : [],
+        vyapari_accounts: Array.isArray(opts?.vyapari_accounts) ? opts.vyapari_accounts : [],
       });
     } catch {
       // ignore non-blocking fetch error
@@ -219,6 +242,7 @@ export function RojmedPage({ onBackToHome }) {
           setAccountOptions({
             workers: Array.isArray(opts?.workers) ? opts.workers : [],
             truck_accounts: Array.isArray(opts?.truck_accounts) ? opts.truck_accounts : [],
+            vyapari_accounts: Array.isArray(opts?.vyapari_accounts) ? opts.vyapari_accounts : [],
           });
         }
       })
@@ -260,6 +284,12 @@ export function RojmedPage({ onBackToHome }) {
         const t = accountOptions.truck_accounts.find((item) => Number(item.id) === Number(nextSourceId));
         if (!t) return '';
         const label = t.truck_no ? `${t.party_name} (${t.truck_no})` : t.party_name;
+        return nextEntryType === 'aavak' ? `${label} - રોકડા જમા` : `${label} - રોકડ ખર્ચ`;
+      }
+      if (nextSourceType === 'vyapari_account' && nextSourceId) {
+        const v = accountOptions.vyapari_accounts.find((item) => Number(item.id) === Number(nextSourceId));
+        if (!v) return '';
+        const label = v.firm_name ? `${v.party_name} (${v.firm_name})` : v.party_name;
         return nextEntryType === 'aavak' ? `${label} - રોકડા જમા` : `${label} - રોકડ ખર્ચ`;
       }
       return '';
@@ -334,11 +364,13 @@ export function RojmedPage({ onBackToHome }) {
       return;
     }
 
-    if ((sourceType === 'worker' || sourceType === 'truck_account') && !sourceId) {
+    if ((sourceType === 'worker' || sourceType === 'truck_account' || sourceType === 'vyapari_account') && !sourceId) {
       setFormError(
         sourceType === 'worker'
           ? 'કારીગર પસંદ કરો (Please select a Worker)'
-          : 'ગાડી ખાતું પસંદ કરો (Please select a Truck Account)'
+          : sourceType === 'truck_account'
+          ? 'ગાડી ખાતું પસંદ કરો (Please select a Truck Account)'
+          : 'વેપારી ખાતું પસંદ કરો (Please select a Vyapari Account)'
       );
       return;
     }
@@ -355,7 +387,7 @@ export function RojmedPage({ onBackToHome }) {
           ? entryType === 'aavak'
             ? 'jama'
             : subType
-          : sourceType === 'truck_account'
+          : sourceType === 'truck_account' || sourceType === 'vyapari_account'
           ? entryType === 'aavak'
             ? 'jama'
             : 'udhar'
@@ -553,6 +585,17 @@ export function RojmedPage({ onBackToHome }) {
     );
   }, [accountOptions.truck_accounts, entitySearch]);
 
+  const filteredVyaparis = useMemo(() => {
+    const q = entitySearch.trim().toLowerCase();
+    if (!q) return accountOptions.vyapari_accounts;
+    return accountOptions.vyapari_accounts.filter(
+      (v) =>
+        (v.party_name && v.party_name.toLowerCase().includes(q)) ||
+        (v.firm_name && v.firm_name.toLowerCase().includes(q)) ||
+        (v.page_no && String(v.page_no).includes(q))
+    );
+  }, [accountOptions.vyapari_accounts, entitySearch]);
+
   // Live sync message in form
   const liveSyncNotice = useMemo(() => {
     if (sourceType === 'general') return null;
@@ -572,6 +615,14 @@ export function RojmedPage({ onBackToHome }) {
         return `🔗 Auto-Sync: "${tName}" ના Truck Khata માં 'જમા (Jama)' તરીકે ઉમેરાશે.`;
       }
       return `🔗 Auto-Sync: "${tName}" ના Truck Khata માં 'ઉધાર (Udhar)' તરીકે ઉમેરાશે.`;
+    }
+    if (sourceType === 'vyapari_account') {
+      const v = accountOptions.vyapari_accounts.find((item) => Number(item.id) === Number(sourceId));
+      const vName = v ? (v.firm_name ? `${v.party_name} (${v.firm_name})` : v.party_name) : 'પસંદ કરેલ વેપારી ખાતું';
+      if (entryType === 'aavak') {
+        return `🔗 Auto-Sync: "${vName}" ના Vyapari Khata માં 'જમા (Jama)' તરીકે ઉમેરાશે.`;
+      }
+      return `🔗 Auto-Sync: "${vName}" ના Vyapari Khata માં 'ઉધાર (Udhar)' તરીકે ઉમેરાશે.`;
     }
     return null;
   }, [sourceType, sourceId, entryType, subType, accountOptions]);
@@ -1316,6 +1367,17 @@ export function RojmedPage({ onBackToHome }) {
                   >
                     🚛 ગાડી ખાતું (Truck)
                   </button>
+                  <button
+                    type="button"
+                    className={`rojmed-source-btn ${sourceType === 'vyapari_account' ? 'active' : ''}`}
+                    onClick={() => {
+                      setSourceType('vyapari_account');
+                      setSourceId('');
+                      setEntitySearch('');
+                    }}
+                  >
+                    🏪 વેપારી (Vyapari)
+                  </button>
                 </div>
               </div>
 
@@ -1414,6 +1476,43 @@ export function RojmedPage({ onBackToHome }) {
                           {t.party_name}
                           {t.truck_no ? ` • ${t.truck_no}` : ''}
                           {t.page_no ? ` (Page ${t.page_no})` : ''}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+              )}
+
+              {/* Step 3C: Vyapari Account Selection */}
+              {sourceType === 'vyapari_account' && (
+                <div className="rojmed-link-box" style={{ marginBottom: '0.75rem' }}>
+                  <div className="form-group" style={{ marginBottom: 0 }}>
+                    <label className="form-label">વેપારી ખાતું શોધો અને પસંદ કરો (Select Vyapari Account) *</label>
+                    <input
+                      type="text"
+                      className="form-input"
+                      placeholder="🔍 વેપારીનું નામ, પેઢી કે પેજ નંબર લખો..."
+                      value={entitySearch}
+                      onChange={(e) => setEntitySearch(e.target.value)}
+                      style={{ marginBottom: '0.4rem' }}
+                    />
+                    <select
+                      className="form-input"
+                      value={sourceId}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        setSourceId(val);
+                        setIsAutoParticulars(true);
+                        applyAutoParticulars(entryType, 'vyapari_account', val, subType, true);
+                      }}
+                      required
+                    >
+                      <option value="">-- વેપારી ખાતું પસંદ કરો ({filteredVyaparis.length}) --</option>
+                      {filteredVyaparis.map((v) => (
+                        <option key={v.id} value={v.id}>
+                          {v.party_name}
+                          {v.firm_name ? ` • ${v.firm_name}` : ''}
+                          {v.page_no ? ` (Page ${v.page_no})` : ''}
                         </option>
                       ))}
                     </select>

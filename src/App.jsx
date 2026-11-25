@@ -10,6 +10,7 @@ import { QuotationsPage } from './components/quotations/QuotationsPage';
 import { StockPage } from './components/stock/StockPage';
 import { UsersPage } from './components/users/UsersPage';
 import { TruckAccountPage } from './components/truckAccount/TruckAccountPage';
+import { VyapariPage } from './components/vyapari/VyapariPage';
 import { RojmedPage } from './components/rojmed/RojmedPage';
 import { WorkerFormModal } from './components/workers/WorkerFormModal';
 import { BackupPage } from './components/backup/BackupPage';
@@ -34,6 +35,7 @@ export function App() {
     if (hash === '#quotations') return 'quotations';
     if (hash === '#stock') return 'stock';
     if (hash === '#truck_accounts' || hash === '#truck-accounts') return 'truck_accounts';
+    if (hash === '#vyapari' || hash === '#vyapari_accounts' || hash === '#vyapari-accounts') return 'vyapari';
     if (hash === '#rojmed') return 'rojmed';
     if (hash === '#users') return 'users';
     if (hash === '#backup') return 'backup';
@@ -381,6 +383,13 @@ export function App() {
 
         {currentPage === 'truck_accounts' && canAccessModule('truck_accounts') && (
           <TruckAccountPage
+            onBackToHome={() => navigateTo('home')}
+            onNavigate={navigateTo}
+          />
+        )}
+
+        {currentPage === 'vyapari' && canAccessModule('vyapari') && (
+          <VyapariPage
             onBackToHome={() => navigateTo('home')}
             onNavigate={navigateTo}
           />

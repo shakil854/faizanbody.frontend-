@@ -111,6 +111,9 @@ export function AuthProvider({ children }) {
     if (moduleId === 'truck_accounts' || moduleId === 'truck-accounts' || moduleId === 'truck_account') {
       return hasPermission('truck_accounts:view');
     }
+    if (moduleId === 'vyapari' || moduleId === 'vyapari_accounts' || moduleId === 'vyapari-accounts' || moduleId === 'vyapari_account') {
+      return hasPermission('vyapari:view');
+    }
     if (moduleId === 'rojmed') {
       return hasPermission('rojmed:view');
     }

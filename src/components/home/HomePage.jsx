@@ -5,6 +5,7 @@ import { orderService } from '../../services/orderService';
 import { quotationService } from '../../services/quotationService';
 import { stockService } from '../../services/stockService';
 import { truckAccountService } from '../../services/truckAccountService';
+import { vyapariService } from '../../services/vyapariService';
 import { rojmedService } from '../../services/rojmedService';
 import { isLeavingSoon } from '../../utils/dateAlerts';
 
@@ -19,6 +20,9 @@ export function HomePage({ onNavigate, onQuickAddWorker, onOpenBackup }) {
   const [truckAccounts, setTruckAccounts] = useState(() =>
     canAccessModule('truck_accounts') ? truckAccountService.getCachedAccounts() : []
   );
+  const [vyapariAccounts, setVyapariAccounts] = useState(() =>
+    canAccessModule('vyapari') ? vyapariService.getCachedAccounts() : []
+  );
   const [rojmedToday, setRojmedToday] = useState(() =>
     canAccessModule('rojmed') ? rojmedService.getCachedTodaySheet() : null
   );
@@ -32,6 +36,7 @@ export function HomePage({ onNavigate, onQuickAddWorker, onOpenBackup }) {
     const unsubOrders = orderService.subscribe((list) => setOrders(list));
     const unsubStock = stockService.subscribeItems((list) => setStockItems(list));
     let unsubTruck = () => {};
+    let unsubVyapari = () => {};
     let unsubQuotes = () => {};
     let unsubRojmed = () => {};
 
@@ -46,6 +51,13 @@ export function HomePage({ onNavigate, onQuickAddWorker, onOpenBackup }) {
       unsubTruck = truckAccountService.subscribe((list) => setTruckAccounts(list));
       truckAccountService.getAccounts().then((res) => {
         if (res?.data) setTruckAccounts(res.data);
+      }).catch(() => {});
+    }
+
+    if (isAdmin || canAccessModule('vyapari')) {
+      unsubVyapari = vyapariService.subscribe((list) => setVyapariAccounts(list));
+      vyapariService.getAccounts().then((res) => {
+        if (res?.data) setVyapariAccounts(res.data);
       }).catch(() => {});
     }
 
@@ -75,6 +87,7 @@ export function HomePage({ onNavigate, onQuickAddWorker, onOpenBackup }) {
       unsubQuotes();
       unsubStock();
       unsubTruck();
+      unsubVyapari();
       unsubRojmed();
     };
   }, [isAdmin, canAccessModule]);
@@ -107,6 +120,9 @@ export function HomePage({ onNavigate, onQuickAddWorker, onOpenBackup }) {
 
   const totalTruckAccounts = truckAccounts.length;
   const pendingTruckDue = truckAccounts.filter((a) => a.balance > 0).reduce((sum, a) => sum + (Number(a.balance) || 0), 0);
+
+  const totalVyapariAccounts = vyapariAccounts.length;
+  const pendingVyapariDue = vyapariAccounts.filter((a) => a.balance > 0).reduce((sum, a) => sum + (Number(a.balance) || 0), 0);
 
   // Instant search results from orders
   const searchResults = useMemo(() => {
@@ -277,6 +293,17 @@ export function HomePage({ onNavigate, onQuickAddWorker, onOpenBackup }) {
             >
               <span className="action-btn-icon" style={{ background: 'linear-gradient(135deg, #0284c7, #0369a1)', color: '#fff' }}>🚛</span>
               <span className="action-btn-text">Truck Khata</span>
+            </button>
+          )}
+
+          {canAccessModule('vyapari') && (
+            <button
+              type="button"
+              className="compact-action-btn action-vyapari"
+              onClick={() => onNavigate('vyapari')}
+            >
+              <span className="action-btn-icon" style={{ background: 'linear-gradient(135deg, #0d9488, #0f766e)', color: '#fff' }}>🏪</span>
+              <span className="action-btn-text">Vyapari Khata</span>
             </button>
           )}
 
@@ -466,6 +493,45 @@ export function HomePage({ onNavigate, onQuickAddWorker, onOpenBackup }) {
               <div className="compact-tile-bottom">
                 <span className="compact-open-tag" style={{ color: '#0284c7' }}>Open Khata</span>
                 <span className="compact-arrow-icon" style={{ color: '#0284c7' }}>→</span>
+              </div>
+            </div>
+          )}
+
+          {/* Vyapari Account (Merchant Khata) Tile */}
+          {canAccessModule('vyapari') && (
+            <div
+              className={`compact-tile tile-theme-vyapari ${hasPermission('vyapari:khata') && pendingVyapariDue > 0 ? 'tile-has-warning' : ''}`}
+              onClick={() => onNavigate('vyapari')}
+              role="button"
+              tabIndex={0}
+              style={{
+                borderLeft: '4px solid #0d9488',
+              }}
+            >
+              <div className="compact-tile-top">
+                <div className="compact-icon-wrapper" style={{ background: 'linear-gradient(135deg, #0d9488, #0f766e)' }}>
+                  <span style={{ fontSize: '1.25rem' }}>🏪</span>
+                </div>
+                <span className="compact-stat-bubble" style={{ background: '#ccfbf1', color: '#0f766e' }}>
+                  {totalVyapariAccounts} Vyapari
+                </span>
+              </div>
+
+              <div className="compact-tile-middle">
+                <h3 className="compact-module-heading">Vyapari Account</h3>
+                <p
+                  className="compact-status-hint"
+                  style={{ color: hasPermission('vyapari:khata') && pendingVyapariDue > 0 ? '#b91c1c' : '#0d9488' }}
+                >
+                  {hasPermission('vyapari:khata') && pendingVyapariDue > 0
+                    ? `🔴 ₹${pendingVyapariDue.toLocaleString('en-IN')} Due`
+                    : 'Merchant / Supplier Khata'}
+                </p>
+              </div>
+
+              <div className="compact-tile-bottom">
+                <span className="compact-open-tag" style={{ color: '#0d9488' }}>Open Khata</span>
+                <span className="compact-arrow-icon" style={{ color: '#0d9488' }}>→</span>
               </div>
             </div>
           )}

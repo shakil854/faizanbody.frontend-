@@ -1,0 +1,540 @@
+import axiosInstance from '../api/axiosInstance';
+import { ENDPOINTS } from '../api/endpoints';
+
+const STORAGE_KEY_ACCOUNTS = 'faizanbody_vyapari_accounts';
+const STORAGE_KEY_ENTRIES = 'faizanbody_vyapari_entries';
+
+let cachedAccounts = null;
+let lastFetchTime = 0;
+const CACHE_TTL_MS = 60000;
+const listeners = new Set();
+
+function getLocalAccounts() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY_ACCOUNTS);
+    return raw ? JSON.parse(raw) : [];
+  } catch {
+    return [];
+  }
+}
+
+function saveLocalAccounts(list) {
+  try {
+    localStorage.setItem(STORAGE_KEY_ACCOUNTS, JSON.stringify(list || []));
+  } catch (e) {
+    console.warn('LocalStorage save error:', e);
+  }
+}
+
+function getLocalEntries() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY_ENTRIES);
+    return raw ? JSON.parse(raw) : [];
+  } catch {
+    return [];
+  }
+}
+
+function saveLocalEntries(list) {
+  try {
+    localStorage.setItem(STORAGE_KEY_ENTRIES, JSON.stringify(list || []));
+  } catch (e) {
+    console.warn('LocalStorage save error:', e);
+  }
+}
+
+function notifyListeners() {
+  if (cachedAccounts) {
+    listeners.forEach((cb) => {
+      try {
+        cb(cachedAccounts);
+      } catch (e) {
+        console.error('Vyapari account listener callback error:', e);
+      }
+    });
+  }
+}
+
+export const vyapariService = {
+  subscribe(callback) {
+    listeners.add(callback);
+    if (cachedAccounts) {
+      callback(cachedAccounts);
+    }
+    return () => listeners.delete(callback);
+  },
+
+  getCachedAccounts() {
+    if (cachedAccounts) return cachedAccounts;
+    const local = getLocalAccounts();
+    cachedAccounts = local;
+    return local;
+  },
+
+  async getAccounts(params = {}, { forceRefresh = false } = {}) {
+    const now = Date.now();
+    const isDefault = !params.search;
+
+    if (isDefault && cachedAccounts && !forceRefresh && now - lastFetchTime < CACHE_TTL_MS) {
+      return { success: true, data: cachedAccounts, fromCache: true };
+    }
+
+    try {
+      const response = await axiosInstance.get(ENDPOINTS.VYAPARI_ACCOUNTS, { params });
+      const data = response.data?.data;
+      if (Array.isArray(data)) {
+        cachedAccounts = data;
+        lastFetchTime = Date.now();
+        saveLocalAccounts(data);
+        notifyListeners();
+        return { success: true, data };
+      }
+    } catch (err) {
+      console.warn('⚠️ [VyapariService API Offline Fallback]:', err.message);
+    }
+
+    let list = getLocalAccounts();
+    const allEntries = getLocalEntries();
+
+    list = list.map((a) => {
+      const entries = allEntries.filter((e) => e.account_id === a.id);
+      const activeEntries = entries.filter((e) => !e.is_settled || e.is_settled === 0);
+      const totalJama = activeEntries.filter((e) => e.type === 'jama').reduce((sum, e) => sum + (Number(e.amount) || 0), 0);
+      const totalUdhar = activeEntries.filter((e) => e.type === 'udhar').reduce((sum, e) => sum + (Number(e.amount) || 0), 0);
+      const balance = totalUdhar - totalJama;
+      return {
+        ...a,
+        total_jama: totalJama,
+        total_udhar: totalUdhar,
+        balance,
+        status: balance > 0 ? 'due' : balance < 0 ? 'advance' : 'settled',
+        total_entries: entries.length,
+      };
+    });
+
+    if (params.search && params.search.trim()) {
+      const q = params.search.trim().toLowerCase();
+      list = list.filter(
+        (a) =>
+          (a.party_name && a.party_name.toLowerCase().includes(q)) ||
+          (a.firm_name && a.firm_name.toLowerCase().includes(q)) ||
+          (a.phone && a.phone.includes(q)) ||
+          (a.page_no && String(a.page_no).includes(q))
+      );
+    }
+
+    cachedAccounts = list;
+    return { success: true, data: list, fromCache: true };
+  },
+
+  async getAccountById(id) {
+    const numId = Number(id);
+    try {
+      const response = await axiosInstance.get(ENDPOINTS.VYAPARI_ACCOUNT_DETAIL(id));
+      const data = response.data?.data;
+      if (data) {
+        return { success: true, data };
+      }
+    } catch (err) {
+      console.warn('⚠️ [VyapariService getAccountById fallback]:', err.message);
+    }
+
+    const accounts = getLocalAccounts();
+    const found = accounts.find((a) => a.id === numId);
+    if (!found) {
+      return { success: false, message: 'Account not found' };
+    }
+
+    const allEntries = getLocalEntries();
+    const entries = allEntries
+      .filter((e) => e.account_id === numId)
+      .sort((a, b) => (String(a.date) > String(b.date) ? 1 : -1));
+
+    const active = entries.filter((e) => !e.is_settled || e.is_settled === 0);
+    const totalJama = active.filter((e) => e.type === 'jama').reduce((sum, e) => sum + (Number(e.amount) || 0), 0);
+    const totalUdhar = active.filter((e) => e.type === 'udhar').reduce((sum, e) => sum + (Number(e.amount) || 0), 0);
+    const balance = totalUdhar - totalJama;
+
+    return {
+      success: true,
+      data: {
+        ...found,
+        entries,
+        total_jama: totalJama,
+        total_udhar: totalUdhar,
+        balance,
+      },
+    };
+  },
+
+  async createAccount(formData) {
+    try {
+      const response = await axiosInstance.post(ENDPOINTS.VYAPARI_ACCOUNTS, formData);
+      const newAcc = response.data?.data;
+      if (newAcc) {
+        const local = getLocalAccounts();
+        const updated = [newAcc, ...local.filter((a) => a.id !== newAcc.id)];
+        saveLocalAccounts(updated);
+        cachedAccounts = updated;
+        notifyListeners();
+        return { success: true, data: newAcc };
+      }
+    } catch (err) {
+      console.warn('⚠️ [VyapariService createAccount fallback]:', err.message);
+    }
+
+    const local = getLocalAccounts();
+    const maxId = local.reduce((max, a) => Math.max(max, Number(a.id) || 0), 0);
+    const newAcc = {
+      id: maxId + 1,
+      party_name: formData.party_name ? formData.party_name.trim() : '',
+      firm_name: formData.firm_name ? formData.firm_name.trim() : '',
+      phone: formData.phone ? formData.phone.trim() : '',
+      address: formData.address ? formData.address.trim() : '',
+      page_no: formData.page_no ? Number(formData.page_no) : null,
+      notes: formData.notes ? formData.notes.trim() : '',
+      current_cycle: 1,
+      created_at: new Date().toISOString(),
+      total_jama: 0,
+      total_udhar: 0,
+      balance: 0,
+      status: 'settled',
+      total_entries: 0,
+    };
+
+    const updated = [newAcc, ...local];
+    saveLocalAccounts(updated);
+    cachedAccounts = updated;
+    notifyListeners();
+    return { success: true, data: newAcc };
+  },
+
+  async updateAccount(id, formData) {
+    const numId = Number(id);
+    try {
+      const response = await axiosInstance.put(ENDPOINTS.VYAPARI_ACCOUNT_DETAIL(id), formData);
+      const updated = response.data?.data;
+      if (updated) {
+        const local = getLocalAccounts();
+        const list = local.map((a) => (a.id === numId ? { ...a, ...updated } : a));
+        saveLocalAccounts(list);
+        cachedAccounts = list;
+        notifyListeners();
+        return { success: true, data: updated };
+      }
+    } catch (err) {
+      console.warn('⚠️ [VyapariService updateAccount fallback]:', err.message);
+    }
+
+    const local = getLocalAccounts();
+    const list = local.map((a) => {
+      if (a.id === numId) {
+        return {
+          ...a,
+          party_name: formData.party_name ? formData.party_name.trim() : a.party_name,
+          firm_name: formData.firm_name !== undefined ? formData.firm_name : a.firm_name,
+          phone: formData.phone !== undefined ? formData.phone : a.phone,
+          address: formData.address !== undefined ? formData.address : a.address,
+          page_no: formData.page_no !== undefined ? (formData.page_no ? Number(formData.page_no) : null) : a.page_no,
+          notes: formData.notes !== undefined ? formData.notes : a.notes,
+        };
+      }
+      return a;
+    });
+
+    saveLocalAccounts(list);
+    cachedAccounts = list;
+    notifyListeners();
+    const updated = list.find((a) => a.id === numId);
+    return { success: true, data: updated };
+  },
+
+  async deleteAccount(id) {
+    const numId = Number(id);
+    try {
+      await axiosInstance.delete(ENDPOINTS.VYAPARI_ACCOUNT_DETAIL(id));
+    } catch (err) {
+      console.warn('⚠️ [VyapariService deleteAccount fallback]:', err.message);
+    }
+
+    const localAccounts = getLocalAccounts().filter((a) => a.id !== numId);
+    saveLocalAccounts(localAccounts);
+
+    const localEntries = getLocalEntries().filter((e) => e.account_id !== numId);
+    saveLocalEntries(localEntries);
+
+    cachedAccounts = localAccounts;
+    notifyListeners();
+    return { success: true, id: numId };
+  },
+
+  async addEntry(accountId, entryData) {
+    const numAccId = Number(accountId);
+    try {
+      const response = await axiosInstance.post(ENDPOINTS.VYAPARI_ACCOUNT_ENTRIES(accountId), entryData);
+      const data = response.data?.data;
+      if (data) {
+        this._syncLocalAddEntry(numAccId, data.entry || entryData);
+        return { success: true, data };
+      }
+    } catch (err) {
+      console.warn('⚠️ [VyapariService addEntry fallback]:', err.message);
+    }
+
+    const allEntries = getLocalEntries();
+    const maxId = allEntries.reduce((max, e) => Math.max(max, Number(e.id) || 0), 0);
+    const newEntry = {
+      id: maxId + 1,
+      account_id: numAccId,
+      type: entryData.type === 'udhar' ? 'udhar' : 'jama',
+      amount: Number(entryData.amount) || 0,
+      date: entryData.date || new Date().toISOString().split('T')[0],
+      particulars: entryData.particulars ? entryData.particulars.trim() : (entryData.type === 'udhar' ? 'માલ ઉધાર / બિલ' : 'રોકડા જમા'),
+      payment_mode: entryData.payment_mode || 'Cash',
+      created_at: new Date().toISOString(),
+    };
+
+    allEntries.push(newEntry);
+    saveLocalEntries(allEntries);
+
+    this._recalcAndNotifyAccount(numAccId);
+    return { success: true, data: { entry: newEntry } };
+  },
+
+  async updateEntry(accountId, entryId, entryData) {
+    const numAccId = Number(accountId);
+    const numEntryId = Number(entryId);
+    try {
+      const response = await axiosInstance.put(
+        ENDPOINTS.VYAPARI_ACCOUNT_ENTRY_DELETE(accountId, entryId),
+        entryData
+      );
+      const data = response.data?.data;
+      if (data) {
+        this._syncLocalUpdateEntry(numAccId, numEntryId, data.entry || entryData);
+        return { success: true, data };
+      }
+    } catch (err) {
+      console.warn('⚠️ [VyapariService updateEntry fallback]:', err.message);
+    }
+
+    const allEntries = getLocalEntries();
+    const idx = allEntries.findIndex((e) => e.id === numEntryId && e.account_id === numAccId);
+    if (idx !== -1) {
+      allEntries[idx] = {
+        ...allEntries[idx],
+        type: entryData.type === 'udhar' ? 'udhar' : 'jama',
+        amount: Number(entryData.amount) || 0,
+        date: entryData.date || allEntries[idx].date,
+        particulars: entryData.particulars ? entryData.particulars.trim() : allEntries[idx].particulars,
+        payment_mode: entryData.payment_mode || allEntries[idx].payment_mode,
+      };
+      saveLocalEntries(allEntries);
+      this._recalcAndNotifyAccount(numAccId);
+      return { success: true, data: { entry: allEntries[idx] } };
+    }
+    return { success: false, message: 'Entry not found' };
+  },
+
+  async deleteEntry(accountId, entryId) {
+    const numAccId = Number(accountId);
+    const numEntryId = Number(entryId);
+    try {
+      await axiosInstance.delete(ENDPOINTS.VYAPARI_ACCOUNT_ENTRY_DELETE(accountId, entryId));
+    } catch (err) {
+      console.warn('⚠️ [VyapariService deleteEntry fallback]:', err.message);
+    }
+
+    const allEntries = getLocalEntries().filter((e) => !(e.id === numEntryId && e.account_id === numAccId));
+    saveLocalEntries(allEntries);
+
+    this._recalcAndNotifyAccount(numAccId);
+    return { success: true, entryId: numEntryId };
+  },
+
+  async settleCycle(accountId, notes = {}) {
+    const numAccId = Number(accountId);
+    try {
+      const response = await axiosInstance.post(ENDPOINTS.VYAPARI_ACCOUNT_SETTLE_CYCLE(accountId), notes);
+      const data = response.data?.data;
+      if (data) {
+        this._syncLocalSettleCycle(numAccId, data);
+        return { success: true, data };
+      }
+    } catch (err) {
+      console.warn('⚠️ [VyapariService settleCycle fallback]:', err.message);
+    }
+
+    const localAccounts = getLocalAccounts();
+    const target = localAccounts.find((a) => a.id === numAccId);
+    const curCycle = Number(target?.current_cycle) || 1;
+    const allEntries = getLocalEntries();
+    const activeEntries = allEntries.filter((e) => e.account_id === numAccId && (!e.is_settled || e.is_settled === 0));
+    const curJama = activeEntries.filter((e) => e.type === 'jama').reduce((sum, e) => sum + (Number(e.amount) || 0), 0);
+    const curUdhar = activeEntries.filter((e) => e.type === 'udhar').reduce((sum, e) => sum + (Number(e.amount) || 0), 0);
+    const carryDiff = curUdhar - curJama;
+
+    allEntries.forEach((e) => {
+      if (e.account_id === numAccId && (!e.is_settled || e.is_settled === 0)) {
+        e.is_settled = true;
+        e.cycle_no = curCycle;
+      }
+    });
+
+    const nextCycle = curCycle + 1;
+    if (target) {
+      target.current_cycle = nextCycle;
+      saveLocalAccounts(localAccounts);
+    }
+
+    if (carryDiff > 0) {
+      const maxId = allEntries.reduce((max, e) => Math.max(max, Number(e.id) || 0), 0);
+      allEntries.push({
+        id: maxId + 1,
+        account_id: numAccId,
+        type: 'udhar',
+        amount: carryDiff,
+        date: new Date().toISOString().split('T')[0],
+        particulars: `Round ${curCycle} ની આગળની બાકી રહેલ રકમ`,
+        payment_mode: 'Cash',
+        cycle_no: nextCycle,
+        is_settled: false,
+        rojmed_entry_id: null,
+        created_at: new Date().toISOString(),
+      });
+    } else if (carryDiff < 0) {
+      const maxId = allEntries.reduce((max, e) => Math.max(max, Number(e.id) || 0), 0);
+      allEntries.push({
+        id: maxId + 1,
+        account_id: numAccId,
+        type: 'jama',
+        amount: Math.abs(carryDiff),
+        date: new Date().toISOString().split('T')[0],
+        particulars: `Round ${curCycle} ની આગળની એડવાન્સ જમા રકમ`,
+        payment_mode: 'Cash',
+        cycle_no: nextCycle,
+        is_settled: false,
+        rojmed_entry_id: null,
+        created_at: new Date().toISOString(),
+      });
+    }
+
+    saveLocalEntries(allEntries);
+    this._recalcAndNotifyAccount(numAccId);
+    return this.getAccountById(numAccId);
+  },
+
+  async reopenCycle(accountId) {
+    const numAccId = Number(accountId);
+    try {
+      const response = await axiosInstance.post(ENDPOINTS.VYAPARI_ACCOUNT_REOPEN_CYCLE(accountId));
+      const data = response.data?.data;
+      if (data) {
+        this._syncLocalReopenCycle(numAccId, data);
+        return { success: true, data };
+      }
+    } catch (err) {
+      console.warn('⚠️ [VyapariService reopenCycle fallback]:', err.message);
+    }
+
+    const localAccounts = getLocalAccounts();
+    const target = localAccounts.find((a) => a.id === numAccId);
+    const curCycle = Number(target?.current_cycle) || 1;
+    if (curCycle > 1) {
+      const targetCycle = curCycle - 1;
+      let allEntries = getLocalEntries();
+      allEntries = allEntries.filter(
+        (e) => !(e.account_id === numAccId && Number(e.cycle_no) === curCycle && String(e.particulars).includes(`Round ${targetCycle} ની આગળની`))
+      );
+      allEntries.forEach((e) => {
+        if (e.account_id === numAccId && Number(e.cycle_no) === targetCycle) {
+          e.is_settled = false;
+        }
+      });
+      saveLocalEntries(allEntries);
+      if (target) {
+        target.current_cycle = targetCycle;
+        saveLocalAccounts(localAccounts);
+      }
+    }
+    this._recalcAndNotifyAccount(numAccId);
+    return this.getAccountById(numAccId);
+  },
+
+  _syncLocalSettleCycle(accountId, updatedAccount) {
+    const localAccounts = getLocalAccounts().map((a) => (a.id === accountId ? { ...a, ...updatedAccount } : a));
+    saveLocalAccounts(localAccounts);
+    if (Array.isArray(updatedAccount.entries)) {
+      const allEntries = getLocalEntries().filter((e) => e.account_id !== accountId);
+      saveLocalEntries([...allEntries, ...updatedAccount.entries]);
+    }
+    cachedAccounts = localAccounts;
+    notifyListeners();
+  },
+
+  _syncLocalReopenCycle(accountId, updatedAccount) {
+    const localAccounts = getLocalAccounts().map((a) => (a.id === accountId ? { ...a, ...updatedAccount } : a));
+    saveLocalAccounts(localAccounts);
+    if (Array.isArray(updatedAccount.entries)) {
+      const allEntries = getLocalEntries().filter((e) => e.account_id !== accountId);
+      saveLocalEntries([...allEntries, ...updatedAccount.entries]);
+    }
+    cachedAccounts = localAccounts;
+    notifyListeners();
+  },
+
+  _syncLocalAddEntry(accountId, entry) {
+    const all = getLocalEntries();
+    if (!all.some((e) => e.id === entry.id)) {
+      all.push({ ...entry, account_id: accountId });
+      saveLocalEntries(all);
+    }
+    this._recalcAndNotifyAccount(accountId);
+  },
+
+  _syncLocalUpdateEntry(accountId, entryId, entry) {
+    const all = getLocalEntries();
+    const idx = all.findIndex((e) => e.id === entryId);
+    if (idx !== -1) {
+      all[idx] = { ...all[idx], ...entry, account_id: accountId };
+      saveLocalEntries(all);
+    }
+    this._recalcAndNotifyAccount(accountId);
+  },
+
+  _recalcAndNotifyAccount(accountId) {
+    const allEntries = getLocalEntries();
+    const entries = allEntries.filter((e) => e.account_id === accountId);
+    const activeEntries = entries.filter((e) => !e.is_settled || e.is_settled === 0);
+    const totalJama = activeEntries.filter((e) => e.type === 'jama').reduce((sum, e) => sum + (Number(e.amount) || 0), 0);
+    const totalUdhar = activeEntries.filter((e) => e.type === 'udhar').reduce((sum, e) => sum + (Number(e.amount) || 0), 0);
+    const balance = totalUdhar - totalJama;
+
+    const allTimeJama = entries.filter((e) => e.type === 'jama').reduce((sum, e) => sum + (Number(e.amount) || 0), 0);
+    const allTimeUdhar = entries.filter((e) => e.type === 'udhar').reduce((sum, e) => sum + (Number(e.amount) || 0), 0);
+
+    const localAccounts = getLocalAccounts().map((a) => {
+      if (a.id === accountId) {
+        return {
+          ...a,
+          total_jama: totalJama,
+          total_udhar: totalUdhar,
+          balance,
+          all_time_jama: allTimeJama,
+          all_time_udhar: allTimeUdhar,
+          all_time_balance: allTimeUdhar - allTimeJama,
+          status: balance > 0 ? 'due' : balance < 0 ? 'advance' : 'settled',
+          active_entries: activeEntries.length,
+          total_entries: entries.length,
+        };
+      }
+      return a;
+    });
+
+    saveLocalAccounts(localAccounts);
+    cachedAccounts = localAccounts;
+    notifyListeners();
+  },
+};
+
+export default vyapariService;
