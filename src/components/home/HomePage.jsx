@@ -35,51 +35,51 @@ export function HomePage({ onNavigate, onQuickAddWorker, onOpenBackup }) {
     const unsubWorkers = workerService.subscribe((list) => setWorkers(list));
     const unsubOrders = orderService.subscribe((list) => setOrders(list));
     const unsubStock = stockService.subscribeItems((list) => setStockItems(list));
-    let unsubTruck = () => {};
-    let unsubVyapari = () => {};
-    let unsubQuotes = () => {};
-    let unsubRojmed = () => {};
+    let unsubTruck = () => { };
+    let unsubVyapari = () => { };
+    let unsubQuotes = () => { };
+    let unsubRojmed = () => { };
 
     if (isAdmin || canAccessModule('quotations')) {
       unsubQuotes = quotationService.subscribe((list) => setQuotations(list));
       quotationService.getQuotations().then((res) => {
         if (res?.data) setQuotations(res.data);
-      }).catch(() => {});
+      }).catch(() => { });
     }
 
     if (isAdmin || canAccessModule('truck_accounts')) {
       unsubTruck = truckAccountService.subscribe((list) => setTruckAccounts(list));
       truckAccountService.getAccounts().then((res) => {
         if (res?.data) setTruckAccounts(res.data);
-      }).catch(() => {});
+      }).catch(() => { });
     }
 
     if (isAdmin || canAccessModule('vyapari')) {
       unsubVyapari = vyapariService.subscribe((list) => setVyapariAccounts(list));
       vyapariService.getAccounts().then((res) => {
         if (res?.data) setVyapariAccounts(res.data);
-      }).catch(() => {});
+      }).catch(() => { });
     }
 
     if (isAdmin || canAccessModule('rojmed')) {
       unsubRojmed = rojmedService.subscribeToday((sheet) => setRojmedToday(sheet));
       rojmedService.getDailySheet().then((sheet) => {
         if (sheet) setRojmedToday(sheet);
-      }).catch(() => {});
+      }).catch(() => { });
     }
 
     // Silent background fetch
     workerService.getWorkers().then((res) => {
       if (res?.data) setWorkers(res.data);
-    }).catch(() => {});
+    }).catch(() => { });
 
     orderService.getOrders().then((res) => {
       if (res?.data) setOrders(res.data);
-    }).catch(() => {});
+    }).catch(() => { });
 
     stockService.getItems().then((res) => {
       if (res?.data) setStockItems(res.data);
-    }).catch(() => {});
+    }).catch(() => { });
 
     return () => {
       unsubWorkers();
@@ -319,7 +319,7 @@ export function HomePage({ onNavigate, onQuickAddWorker, onOpenBackup }) {
           )}
         </div>
 
-        {/* 4. 2x2 COMPACT MODULE TILES */}
+        {/* 4. 2x2 COMPACT MODULE TILES (Icon + Name Only) */}
         <div className="compact-tiles-grid">
           {/* Quotations Tile */}
           {canAccessModule('quotations') && (
@@ -328,30 +328,17 @@ export function HomePage({ onNavigate, onQuickAddWorker, onOpenBackup }) {
               onClick={() => onNavigate('quotations')}
               role="button"
               tabIndex={0}
+              style={{ alignItems: 'center', justifyContent: 'center', textAlign: 'center', padding: '1rem 0.75rem', gap: '0.55rem' }}
             >
-              <div className="compact-tile-top">
-                <div className="compact-icon-wrapper bg-amber-grad">
-                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.3" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-                    <polyline points="14 2 14 8 20 8" />
-                    <line x1="9" y1="13" x2="15" y2="13" />
-                    <line x1="9" y1="17" x2="13" y2="17" />
-                  </svg>
-                </div>
-                <span className="compact-stat-bubble bubble-amber">{totalQuotations} Quotes</span>
+              <div className="compact-icon-wrapper bg-amber-grad">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.3" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                  <polyline points="14 2 14 8 20 8" />
+                  <line x1="9" y1="13" x2="15" y2="13" />
+                  <line x1="9" y1="17" x2="13" y2="17" />
+                </svg>
               </div>
-
-              <div className="compact-tile-middle">
-                <h3 className="compact-module-heading">Quotations</h3>
-                <p className="compact-status-hint text-amber">
-                  Rates, Estimates & Discounts
-                </p>
-              </div>
-
-              <div className="compact-tile-bottom">
-                <span className="compact-open-tag">Open Quotations</span>
-                <span className="compact-arrow-icon">→</span>
-              </div>
+              <h3 className="compact-module-heading" style={{ margin: 0 }}>Quotations</h3>
             </div>
           )}
 
@@ -362,177 +349,104 @@ export function HomePage({ onNavigate, onQuickAddWorker, onOpenBackup }) {
               onClick={() => onNavigate('orders')}
               role="button"
               tabIndex={0}
+              style={{ alignItems: 'center', justifyContent: 'center', textAlign: 'center', padding: '1rem 0.75rem', gap: '0.55rem' }}
             >
-              <div className="compact-tile-top">
-                <div className="compact-icon-wrapper bg-blue-grad">
-                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.3" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-                    <polyline points="14 2 14 8 20 8" />
-                    <line x1="16" y1="13" x2="8" y2="13" />
-                    <line x1="16" y1="17" x2="8" y2="17" />
-                  </svg>
-                </div>
-                <span className="compact-stat-bubble bubble-blue">{totalOrders} Orders</span>
+              <div className="compact-icon-wrapper bg-blue-grad">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.3" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                  <polyline points="14 2 14 8 20 8" />
+                  <line x1="16" y1="13" x2="8" y2="13" />
+                  <line x1="16" y1="17" x2="8" y2="17" />
+                </svg>
               </div>
-
-              <div className="compact-tile-middle">
-                <h3 className="compact-module-heading">Work Orders</h3>
-                <p className="compact-status-hint text-blue">
-                  {activeOrders > 0 ? `⚡ ${activeOrders} In Progress` : 'Truck Body Fabrication'}
-                  {incomingOrders > 0 ? ` • ${incomingOrders} Incoming` : ''}
-                </p>
-              </div>
-
-              <div className="compact-tile-bottom">
-                <span className="compact-open-tag">Open Orders</span>
-                <span className="compact-arrow-icon">→</span>
-              </div>
+              <h3 className="compact-module-heading" style={{ margin: 0 }}>Work Orders</h3>
             </div>
           )}
 
           {/* Stock & Inventory Tile */}
           {canAccessModule('stock') && (
             <div
-              className={`compact-tile tile-theme-stock ${lowStockCount > 0 ? 'tile-has-warning' : ''}`}
+              className="compact-tile tile-theme-stock"
               onClick={() => onNavigate('stock')}
               role="button"
               tabIndex={0}
+              style={{ alignItems: 'center', justifyContent: 'center', textAlign: 'center', padding: '1rem 0.75rem', gap: '0.55rem' }}
             >
-              <div className="compact-tile-top">
-                <div className="compact-icon-wrapper bg-cyan-grad">
-                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.3" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z" />
-                    <path d="m3.3 7 8.7 5 8.7-5" />
-                    <path d="M12 22V12" />
-                  </svg>
-                </div>
-                <span className="compact-stat-bubble bubble-cyan">{totalStockItems} Materials</span>
+              <div className="compact-icon-wrapper bg-cyan-grad">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.3" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z" />
+                  <path d="m3.3 7 8.7 5 8.7-5" />
+                  <path d="M12 22V12" />
+                </svg>
               </div>
-
-              <div className="compact-tile-middle">
-                <h3 className="compact-module-heading">Stock & Inventory</h3>
-                <p className={`compact-status-hint ${lowStockCount > 0 ? 'text-red' : 'text-cyan'}`}>
-                  {lowStockCount > 0 ? `⚠️ ${lowStockCount} Low Stock Alert` : '✓ Optimal Inventory'}
-                </p>
-              </div>
-
-              <div className="compact-tile-bottom">
-                <span className="compact-open-tag">View Stock</span>
-                <span className="compact-arrow-icon">→</span>
-              </div>
+              <h3 className="compact-module-heading" style={{ margin: 0 }}>Stock & Inventory</h3>
             </div>
           )}
 
           {/* Workers Directory Tile */}
           {canAccessModule('workers') && (
             <div
-              className={`compact-tile tile-theme-workers ${leavingSoonCount > 0 ? 'tile-has-warning' : ''}`}
+              className="compact-tile tile-theme-workers"
               onClick={() => onNavigate('workers')}
               role="button"
               tabIndex={0}
+              style={{ alignItems: 'center', justifyContent: 'center', textAlign: 'center', padding: '1rem 0.75rem', gap: '0.55rem' }}
             >
-              <div className="compact-tile-top">
-                <div className="compact-icon-wrapper bg-emerald-grad">
-                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.3" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
-                    <circle cx="9" cy="7" r="4" />
-                    <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
-                    <path d="M16 3.13a4 4 0 0 1 0 7.75" />
-                  </svg>
-                </div>
-                <span className="compact-stat-bubble bubble-emerald">{totalWorkers} Workers</span>
+              <div className="compact-icon-wrapper bg-emerald-grad">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.3" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+                  <circle cx="9" cy="7" r="4" />
+                  <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+                  <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+                </svg>
               </div>
-
-              <div className="compact-tile-middle">
-                <h3 className="compact-module-heading">Workers Directory</h3>
-                <p className={`compact-status-hint ${leavingSoonCount > 0 ? 'text-amber' : 'text-emerald'}`}>
-                  {activeWorkers} On Duty
-                  {leavingSoonCount > 0 ? ` • ${leavingSoonCount} Leaving Soon` : ''}
-                </p>
-              </div>
-
-              <div className="compact-tile-bottom">
-                <span className="compact-open-tag">Workers Khata</span>
-                <span className="compact-arrow-icon">→</span>
-              </div>
+              <h3 className="compact-module-heading" style={{ margin: 0 }}>Workers Directory</h3>
             </div>
           )}
 
           {/* Truck Account (Vehicle Khata) Tile */}
           {canAccessModule('truck_accounts') && (
             <div
-              className={`compact-tile tile-theme-truck ${hasPermission('truck_accounts:khata') && pendingTruckDue > 0 ? 'tile-has-warning' : ''}`}
+              className="compact-tile tile-theme-truck"
               onClick={() => onNavigate('truck_accounts')}
               role="button"
               tabIndex={0}
               style={{
                 borderLeft: '4px solid #0284c7',
+                alignItems: 'center',
+                justifyContent: 'center',
+                textAlign: 'center',
+                padding: '1rem 0.75rem',
+                gap: '0.55rem',
               }}
             >
-              <div className="compact-tile-top">
-                <div className="compact-icon-wrapper" style={{ background: 'linear-gradient(135deg, #0284c7, #0369a1)' }}>
-                  <span style={{ fontSize: '1.25rem' }}>🚛</span>
-                </div>
-                <span className="compact-stat-bubble" style={{ background: '#e0f2fe', color: '#0369a1' }}>
-                  {totalTruckAccounts} Trucks
-                </span>
+              <div className="compact-icon-wrapper" style={{ background: 'linear-gradient(135deg, #0284c7, #0369a1)' }}>
+                <span style={{ fontSize: '1.25rem' }}>🚛</span>
               </div>
-
-              <div className="compact-tile-middle">
-                <h3 className="compact-module-heading">Truck Account</h3>
-                <p
-                  className="compact-status-hint"
-                  style={{ color: hasPermission('truck_accounts:khata') && pendingTruckDue > 0 ? '#b91c1c' : '#0284c7' }}
-                >
-                  {hasPermission('truck_accounts:khata') && pendingTruckDue > 0
-                    ? `🔴 ₹${pendingTruckDue.toLocaleString('en-IN')} Due`
-                    : 'Vehicle Customer Khata'}
-                </p>
-              </div>
-
-              <div className="compact-tile-bottom">
-                <span className="compact-open-tag" style={{ color: '#0284c7' }}>Open Khata</span>
-                <span className="compact-arrow-icon" style={{ color: '#0284c7' }}>→</span>
-              </div>
+              <h3 className="compact-module-heading" style={{ margin: 0 }}>Truck Account</h3>
             </div>
           )}
 
           {/* Vyapari Account (Merchant Khata) Tile */}
           {canAccessModule('vyapari') && (
             <div
-              className={`compact-tile tile-theme-vyapari ${hasPermission('vyapari:khata') && pendingVyapariDue > 0 ? 'tile-has-warning' : ''}`}
+              className="compact-tile tile-theme-vyapari"
               onClick={() => onNavigate('vyapari')}
               role="button"
               tabIndex={0}
               style={{
                 borderLeft: '4px solid #0d9488',
+                alignItems: 'center',
+                justifyContent: 'center',
+                textAlign: 'center',
+                padding: '1rem 0.75rem',
+                gap: '0.55rem',
               }}
             >
-              <div className="compact-tile-top">
-                <div className="compact-icon-wrapper" style={{ background: 'linear-gradient(135deg, #0d9488, #0f766e)' }}>
-                  <span style={{ fontSize: '1.25rem' }}>🏪</span>
-                </div>
-                <span className="compact-stat-bubble" style={{ background: '#ccfbf1', color: '#0f766e' }}>
-                  {totalVyapariAccounts} Vyapari
-                </span>
+              <div className="compact-icon-wrapper" style={{ background: 'linear-gradient(135deg, #0d9488, #0f766e)' }}>
+                <span style={{ fontSize: '1.25rem' }}>🏪</span>
               </div>
-
-              <div className="compact-tile-middle">
-                <h3 className="compact-module-heading">Vyapari Account</h3>
-                <p
-                  className="compact-status-hint"
-                  style={{ color: hasPermission('vyapari:khata') && pendingVyapariDue > 0 ? '#b91c1c' : '#0d9488' }}
-                >
-                  {hasPermission('vyapari:khata') && pendingVyapariDue > 0
-                    ? `🔴 ₹${pendingVyapariDue.toLocaleString('en-IN')} Due`
-                    : 'Merchant / Supplier Khata'}
-                </p>
-              </div>
-
-              <div className="compact-tile-bottom">
-                <span className="compact-open-tag" style={{ color: '#0d9488' }}>Open Khata</span>
-                <span className="compact-arrow-icon" style={{ color: '#0d9488' }}>→</span>
-              </div>
+              <h3 className="compact-module-heading" style={{ margin: 0 }}>Vyapari Account</h3>
             </div>
           )}
 
@@ -545,30 +459,17 @@ export function HomePage({ onNavigate, onQuickAddWorker, onOpenBackup }) {
               tabIndex={0}
               style={{
                 borderLeft: '4px solid #7c3aed',
+                alignItems: 'center',
+                justifyContent: 'center',
+                textAlign: 'center',
+                padding: '1rem 0.75rem',
+                gap: '0.55rem',
               }}
             >
-              <div className="compact-tile-top">
-                <div className="compact-icon-wrapper" style={{ background: 'linear-gradient(135deg, #7c3aed, #6d28d9)' }}>
-                  <span style={{ fontSize: '1.25rem' }}>📒</span>
-                </div>
-                <span className="compact-stat-bubble" style={{ background: '#ede9fe', color: '#6d28d9' }}>
-                  {rojmedToday ? `${rojmedToday.total_entries_count || 0} Today` : 'રોજમેળ'}
-                </span>
+              <div className="compact-icon-wrapper" style={{ background: 'linear-gradient(135deg, #7c3aed, #6d28d9)' }}>
+                <span style={{ fontSize: '1.25rem' }}>📒</span>
               </div>
-
-              <div className="compact-tile-middle">
-                <h3 className="compact-module-heading">Daily Rojmed</h3>
-                <p className="compact-status-hint" style={{ color: '#6d28d9' }}>
-                  {rojmedToday
-                    ? `સિલક ₹${Number(rojmedToday.closing_silak || 0).toLocaleString('en-IN')}/-`
-                    : 'આવક • જાવક • સિલક'}
-                </p>
-              </div>
-
-              <div className="compact-tile-bottom">
-                <span className="compact-open-tag" style={{ color: '#7c3aed' }}>Open રોજમેળ</span>
-                <span className="compact-arrow-icon" style={{ color: '#7c3aed' }}>→</span>
-              </div>
+              <h3 className="compact-module-heading" style={{ margin: 0 }}>Daily Rojmed</h3>
             </div>
           )}
 
@@ -579,28 +480,15 @@ export function HomePage({ onNavigate, onQuickAddWorker, onOpenBackup }) {
               onClick={() => onNavigate('users')}
               role="button"
               tabIndex={0}
+              style={{ alignItems: 'center', justifyContent: 'center', textAlign: 'center', padding: '1rem 0.75rem', gap: '0.55rem' }}
             >
-              <div className="compact-tile-top">
-                <div className="compact-icon-wrapper bg-purple-grad">
-                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.3" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10" />
-                    <path d="m9 12 2 2 4-4" />
-                  </svg>
-                </div>
-                <span className="compact-stat-bubble bubble-purple">👑 Admin</span>
+              <div className="compact-icon-wrapper bg-purple-grad">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.3" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10" />
+                  <path d="m9 12 2 2 4-4" />
+                </svg>
               </div>
-
-              <div className="compact-tile-middle">
-                <h3 className="compact-module-heading">User & Security</h3>
-                <p className="compact-status-hint text-purple">
-                  Staff Permissions & Sessions
-                </p>
-              </div>
-
-              <div className="compact-tile-bottom">
-                <span className="compact-open-tag">Manage Access</span>
-                <span className="compact-arrow-icon">→</span>
-              </div>
+              <h3 className="compact-module-heading" style={{ margin: 0 }}>User & Security</h3>
             </div>
           )}
 
@@ -611,29 +499,16 @@ export function HomePage({ onNavigate, onQuickAddWorker, onOpenBackup }) {
               onClick={() => onNavigate('backup')}
               role="button"
               tabIndex={0}
+              style={{ alignItems: 'center', justifyContent: 'center', textAlign: 'center', padding: '1rem 0.75rem', gap: '0.55rem' }}
             >
-              <div className="compact-tile-top">
-                <div className="compact-icon-wrapper" style={{ background: 'linear-gradient(135deg, #059669, #10b981)' }}>
-                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.3" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-                    <polyline points="7 10 12 15 17 10" />
-                    <line x1="12" y1="15" x2="12" y2="3" />
-                  </svg>
-                </div>
-                <span className="compact-stat-bubble" style={{ background: '#dcfce7', color: '#166534' }}>👑 Admin</span>
+              <div className="compact-icon-wrapper" style={{ background: 'linear-gradient(135deg, #059669, #10b981)' }}>
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.3" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                  <polyline points="7 10 12 15 17 10" />
+                  <line x1="12" y1="15" x2="12" y2="3" />
+                </svg>
               </div>
-
-              <div className="compact-tile-middle">
-                <h3 className="compact-module-heading">Database Backup</h3>
-                <p className="compact-status-hint" style={{ color: '#059669' }}>
-                  Single File & 30-Day Auto
-                </p>
-              </div>
-
-              <div className="compact-tile-bottom">
-                <span className="compact-open-tag">Backup & Restore</span>
-                <span className="compact-arrow-icon">→</span>
-              </div>
+              <h3 className="compact-module-heading" style={{ margin: 0 }}>Database Backup</h3>
             </div>
           )}
         </div>
