@@ -217,12 +217,30 @@ export const stockService = {
   /* ====================================================================
    * 🔄 Stock Adjustment (IN / OUT) & History
    * ==================================================================== */
-  async adjustStock(id, { type, quantity, date, reference_note }) {
+  async adjustStock(
+    id,
+    {
+      type,
+      quantity,
+      date,
+      reference_note,
+      worker_id = null,
+      worker_name = null,
+      order_id = null,
+      order_no = null,
+      truck_chassis_no = null,
+    }
+  ) {
     const response = await axiosInstance.post(ENDPOINTS.STOCK_ITEM_ADJUST(id), {
       type,
       quantity,
       date,
       reference_note,
+      worker_id,
+      worker_name,
+      order_id,
+      order_no,
+      truck_chassis_no,
     });
     const data = response.data;
 
@@ -232,6 +250,20 @@ export const stockService = {
     }
 
     return data;
+  },
+
+  async getUsageAnalytics(params = {}) {
+    const response = await axiosInstance.get(ENDPOINTS.STOCK_USAGE, { params });
+    return response.data;
+  },
+
+  async saveWorkerRating(workerId, rating, note = '') {
+    const response = await axiosInstance.post(ENDPOINTS.STOCK_WORKER_RATING, {
+      worker_id: workerId,
+      rating,
+      note,
+    });
+    return response.data;
   },
 
   async getItemTransactions(id) {

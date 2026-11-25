@@ -30,6 +30,8 @@ export const ENDPOINTS = {
   STOCK_ITEM_TRANSACTIONS: (id) => `/stock/items/${id}/transactions`,
   STOCK_TRANSACTIONS: '/stock/transactions',
   STOCK_SUMMARY: '/stock/summary',
+  STOCK_USAGE: '/stock/usage',
+  STOCK_WORKER_RATING: '/stock/worker-rating',
   TRUCK_ACCOUNTS: '/truck-accounts',
   TRUCK_ACCOUNT_DETAIL: (id) => `/truck-accounts/${id}`,
   TRUCK_ACCOUNT_ENTRIES: (id) => `/truck-accounts/${id}/entries`,

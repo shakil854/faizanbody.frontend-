@@ -10,6 +10,7 @@ import { StockHistoryModal } from './StockHistoryModal';
 import { StockDeleteModal } from './StockDeleteModal';
 import { StockOrderModal } from './StockOrderModal';
 import { StockFab } from './StockFab';
+import { StockUsageTab } from './StockUsageTab';
 import { Snackbar } from '../workers/Snackbar';
 import { useAuth } from '../../context/AuthContext';
 
@@ -387,6 +388,15 @@ export function StockPage({ onBackToHome }) {
                 </svg>
                 <span>All Items ({totalItemsCount})</span>
               </button>
+
+              <button
+                type="button"
+                className={`view-mode-btn ${viewMode === 'usage' ? 'active' : ''}`}
+                onClick={() => setViewMode('usage')}
+                title="Worker & Order Material Usage + Rating"
+              >
+                <span>👷 Usage & Rating</span>
+              </button>
             </div>
           </div>
 
@@ -528,7 +538,13 @@ export function StockPage({ onBackToHome }) {
             STOCK CONTENT: CATEGORIES GRID (DEFAULT) OR ITEMS GRID
             ======================================================== */}
         <div className="workers-list-wrapper">
-          {loading && items.length === 0 ? (
+          {viewMode === 'usage' ? (
+            <StockUsageTab
+              canRate={canAdjust || isAdmin}
+              searchQuery={searchQuery}
+              onNotify={showSnackbar}
+            />
+          ) : loading && items.length === 0 ? (
             <div className="loading-state-container">
               <div className="splash-pulse-bar"></div>
               <p className="loading-text">Loading stock materials...</p>

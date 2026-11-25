@@ -1,4 +1,6 @@
 import React, { useState, useEffect } from 'react';
+import { workerService } from '../../services/workerService';
+import { orderService } from '../../services/orderService';
 
 /**
  * Quick Stock In / Stock Out Modal
@@ -16,6 +18,10 @@ export function StockQuickAdjustModal({
   const [quantity, setQuantity] = useState('');
   const [date, setDate] = useState(() => new Date().toISOString().split('T')[0]);
   const [referenceNote, setReferenceNote] = useState('');
+  const [selectedWorkerId, setSelectedWorkerId] = useState('');
+  const [selectedOrderId, setSelectedOrderId] = useState('');
+  const [workers, setWorkers] = useState([]);
+  const [orders, setOrders] = useState([]);
   const [error, setError] = useState('');
 
   useEffect(() => {
@@ -24,7 +30,21 @@ export function StockQuickAdjustModal({
       setQuantity('');
       setDate(new Date().toISOString().split('T')[0]);
       setReferenceNote('');
+      setSelectedWorkerId('');
+      setSelectedOrderId('');
       setError('');
+
+      workerService.getWorkers().then((res) => {
+        if (res?.success && Array.isArray(res.data)) {
+          setWorkers(res.data);
+        }
+      }).catch(() => {});
+
+      orderService.getOrders().then((res) => {
+        if (res?.success && Array.isArray(res.data)) {
+          setOrders(res.data);
+        }
+      }).catch(() => {});
     }
   }, [isOpen, initialType]);
 
@@ -55,11 +75,19 @@ export function StockQuickAdjustModal({
 
     try {
       setError('');
+      const chosenWorker = workers.find((w) => String(w.id) === String(selectedWorkerId));
+      const chosenOrder = orders.find((o) => String(o.id) === String(selectedOrderId));
+
       await onAdjust(item.id, {
         type,
         quantity: numAdj,
         date,
         reference_note: referenceNote,
+        worker_id: type === 'OUT' && chosenWorker ? chosenWorker.id : null,
+        worker_name: type === 'OUT' && chosenWorker ? chosenWorker.name : null,
+        order_id: type === 'OUT' && chosenOrder ? chosenOrder.id : null,
+        order_no: type === 'OUT' && chosenOrder ? chosenOrder.order_no : null,
+        truck_chassis_no: type === 'OUT' && chosenOrder ? chosenOrder.truck_chassis_no : null,
       });
     } catch (err) {
       setError(err.response?.data?.message || err.message || 'Error updating stock');
@@ -199,6 +227,69 @@ export function StockQuickAdjustModal({
                 <span style={{ fontWeight: 700, fontSize: '1rem', color: isInsufficient ? '#dc2626' : '#15803d' }}>
                   {currentQty} {type === 'IN' ? '+' : '-'} {numAdj} = {newQty} {item.unit}
                 </span>
+              </div>
+            )}
+
+            {/* Worker & Work Order Tracking (Only on Stock OUT) */}
+            {type === 'OUT' && (
+              <div
+                style={{
+                  display: 'grid',
+                  gridTemplateColumns: '1fr',
+                  gap: '0.75rem',
+                  marginBottom: '1rem',
+                  padding: '0.75rem',
+                  background: '#f8fafc',
+                  border: '1px solid #e2e8f0',
+                  borderRadius: '10px',
+                }}
+              >
+                <div className="form-group" style={{ marginBottom: 0 }}>
+                  <label className="form-label" style={{ fontWeight: 600, fontSize: '0.82rem' }}>
+                    👷 Worker (કોણ લઈ ગયું? - Optional)
+                  </label>
+                  <select
+                    className="form-input"
+                    value={selectedWorkerId}
+                    onChange={(e) => setSelectedWorkerId(e.target.value)}
+                    disabled={isSubmitting}
+                  >
+                    <option value="">-- Select Worker --</option>
+                    {[...workers]
+                      .sort((a, b) => (a.name || '').localeCompare(b.name || ''))
+                      .map((w) => (
+                        <option key={w.id} value={w.id}>
+                          {w.name}
+                        </option>
+                      ))}
+                  </select>
+                </div>
+
+                <div className="form-group" style={{ marginBottom: 0 }}>
+                  <label className="form-label" style={{ fontWeight: 600, fontSize: '0.82rem' }}>
+                    🚛 Work Order / ગાડી (કઈ ગાડી માટે? - Optional)
+                  </label>
+                  <select
+                    className="form-input"
+                    value={selectedOrderId}
+                    onChange={(e) => setSelectedOrderId(e.target.value)}
+                    disabled={isSubmitting}
+                  >
+                    <option value="">-- Select Work Order / Truck --</option>
+                    {[...orders]
+                      .sort((a, b) => {
+                        const aActive = a.status !== 'Delivered' ? 0 : 1;
+                        const bActive = b.status !== 'Delivered' ? 0 : 1;
+                        if (aActive !== bActive) return aActive - bActive;
+                        return (b.id || 0) - (a.id || 0);
+                      })
+                      .map((o) => (
+                        <option key={o.id} value={o.id}>
+                          {o.truck_chassis_no || 'No Truck #'} • {o.owner_name || 'Customer'} ({o.order_no})
+                        </option>
+                      ))}
+                  </select>
+                </div>
               </div>
             )}
 

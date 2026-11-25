@@ -155,6 +155,40 @@ export function StockHistoryModal({ isOpen, onClose, item = null }) {
                             </span>
                           )}
                         </div>
+                        {(tx.worker_name || tx.truck_chassis_no || tx.order_no) && (
+                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.35rem', marginTop: '4px' }}>
+                            {tx.worker_name && (
+                              <span
+                                style={{
+                                  fontSize: '0.72rem',
+                                  fontWeight: 600,
+                                  padding: '2px 7px',
+                                  borderRadius: '999px',
+                                  background: '#eff6ff',
+                                  color: '#1d4ed8',
+                                  border: '1px solid #bfdbfe',
+                                }}
+                              >
+                                👷 {tx.worker_name}
+                              </span>
+                            )}
+                            {(tx.truck_chassis_no || tx.order_no) && (
+                              <span
+                                style={{
+                                  fontSize: '0.72rem',
+                                  fontWeight: 600,
+                                  padding: '2px 7px',
+                                  borderRadius: '999px',
+                                  background: '#fefce8',
+                                  color: '#854d0e',
+                                  border: '1px solid #fde047',
+                                }}
+                              >
+                                🚛 {tx.truck_chassis_no || tx.order_no}
+                              </span>
+                            )}
+                          </div>
+                        )}
                       </div>
                     </div>
 
