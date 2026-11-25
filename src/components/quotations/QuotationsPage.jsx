@@ -30,7 +30,7 @@ export function QuotationsPage({ onBackToHome }) {
   const [quotations, setQuotations] = useState(() => quotationService.getCachedQuotations());
   const [loading, setLoading] = useState(() => quotationService.getCachedQuotations().length === 0);
   const [searchQuery, setSearchQuery] = useState('');
-  const [statusFilter, setStatusFilter] = useState('all');
+  const [statusFilter, setStatusFilter] = useState('draft');
 
   // Modals
   const [isFormOpen, setIsFormOpen] = useState(false);
@@ -270,19 +270,8 @@ export function QuotationsPage({ onBackToHome }) {
         <div className="orders-top-counter-strip">
           <button
             type="button"
-            className={`orders-counter-chip ${statusFilter === 'all' ? 'active' : ''}`}
-            onClick={() => setStatusFilter('all')}
-            title="All quotations"
-          >
-            <span className="counter-chip-dot dot-all"></span>
-            <span className="counter-chip-label">Total</span>
-            <span className="counter-chip-badge">{totalCount}</span>
-          </button>
-
-          <button
-            type="button"
             className={`orders-counter-chip chip-incoming ${statusFilter === 'draft' ? 'active' : ''}`}
-            onClick={() => setStatusFilter(statusFilter === 'draft' ? 'all' : 'draft')}
+            onClick={() => setStatusFilter('draft')}
             title="Draft quotations"
           >
             <span className="counter-chip-dot dot-incoming"></span>
@@ -293,12 +282,23 @@ export function QuotationsPage({ onBackToHome }) {
           <button
             type="button"
             className={`orders-counter-chip chip-process ${statusFilter === 'approved' ? 'active' : ''}`}
-            onClick={() => setStatusFilter(statusFilter === 'approved' ? 'all' : 'approved')}
+            onClick={() => setStatusFilter(statusFilter === 'approved' ? 'draft' : 'approved')}
             title="Approved quotations"
           >
             <span className="counter-chip-dot dot-completed"></span>
             <span className="counter-chip-label">Approved</span>
             <span className="counter-chip-badge badge-process">{approvedCount}</span>
+          </button>
+
+          <button
+            type="button"
+            className={`orders-counter-chip ${statusFilter === 'all' ? 'active' : ''}`}
+            onClick={() => setStatusFilter('all')}
+            title="All quotations"
+          >
+            <span className="counter-chip-dot dot-all"></span>
+            <span className="counter-chip-label">Total</span>
+            <span className="counter-chip-badge">{totalCount}</span>
           </button>
         </div>
 
