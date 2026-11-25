@@ -36,6 +36,7 @@ export function QuotationsPage({ onBackToHome }) {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingQuotation, setEditingQuotation] = useState(null);
   const [approvingQuotation, setApprovingQuotation] = useState(null);
+  const [unapprovingQuotation, setUnapprovingQuotation] = useState(null);
   const [approvingQuoteId, setApprovingQuoteId] = useState(null);
   const [deletingQuotation, setDeletingQuotation] = useState(null);
 
@@ -140,22 +141,46 @@ export function QuotationsPage({ onBackToHome }) {
     }
   };
 
-  // Admin Approve Quotation -> creates Incoming Order + Truck Account (Udhar entry)
+  // Admin Approve Quotation -> creates Incoming Order + Truck Account (or reuses existing Truck Account) + Udhar entry
   const handleConfirmApprove = async () => {
     if (!approvingQuotation) return;
     try {
       setApprovingQuoteId(approvingQuotation.id);
-      await quotationService.approveQuotation(approvingQuotation.id);
+      const res = await quotationService.approveQuotation(approvingQuotation.id);
       orderService.getOrders({}, { forceRefresh: true }).catch(() => {});
       truckAccountService.getAccounts({}, { forceRefresh: true }).catch(() => {});
+      const reused = res?.data?.reusedExistingTruckAccount;
       showSnackbar(
-        `✅ Quotation #${approvingQuotation.quotation_no} Approved! Incoming Order અને Truck Account (ઉધાર) બની ગયા છે.`,
+        reused
+          ? `✅ Quotation #${approvingQuotation.quotation_no} Approved! Incoming Order બની ગયો અને જૂના Truck Account માં ઉધાર એન્ટ્રી ઉમેરાઈ ગઈ.`
+          : `✅ Quotation #${approvingQuotation.quotation_no} Approved! Incoming Order અને નવું Truck Account (ઉધાર) બની ગયા છે.`,
         'success'
       );
       setApprovingQuotation(null);
       fetchQuotations({ force: true });
     } catch (err) {
       showSnackbar(err.response?.data?.message || err.message || 'Error approving quotation', 'error');
+    } finally {
+      setApprovingQuoteId(null);
+    }
+  };
+
+  // Admin Unapprove Quotation -> reverts to Draft and rolls back auto-created Order & Truck Udhar entry
+  const handleConfirmUnapprove = async () => {
+    if (!unapprovingQuotation) return;
+    try {
+      setApprovingQuoteId(unapprovingQuotation.id);
+      await quotationService.unapproveQuotation(unapprovingQuotation.id);
+      orderService.getOrders({}, { forceRefresh: true }).catch(() => {});
+      truckAccountService.getAccounts({}, { forceRefresh: true }).catch(() => {});
+      showSnackbar(
+        `↩ Quotation #${unapprovingQuotation.quotation_no} Unapproved! Linked Order અને ટ્રક ઉધાર એન્ટ્રી રદ થઈ ગઈ.`,
+        'info'
+      );
+      setUnapprovingQuotation(null);
+      fetchQuotations({ force: true });
+    } catch (err) {
+      showSnackbar(err.response?.data?.message || err.message || 'Error unapproving quotation', 'error');
     } finally {
       setApprovingQuoteId(null);
     }
@@ -328,6 +353,7 @@ export function QuotationsPage({ onBackToHome }) {
                   isSharing={sharingQuoteId === quote.id}
                   onDelete={(q) => setDeletingQuotation(q)}
                   onApprove={(q) => setApprovingQuotation(q)}
+                  onUnapprove={(q) => setUnapprovingQuotation(q)}
                   isApproving={approvingQuoteId === quote.id}
                 />
               ))}
@@ -411,7 +437,7 @@ export function QuotationsPage({ onBackToHome }) {
             </p>
             <div style={{ textAlign: 'left', background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: '10px', padding: '0.75rem 0.9rem', fontSize: '0.82rem', color: '#166534', marginBottom: '1.25rem', lineHeight: 1.6 }}>
               <div>1️⃣ <strong>Incoming Work Order</strong> બની જશે (નામ, મોબાઈલ, ગાડી નં., તારીખ સાથે)</div>
-              <div>2️⃣ <strong>Truck Account</strong> ({approvingQuotation.customer_name}) બની જશે</div>
+              <div>2️⃣ <strong>Truck Account</strong> ({approvingQuotation.customer_name}) — જો પહેલેથી ખાતું હશે તો તેમાં જ, નહીંતર નવું ખાતું બની જશે</div>
               <div>3️⃣ ખાતામાં <strong>₹{Number(approvingQuotation.final_price || 0).toLocaleString('en-IN')}</strong> ની <strong>ઉધાર (Udhar)</strong> એન્ટ્રી પડી જશે</div>
             </div>
             <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'center' }}>
@@ -439,6 +465,53 @@ export function QuotationsPage({ onBackToHome }) {
                 disabled={Boolean(approvingQuoteId)}
               >
                 {approvingQuoteId ? 'Approving...' : '✓ Yes, Approve'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 5. Admin Unapprove Confirmation Dialog */}
+      {unapprovingQuotation && (
+        <div className="modal-backdrop-luxury luxury-glass-backdrop" onClick={() => !approvingQuoteId && setUnapprovingQuotation(null)}>
+          <div className="modern-order-modal-card" style={{ maxWidth: '460px', padding: '1.5rem', textAlign: 'center' }} onClick={(e) => e.stopPropagation()}>
+            <div style={{ fontSize: '2.5rem', marginBottom: '0.6rem' }}>↩️</div>
+            <h4 style={{ margin: '0 0 0.5rem', fontSize: '1.15rem', fontWeight: 800 }}>
+              Unapprove Quotation #{unapprovingQuotation.quotation_no}?
+            </h4>
+            <p style={{ color: '#475569', fontSize: '0.86rem', margin: '0 0 1rem', lineHeight: 1.5 }}>
+              <strong>{unapprovingQuotation.customer_name}</strong> નું કોટેશન Unapprove કરવાથી:
+            </p>
+            <div style={{ textAlign: 'left', background: '#fff7ed', border: '1px solid #fed7aa', borderRadius: '10px', padding: '0.75rem 0.9rem', fontSize: '0.82rem', color: '#9a3412', marginBottom: '1.25rem', lineHeight: 1.6 }}>
+              <div>1️⃣ કોટેશન પાછું <strong>Draft</strong> સ્ટેટસમાં આવી જશે</div>
+              <div>2️⃣ Approve વખતે બનેલ <strong>Incoming Order</strong> પાછો હટી જશે</div>
+              <div>3️⃣ Truck ખાતામાં પડેલ <strong>ઉધાર એન્ટ્રી</strong> હટી જશે (જો જૂનું ખાતું હશે તો તે સુરક્ષિત રહેશે)</div>
+            </div>
+            <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'center' }}>
+              <button
+                type="button"
+                className="btn btn-secondary-luxury"
+                onClick={() => setUnapprovingQuotation(null)}
+                disabled={Boolean(approvingQuoteId)}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="btn"
+                style={{
+                  background: '#ea580c',
+                  color: '#ffffff',
+                  fontWeight: 800,
+                  borderRadius: '10px',
+                  padding: '0.55rem 1.25rem',
+                  border: 'none',
+                  cursor: approvingQuoteId ? 'wait' : 'pointer',
+                }}
+                onClick={handleConfirmUnapprove}
+                disabled={Boolean(approvingQuoteId)}
+              >
+                {approvingQuoteId ? 'Reverting...' : '↩ Yes, Unapprove'}
               </button>
             </div>
           </div>

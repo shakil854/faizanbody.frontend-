@@ -9,6 +9,7 @@ export const QuotationCard = React.memo(function QuotationCard({
   onDelete,
   onApprove,
   isApproving = false,
+  onUnapprove,
 }) {
   const { isAdmin } = useAuth();
   const cleanPhone = quotation.mobile_number ? quotation.mobile_number.replace(/[^0-9]/g, '') : '';
@@ -77,6 +78,33 @@ export const QuotationCard = React.memo(function QuotationCard({
           </span>
 
           <div className="quotation-card-actions">
+            {isAdmin && quotation.status === 'Approved' && (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onUnapprove?.(quotation);
+                }}
+                disabled={isApproving}
+                title="Unapprove Quotation (Reverts to Draft and removes auto-created Order & Udhar entry)"
+                style={{
+                  background: '#fff7ed',
+                  color: '#c2410c',
+                  border: '1px solid #fdba74',
+                  borderRadius: '8px',
+                  padding: '0.24rem 0.5rem',
+                  fontSize: '0.7rem',
+                  fontWeight: 800,
+                  cursor: isApproving ? 'wait' : 'pointer',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '0.22rem',
+                }}
+              >
+                <span>↩</span>
+                <span>Unapprove</span>
+              </button>
+            )}
             {isAdmin && quotation.status !== 'Approved' && (
               <button
                 type="button"
