@@ -1,6 +1,8 @@
 import { Capacitor } from '@capacitor/core';
 import { Share } from '@capacitor/share';
 import { Filesystem, Directory } from '@capacitor/filesystem';
+import { jsPDF } from 'jspdf';
+import html2canvas from 'html2canvas';
 
 /**
  * Converts a Blob to pure Base64 string (without data: URL prefix)
@@ -24,84 +26,17 @@ function blobToBase64(blob) {
 
 /**
  * Client-Side PDF Generation and Sharing Utility
- * Uses html2pdf.js with an isolated, fixed-width A4 sandbox clone
+ * Uses bundled jsPDF and html2canvas with an isolated, fixed-width A4 sandbox clone
  * ensuring scroll position, mobile viewport, or transforms NEVER cut off headers or content.
  */
 
 export async function ensureHtml2PdfLoaded() {
-  const getJsPdf = () => {
-    if (window.jspdf && window.jspdf.jsPDF) return window.jspdf.jsPDF;
-    if (typeof window.jsPDF === 'function') return window.jsPDF;
-    return null;
-  };
-
-  // 1. Ensure jsPDF is loaded
-  if (!getJsPdf()) {
-    await new Promise((resolve) => {
-      const existing = document.querySelector('script[src*="jspdf"]');
-      if (existing) {
-        if (getJsPdf()) return resolve();
-        existing.addEventListener('load', resolve);
-        existing.addEventListener('error', resolve);
-        setTimeout(resolve, 600);
-        return;
-      }
-      const script = document.createElement('script');
-      script.src = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';
-      script.onload = resolve;
-      script.onerror = resolve;
-      document.head.appendChild(script);
-    });
+  if (typeof window !== 'undefined') {
+    if (!window.jspdf) window.jspdf = { jsPDF };
+    if (!window.jsPDF) window.jsPDF = jsPDF;
+    if (!window.html2canvas) window.html2canvas = html2canvas;
   }
-
-  // 2. Ensure html2canvas is loaded
-  if (!window.html2canvas) {
-    await new Promise((resolve) => {
-      const existing = document.querySelector('script[src*="html2canvas"]');
-      if (existing) {
-        if (window.html2canvas) return resolve();
-        existing.addEventListener('load', resolve);
-        existing.addEventListener('error', resolve);
-        setTimeout(resolve, 600);
-        return;
-      }
-      const script = document.createElement('script');
-      script.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js';
-      script.onload = resolve;
-      script.onerror = resolve;
-      document.head.appendChild(script);
-    });
-  }
-
-  // 3. Ensure html2pdf is loaded
-  if (window.html2pdf && window.html2canvas) return window.html2pdf;
-
-  return new Promise((resolve, reject) => {
-    const existing = document.querySelector('script[src*="html2pdf"]');
-    if (existing) {
-      if (window.html2pdf) return resolve(window.html2pdf);
-      existing.addEventListener('load', () => resolve(window.html2pdf));
-      existing.addEventListener('error', () => reject(new Error('Failed to load html2pdf library')));
-
-      let attempts = 0;
-      const interval = setInterval(() => {
-        if (window.html2pdf) {
-          clearInterval(interval);
-          resolve(window.html2pdf);
-        } else if (++attempts > 30) {
-          clearInterval(interval);
-          reject(new Error('html2pdf load timeout'));
-        }
-      }, 150);
-      return;
-    }
-
-    const script = document.createElement('script');
-    script.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js';
-    script.onload = () => resolve(window.html2pdf);
-    script.onerror = () => reject(new Error('Failed to load html2pdf engine'));
-    document.head.appendChild(script);
-  });
+  return true;
 }
 
 /**
@@ -243,40 +178,152 @@ export async function generatePdfBlob(element, customFileName = 'Order_Slip.pdf'
 
   // Check if target has explicit .pdf-page elements (e.g. Worker Khata Statements or multi-page reports)
   const allPdfPages = element.querySelectorAll('.pdf-page');
-  if (allPdfPages.length > 0 && JsPdf && html2canvas) {
-    const pdf = new JsPdf('p', 'mm', 'a4');
+  const activeJsPdf = jsPDF || JsPdf;
+  const activeH2C = html2canvas || window.html2canvas;
+
+  if (allPdfPages.length > 0 && activeJsPdf && activeH2C) {
+    const pdf = new activeJsPdf('p', 'mm', 'a4');
     const pdfWidth = pdf.internal.pageSize.getWidth();
     const pdfHeight = pdf.internal.pageSize.getHeight();
     const margin = 6;
-    const printWidth = pdfWidth - (margin * 2);
-    const availableHeight = pdfHeight - (margin * 2);
-    // For large multi-page reports (e.g. all entries), 1.25x - 1.5x scale provides sharp 300dpi without memory overhead
-    const renderScale = allPdfPages.length > 30 ? 1.25 : allPdfPages.length > 8 ? 1.5 : 2;
+    const printWidth = pdfWidth - margin * 2;
+    const availableHeight = pdfHeight - margin * 2;
 
-    for (let i = 0; i < allPdfPages.length; i++) {
-      if (onProgress) {
-        onProgress({ current: i + 1, total: allPdfPages.length });
-      }
-      if (i > 0) pdf.addPage();
-      const canvas = await renderPageCanvas(allPdfPages[i], renderScale);
-      const imgData = canvas.toDataURL('image/jpeg', 0.95);
-      const printHeight = (canvas.height * printWidth) / canvas.width;
-      if (printHeight <= availableHeight) {
-        pdf.addImage(imgData, 'JPEG', margin, margin, printWidth, printHeight);
-      } else {
-        const scale = availableHeight / printHeight;
-        const finalWidth = printWidth * scale;
-        const finalHeight = printHeight * scale;
-        const xOffset = margin + (printWidth - finalWidth) / 2;
-        pdf.addImage(imgData, 'JPEG', xOffset, margin, finalWidth, finalHeight);
-      }
-      // Clean canvas memory
-      canvas.width = 0;
-      canvas.height = 0;
-      // Yield to UI thread
-      await new Promise((r) => setTimeout(r, 10));
+    const totalCount = allPdfPages.length;
+    // High-definition crisp rendering settings:
+    // Scale 1.5 produces razor-sharp 1080px width (Retina DPI) for clean text & borders
+    // Quality 0.94 preserves maximum clarity without JPEG compression blur
+    const renderScale = 1.5;
+    const jpegQuality = 0.94;
+
+    // Pre-allocate all pages in jsPDF upfront
+    for (let p = 1; p < totalCount; p++) {
+      pdf.addPage();
     }
-    return pdf.output('blob');
+
+    // Determine optimal worker pool concurrency based on available CPU cores (typically 3 to 4)
+    const hardwareThreads =
+      typeof navigator !== 'undefined' && navigator.hardwareConcurrency
+        ? navigator.hardwareConcurrency
+        : 4;
+    const poolSize = Math.min(
+      totalCount,
+      Math.min(4, Math.max(2, hardwareThreads >= 4 ? hardwareThreads - 1 : 2))
+    );
+
+    // Create pool of persistent, isolated sandbox iframes
+    const iframes = [];
+    for (let i = 0; i < poolSize; i++) {
+      const ifr = document.createElement('iframe');
+      ifr.id = `pdf-fast-sandbox-${i}`;
+      ifr.style.cssText =
+        'position:fixed;top:0;left:-9999px;width:720px;height:1050px;border:none;visibility:visible;opacity:1;pointer-events:none;z-index:-9999;';
+      document.body.appendChild(ifr);
+      const sDoc = ifr.contentDocument || ifr.contentWindow.document;
+      sDoc.open();
+      sDoc.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><style>
+        * { box-sizing: border-box; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+        body {
+          margin: 0;
+          padding: 0;
+          background: #ffffff;
+          color: #0f172a;
+          font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+          -webkit-font-smoothing: antialiased;
+          -moz-osx-font-smoothing: grayscale;
+          text-rendering: optimizeLegibility;
+        }
+      </style></head><body><div id="render-mount"></div></body></html>`);
+      sDoc.close();
+      iframes.push(ifr);
+    }
+
+    let nextPageIndex = 0;
+    let completedPages = 0;
+
+    const runWorker = async (iframe) => {
+      const sDoc = iframe.contentDocument || iframe.contentWindow.document;
+      const mount = sDoc.getElementById('render-mount');
+
+      while (true) {
+        const pageIdx = nextPageIndex++;
+        if (pageIdx >= totalCount) break;
+
+        const srcPage = allPdfPages[pageIdx];
+        mount.innerHTML = '';
+
+        const clone = sDoc.importNode(srcPage, true);
+        clone.style.position = 'relative';
+        clone.style.left = '0px';
+        clone.style.top = '0px';
+        clone.style.margin = '0px';
+        clone.style.width = '720px';
+        clone.style.maxWidth = '720px';
+        clone.style.boxSizing = 'border-box';
+        clone.style.backgroundColor = '#ffffff';
+        mount.appendChild(clone);
+
+        const targetHeight = Math.max(clone.scrollHeight || 0, clone.offsetHeight || 0, 1000);
+
+        try {
+          const canvas = await activeH2C(clone, {
+            scale: renderScale,
+            useCORS: false,
+            allowTaint: false,
+            backgroundColor: '#ffffff',
+            scrollY: 0,
+            scrollX: 0,
+            x: 0,
+            y: 0,
+            width: 720,
+            height: targetHeight,
+            windowWidth: 720,
+            logging: false,
+            imageTimeout: 0,
+            window: iframe.contentWindow,
+            document: sDoc,
+          });
+
+          const imgData = canvas.toDataURL('image/jpeg', jpegQuality);
+          const printHeight = (canvas.height * printWidth) / canvas.width;
+
+          // Directly insert into the specific pre-allocated page of jsPDF
+          pdf.setPage(pageIdx + 1);
+          if (printHeight <= availableHeight) {
+            pdf.addImage(imgData, 'JPEG', margin, margin, printWidth, printHeight, undefined, 'FAST');
+          } else {
+            const scale = availableHeight / printHeight;
+            const finalWidth = printWidth * scale;
+            const finalHeight = printHeight * scale;
+            const xOffset = margin + (printWidth - finalWidth) / 2;
+            pdf.addImage(imgData, 'JPEG', xOffset, margin, finalWidth, finalHeight, undefined, 'FAST');
+          }
+
+          // Immediately clear canvas buffers to prevent heap bloat and GC pauses
+          canvas.width = 0;
+          canvas.height = 0;
+        } catch (pageErr) {
+          console.warn(`Error rendering PDF page ${pageIdx + 1}:`, pageErr);
+        } finally {
+          mount.innerHTML = '';
+          completedPages++;
+          if (onProgress) {
+            onProgress({ current: completedPages, total: totalCount });
+          }
+        }
+      }
+    };
+
+    try {
+      await Promise.all(iframes.map((ifr) => runWorker(ifr)));
+      return pdf.output('blob');
+    } finally {
+      iframes.forEach((ifr) => {
+        if (ifr && ifr.parentNode) {
+          ifr.parentNode.removeChild(ifr);
+        }
+      });
+    }
   }
 
   // Check if target has 2-page full order (Page 1 + Page 2) scoped to the element

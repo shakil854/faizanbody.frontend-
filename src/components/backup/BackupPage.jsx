@@ -18,6 +18,7 @@ export function BackupPage({ onBackToHome }) {
   // Full App Data PDF Export state
   const [isExportingPdf, setIsExportingPdf] = useState(false);
   const [pdfProgressMsg, setPdfProgressMsg] = useState('');
+  const [pdfProgressPercent, setPdfProgressPercent] = useState(0);
   const [fullPdfData, setFullPdfData] = useState(null);
   const [exportModule, setExportModule] = useState('all');
 
@@ -147,7 +148,7 @@ export function BackupPage({ onBackToHome }) {
 
       setPdfProgressMsg('પીડીએફ પેજીસ તૈયાર થઈ રહ્યાં છે...');
       // Wait for React to render printable DOM elements
-      await new Promise((r) => setTimeout(r, 600));
+      await new Promise((r) => setTimeout(r, 200));
 
       const moduleLabels = {
         all: 'All_Data',
@@ -165,7 +166,9 @@ export function BackupPage({ onBackToHome }) {
         elementId: 'printableFullBackupReport',
         fileName,
         onProgress: ({ current, total }) => {
-          setPdfProgressMsg(`પીડીએફ પેજ ${current} / ${total} તૈયાર થઈ રહ્યું છે...`);
+          const pct = Math.round((current / total) * 100);
+          setPdfProgressPercent(pct);
+          setPdfProgressMsg(`પીડીએફ પેજ ${current} / ${total} તૈયાર થઈ રહ્યું છે... (${pct}%)`);
         },
       });
 
@@ -176,6 +179,7 @@ export function BackupPage({ onBackToHome }) {
     } finally {
       setIsExportingPdf(false);
       setPdfProgressMsg('');
+      setPdfProgressPercent(0);
     }
   };
 
@@ -183,12 +187,13 @@ export function BackupPage({ onBackToHome }) {
   const handleShareAllDataPdf = async () => {
     try {
       setIsExportingPdf(true);
+      setPdfProgressPercent(0);
       setPdfProgressMsg('પીડીએફ બનાવી WhatsApp માટે તૈયાર થઈ રહી છે...');
 
       const allData = await backupService.getFullAppDataForExport();
       setFullPdfData(allData);
 
-      await new Promise((r) => setTimeout(r, 600));
+      await new Promise((r) => setTimeout(r, 200));
 
       const moduleLabels = {
         all: 'All_Data',
@@ -206,7 +211,9 @@ export function BackupPage({ onBackToHome }) {
         elementId: 'printableFullBackupReport',
         fileName,
         onProgress: ({ current, total }) => {
-          setPdfProgressMsg(`WhatsApp PDF પેજ ${current} / ${total} તૈયાર થઈ રહ્યું છે...`);
+          const pct = Math.round((current / total) * 100);
+          setPdfProgressPercent(pct);
+          setPdfProgressMsg(`WhatsApp PDF પેજ ${current} / ${total} તૈયાર થઈ રહ્યું છે... (${pct}%)`);
         },
       });
 
@@ -219,6 +226,7 @@ export function BackupPage({ onBackToHome }) {
     } finally {
       setIsExportingPdf(false);
       setPdfProgressMsg('');
+      setPdfProgressPercent(0);
     }
   };
 
@@ -693,9 +701,29 @@ export function BackupPage({ onBackToHome }) {
         </div>
 
         {isExportingPdf && (
-          <div style={{ margin: '0.75rem 0', padding: '0.65rem 0.85rem', background: '#e0f2fe', border: '1px solid #bae6fd', borderRadius: '8px', fontSize: '0.78rem', color: '#0369a1', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <span style={{ animation: 'spin 1s linear infinite', display: 'inline-block' }}>⏳</span>
-            <span>{pdfProgressMsg || 'પીડીએફ પ્રોસેસ થઈ રહી છે... કૃપા કરીને થોડી સેકન્ડ રાહ જુઓ.'}</span>
+          <div style={{ margin: '0.75rem 0', padding: '0.75rem 0.95rem', background: '#e0f2fe', border: '1.5px solid #0284c7', borderRadius: '10px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: pdfProgressPercent > 0 ? '6px' : '0', fontSize: '0.8rem', color: '#0369a1', fontWeight: 800 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem' }}>
+                <span style={{ display: 'inline-block' }}>⚡</span>
+                <span>{pdfProgressMsg || 'સુપર ફાસ્ટ PDF બની રહી છે...'}</span>
+              </div>
+              {pdfProgressPercent > 0 && (
+                <span style={{ color: '#0284c7', fontWeight: 900 }}>{pdfProgressPercent}%</span>
+              )}
+            </div>
+            {pdfProgressPercent > 0 && (
+              <div style={{ width: '100%', height: '8px', backgroundColor: '#bae6fd', borderRadius: '4px', overflow: 'hidden' }}>
+                <div
+                  style={{
+                    width: `${pdfProgressPercent}%`,
+                    height: '100%',
+                    backgroundColor: '#0284c7',
+                    transition: 'width 0.15s ease',
+                    borderRadius: '4px',
+                  }}
+                />
+              </div>
+            )}
           </div>
         )}
 
