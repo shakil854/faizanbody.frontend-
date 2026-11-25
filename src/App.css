@@ -17675,39 +17675,37 @@
   text-overflow: ellipsis;
 }
 
-/* 4. 1-Touch Quick Actions Row (100% Mobile Responsive) */
+/* 4. 1-Touch Quick Actions Row (100% Mobile Responsive, Zero Truncation) */
 .home-compact-actions-row {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  display: flex;
+  flex-wrap: wrap;
   gap: 0.45rem;
   width: 100%;
-  margin: 0.1rem 0 0.2rem;
+  margin: 0.15rem 0 0.25rem;
   box-sizing: border-box;
 }
 
 .compact-action-btn {
-  width: 100%;
-  min-width: 0;
+  flex: 1 0 auto;
+  min-width: max-content;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 0.35rem;
+  gap: 0.4rem;
   background: #ffffff;
   border: 1.5px solid #e2e8f0;
-  border-radius: 12px;
-  padding: 0.5rem 0.35rem;
-  font-size: 0.74rem;
+  border-radius: 14px;
+  padding: 0.48rem 0.72rem;
+  font-size: 0.75rem;
   font-weight: 800;
   color: #334155;
   cursor: pointer;
-  box-shadow: 0 2px 6px rgba(15, 23, 42, 0.03);
+  box-shadow: 0 2px 6px rgba(15, 23, 42, 0.04);
   transition: all 0.18s ease;
   box-sizing: border-box;
 }
 
 .action-btn-text {
-  overflow: hidden;
-  text-overflow: ellipsis;
   white-space: nowrap;
   font-size: 0.74rem;
   font-weight: 800;
@@ -17715,33 +17713,33 @@
 
 @media (max-width: 420px) {
   .home-compact-actions-row {
-    gap: 0.35rem;
+    gap: 0.38rem;
   }
 
   .compact-action-btn {
-    padding: 0.45rem 0.25rem;
-    gap: 0.25rem;
-    border-radius: 10px;
+    padding: 0.42rem 0.58rem;
+    gap: 0.32rem;
+    border-radius: 12px;
   }
 
   .action-btn-text {
-    font-size: 0.68rem;
+    font-size: 0.71rem;
   }
 
   .action-btn-icon {
-    width: 19px !important;
-    height: 19px !important;
-    font-size: 0.7rem !important;
+    width: 20px !important;
+    height: 20px !important;
+    font-size: 0.72rem !important;
   }
 }
 
 @media (max-width: 350px) {
   .action-btn-text {
-    font-size: 0.62rem;
+    font-size: 0.67rem;
   }
 
   .compact-action-btn {
-    padding: 0.4rem 0.15rem;
+    padding: 0.38rem 0.48rem;
   }
 }
 
