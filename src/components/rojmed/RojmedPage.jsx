@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { rojmedService, getTodayLocalDate } from '../../services/rojmedService';
+import { stockService } from '../../services/stockService';
 import { downloadPdfFile, sharePdfFile } from '../../utils/pdfGenerator';
 import { Snackbar } from '../workers/Snackbar';
 import { useAuth } from '../../context/AuthContext';
@@ -143,6 +144,11 @@ export function RojmedPage({ onBackToHome }) {
   const [amount, setAmount] = useState('');
   const [entryDate, setEntryDate] = useState(todayStr);
   const [particulars, setParticulars] = useState('');
+  const [billNo, setBillNo] = useState('');
+  const [stockItemId, setStockItemId] = useState('');
+  const [stockQty, setStockQty] = useState('');
+  const [stockSearch, setStockSearch] = useState('');
+  const [stockItems, setStockItems] = useState(() => stockService.getCachedItems());
   const [notes, setNotes] = useState('');
   const [isAutoParticulars, setIsAutoParticulars] = useState(true);
   const [formError, setFormError] = useState('');
@@ -210,6 +216,9 @@ export function RojmedPage({ onBackToHome }) {
         truck_accounts: Array.isArray(opts?.truck_accounts) ? opts.truck_accounts : [],
         vyapari_accounts: Array.isArray(opts?.vyapari_accounts) ? opts.vyapari_accounts : [],
       });
+      stockService.getItems().then((res) => {
+        if (res?.data) setStockItems(res.data);
+      }).catch(() => {});
     } catch {
       // ignore non-blocking fetch error
     }
@@ -321,6 +330,10 @@ export function RojmedPage({ onBackToHome }) {
     setAmount('');
     setEntryDate(selectedDate);
     setParticulars('');
+    setBillNo('');
+    setStockItemId('');
+    setStockQty('');
+    setStockSearch('');
     setNotes('');
     setIsAutoParticulars(true);
     setFormError('');
@@ -339,6 +352,10 @@ export function RojmedPage({ onBackToHome }) {
     setAmount(String(entry.amount || ''));
     setEntryDate(entry.date || selectedDate);
     setParticulars(entry.particulars || '');
+    setBillNo(entry.bill_no || '');
+    setStockItemId('');
+    setStockQty('');
+    setStockSearch('');
     setNotes(entry.notes || '');
     setIsAutoParticulars(false);
     setFormError('');
@@ -375,6 +392,11 @@ export function RojmedPage({ onBackToHome }) {
       return;
     }
 
+    if (sourceType === 'vyapari_account' && !editingEntry && stockItemId && (!Number(stockQty) || Number(stockQty) <= 0)) {
+      setFormError('સ્ટોક પસંદ કર્યો છે તો માન્ય જથ્થો (Qty) દાખલ કરો (અથવા સ્ટોક ખાલી રાખો)');
+      return;
+    }
+
     const payload = {
       date: entryDate || selectedDate,
       entry_type: entryType,
@@ -393,6 +415,10 @@ export function RojmedPage({ onBackToHome }) {
             : 'udhar'
           : null,
       notes: notes.trim(),
+      ...(sourceType === 'vyapari_account' ? { bill_no: billNo.trim() || null } : {}),
+      ...(sourceType === 'vyapari_account' && !editingEntry && stockItemId && Number(stockQty) > 0
+        ? { stock_item_id: Number(stockItemId), stock_qty: Number(stockQty) }
+        : {}),
     };
 
     try {
@@ -412,8 +438,13 @@ export function RojmedPage({ onBackToHome }) {
         } else {
           await fetchDailySheet(selectedDate);
         }
+        if (payload.stock_item_id) {
+          stockService.getItems({ forceRefresh: true }).catch(() => {});
+        }
         showToast(
-          sourceType === 'general'
+          payload.stock_item_id
+            ? 'રોજમેળ + વેપારી ખાતું + સ્ટોક (+) ત્રણેયમાં એન્ટ્રી સેવ થઈ ગઈ!'
+            : sourceType === 'general'
             ? 'રોજમેળ એન્ટ્રી ઉમેરાઈ ગઈ (Entry added)'
             : 'રોજમેળ + ખાતાવહી બંનેમાં એન્ટ્રી સેવ થઈ ગઈ!',
           'success'
@@ -595,6 +626,21 @@ export function RojmedPage({ onBackToHome }) {
         (v.page_no && String(v.page_no).includes(q))
     );
   }, [accountOptions.vyapari_accounts, entitySearch]);
+
+  const filteredStockItems = useMemo(() => {
+    const q = stockSearch.trim().toLowerCase();
+    if (!q) return stockItems || [];
+    return (stockItems || []).filter(
+      (item) =>
+        (item.name && item.name.toLowerCase().includes(q)) ||
+        (item.category_name && item.category_name.toLowerCase().includes(q))
+    );
+  }, [stockItems, stockSearch]);
+
+  const selectedStockItemObj = useMemo(() => {
+    if (!stockItemId) return null;
+    return (stockItems || []).find((item) => Number(item.id) === Number(stockItemId)) || null;
+  }, [stockItems, stockItemId]);
 
   // Live sync message in form
   const liveSyncNotice = useMemo(() => {
@@ -1486,7 +1532,7 @@ export function RojmedPage({ onBackToHome }) {
               {/* Step 3C: Vyapari Account Selection */}
               {sourceType === 'vyapari_account' && (
                 <div className="rojmed-link-box" style={{ marginBottom: '0.75rem' }}>
-                  <div className="form-group" style={{ marginBottom: 0 }}>
+                  <div className="form-group" style={{ marginBottom: '0.55rem' }}>
                     <label className="form-label">વેપારી ખાતું શોધો અને પસંદ કરો (Select Vyapari Account) *</label>
                     <input
                       type="text"
@@ -1517,6 +1563,81 @@ export function RojmedPage({ onBackToHome }) {
                       ))}
                     </select>
                   </div>
+
+                  {/* Optional Bill No. & Optional Stock In (+Stock) */}
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '0.5rem' }}>
+                    <div className="form-group" style={{ marginBottom: 0 }}>
+                      <label className="form-label">Bill No. / બિલ નં. (Optional)</label>
+                      <input
+                        type="text"
+                        className="form-input"
+                        placeholder="e.g. INV-104 (વૈકલ્પિક)"
+                        value={billNo}
+                        onChange={(e) => setBillNo(e.target.value)}
+                      />
+                    </div>
+
+                    {!editingEntry && (
+                      <div className="form-group" style={{ marginBottom: 0 }}>
+                        <label className="form-label">📦 Stock Select (+Stock Optional)</label>
+                        <input
+                          type="text"
+                          className="form-input"
+                          placeholder="🔍 સ્ટોક શોધો (Optional)..."
+                          value={stockSearch}
+                          onChange={(e) => setStockSearch(e.target.value)}
+                          style={{ marginBottom: '0.35rem', fontSize: '0.78rem' }}
+                        />
+                        <select
+                          className="form-input"
+                          value={stockItemId}
+                          onChange={(e) => {
+                            setStockItemId(e.target.value);
+                            if (!e.target.value) setStockQty('');
+                          }}
+                        >
+                          <option value="">-- સ્ટોક પસંદ ન કરવો (Optional) --</option>
+                          {filteredStockItems.map((item) => (
+                            <option key={item.id} value={item.id}>
+                              {item.name} ({item.category_name}) • હાલ: {Number(item.quantity || 0)} {item.unit || 'Pcs'}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    )}
+                  </div>
+
+                  {!editingEntry && stockItemId && (
+                    <div
+                      style={{
+                        background: '#f0fdfa',
+                        border: '1px solid #99f6e4',
+                        borderRadius: '8px',
+                        padding: '0.55rem 0.65rem',
+                        marginTop: '0.55rem',
+                      }}
+                    >
+                      <div className="form-group" style={{ marginBottom: 0 }}>
+                        <label className="form-label" style={{ color: '#0f766e' }}>
+                          Add Stock Qty (+ {selectedStockItemObj?.unit || 'Qty'}) *
+                        </label>
+                        <input
+                          type="number"
+                          className="form-input"
+                          placeholder={`કેટલો જથ્થો ઉમેરવો? (${selectedStockItemObj?.unit || 'Pcs'})`}
+                          value={stockQty}
+                          onChange={(e) => setStockQty(e.target.value)}
+                          min="0.01"
+                          step="any"
+                        />
+                      </div>
+                      <div style={{ fontSize: '0.73rem', color: '#0f766e', fontWeight: 700, marginTop: '0.35rem' }}>
+                        ✅ સેવ કરતા જ <strong>{selectedStockItemObj?.name}</strong> માં{' '}
+                        <strong>+{Number(stockQty) > 0 ? Number(stockQty) : 0} {selectedStockItemObj?.unit || 'Pcs'}</strong>{' '}
+                        સીધો સ્ટોક ઉમેરાઈ જશે!
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
 

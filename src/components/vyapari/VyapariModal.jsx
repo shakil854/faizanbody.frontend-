@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { vyapariService } from '../../services/vyapariService';
+import { stockService } from '../../services/stockService';
 import { sharePdfFile, downloadPdfFile } from '../../utils/pdfGenerator';
 
 /**
@@ -39,6 +40,11 @@ export function VyapariModal({
   const [amount, setAmount] = useState('');
   const [date, setDate] = useState(() => new Date().toISOString().split('T')[0]);
   const [particulars, setParticulars] = useState('');
+  const [billNo, setBillNo] = useState('');
+  const [stockItemId, setStockItemId] = useState('');
+  const [stockQty, setStockQty] = useState('');
+  const [stockSearch, setStockSearch] = useState('');
+  const [stockItems, setStockItems] = useState(() => stockService.getCachedItems());
   const [paymentMode, setPaymentMode] = useState('Cash');
   const [addToRojmed, setAddToRojmed] = useState(false);
   const [formError, setFormError] = useState('');
@@ -91,6 +97,9 @@ export function VyapariModal({
   useEffect(() => {
     if (isOpen && accountId) {
       fetchAccountData();
+      stockService.getItems().then((res) => {
+        if (res?.data) setStockItems(res.data);
+      }).catch(() => {});
       setShowAddForm(false);
       setEditingEntry(null);
       setFormError('');
@@ -218,6 +227,10 @@ export function VyapariModal({
     setAmount('');
     setDate(new Date().toISOString().split('T')[0]);
     setParticulars('રોકડા જમા');
+    setBillNo('');
+    setStockItemId('');
+    setStockQty('');
+    setStockSearch('');
     setPaymentMode('Cash');
     setAddToRojmed(false);
     setFormError('');
@@ -231,6 +244,10 @@ export function VyapariModal({
     setAmount('');
     setDate(new Date().toISOString().split('T')[0]);
     setParticulars('માલ ઉધાર / બિલ');
+    setBillNo('');
+    setStockItemId('');
+    setStockQty('');
+    setStockSearch('');
     setPaymentMode('Cash');
     setAddToRojmed(false);
     setFormError('');
@@ -243,11 +260,30 @@ export function VyapariModal({
     setAmount(String(entry.amount));
     setDate(entry.date || new Date().toISOString().split('T')[0]);
     setParticulars(entry.particulars || '');
+    setBillNo(entry.bill_no || '');
+    setStockItemId('');
+    setStockQty('');
+    setStockSearch('');
     setPaymentMode(entry.payment_mode || 'Cash');
     setAddToRojmed(Boolean(entry.rojmed_entry_id));
     setFormError('');
     setShowAddForm(true);
   };
+
+  const filteredStockItems = useMemo(() => {
+    const q = stockSearch.trim().toLowerCase();
+    if (!q) return stockItems || [];
+    return (stockItems || []).filter(
+      (item) =>
+        (item.name && item.name.toLowerCase().includes(q)) ||
+        (item.category_name && item.category_name.toLowerCase().includes(q))
+    );
+  }, [stockItems, stockSearch]);
+
+  const selectedStockItemObj = useMemo(() => {
+    if (!stockItemId) return null;
+    return (stockItems || []).find((item) => Number(item.id) === Number(stockItemId)) || null;
+  }, [stockItems, stockItemId]);
 
   const handleSaveEntry = async (e) => {
     e.preventDefault();
@@ -262,6 +298,11 @@ export function VyapariModal({
       return;
     }
 
+    if (!editingEntry && stockItemId && (!Number(stockQty) || Number(stockQty) <= 0)) {
+      setFormError('સ્ટોક પસંદ કર્યો છે તો મહેરબાની કરીને માન્ય જથ્થો (Qty) દાખલ કરો (અથવા સ્ટોક ખાલી રાખો)');
+      return;
+    }
+
     try {
       setIsSubmitting(true);
       setFormError('');
@@ -271,9 +312,15 @@ export function VyapariModal({
         amount: cleanAmt,
         date,
         particulars: particulars.trim() || (entryType === 'jama' ? 'રોકડા જમા' : 'માલ ઉધાર / બિલ'),
+        bill_no: billNo.trim() || null,
         payment_mode: paymentMode,
         add_to_rojmed: paymentMode === 'Cash' ? addToRojmed : false,
       };
+
+      if (!editingEntry && stockItemId && Number(stockQty) > 0) {
+        payload.stock_item_id = Number(stockItemId);
+        payload.stock_qty = Number(stockQty);
+      }
 
       if (editingEntry) {
         await vyapariService.updateEntry(accountId, editingEntry.id, payload);
@@ -282,6 +329,9 @@ export function VyapariModal({
       }
 
       await fetchAccountData();
+      if (payload.stock_item_id) {
+        stockService.getItems({ forceRefresh: true }).catch(() => {});
+      }
       if (typeof onAccountChanged === 'function') {
         onAccountChanged();
       }
@@ -290,6 +340,10 @@ export function VyapariModal({
       setEditingEntry(null);
       setAmount('');
       setParticulars('');
+      setBillNo('');
+      setStockItemId('');
+      setStockQty('');
+      setStockSearch('');
       setAddToRojmed(false);
     } catch (err) {
       setFormError(err.message || 'Error saving entry');
@@ -941,6 +995,83 @@ export function VyapariModal({
                   </div>
                 </div>
 
+                {/* Optional Bill No. & Optional Stock In (+Stock) */}
+                <div className="entry-inputs-grid" style={{ marginTop: '0.5rem' }}>
+                  <div className="form-group">
+                    <label className="form-label">Bill No. / બિલ નં. (Optional)</label>
+                    <input
+                      type="text"
+                      className="form-input"
+                      placeholder="e.g. INV-104 (વૈકલ્પિક)"
+                      value={billNo}
+                      onChange={(e) => setBillNo(e.target.value)}
+                    />
+                  </div>
+
+                  {!editingEntry && (
+                    <div className="form-group">
+                      <label className="form-label">📦 Stock Select (+Stock Optional)</label>
+                      <input
+                        type="text"
+                        className="form-input"
+                        placeholder="🔍 સ્ટોક આઇટમ શોધો (Optional)..."
+                        value={stockSearch}
+                        onChange={(e) => setStockSearch(e.target.value)}
+                        style={{ marginBottom: '0.35rem', fontSize: '0.78rem' }}
+                      />
+                      <select
+                        className="form-input"
+                        value={stockItemId}
+                        onChange={(e) => {
+                          setStockItemId(e.target.value);
+                          if (!e.target.value) setStockQty('');
+                        }}
+                      >
+                        <option value="">-- સ્ટોક પસંદ ન કરવો (Optional / Only Vyapari Entry) --</option>
+                        {filteredStockItems.map((item) => (
+                          <option key={item.id} value={item.id}>
+                            {item.name} ({item.category_name}) • હાલ: {Number(item.quantity || 0)} {item.unit || 'Pcs'}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
+                </div>
+
+                {!editingEntry && stockItemId && (
+                  <div
+                    style={{
+                      background: '#f0fdfa',
+                      border: '1px solid #99f6e4',
+                      borderRadius: '10px',
+                      padding: '0.65rem 0.75rem',
+                      marginBottom: '0.65rem',
+                    }}
+                  >
+                    <div className="entry-inputs-grid" style={{ alignItems: 'center' }}>
+                      <div className="form-group" style={{ marginBottom: 0 }}>
+                        <label className="form-label" style={{ color: '#0f766e' }}>
+                          Add Stock Qty (+ {selectedStockItemObj?.unit || 'Qty'}) *
+                        </label>
+                        <input
+                          type="number"
+                          className="form-input"
+                          placeholder={`કેટલો જથ્થો ઉમેરવો? (${selectedStockItemObj?.unit || 'Pcs'})`}
+                          value={stockQty}
+                          onChange={(e) => setStockQty(e.target.value)}
+                          min="0.01"
+                          step="any"
+                        />
+                      </div>
+                      <div style={{ fontSize: '0.75rem', color: '#0f766e', fontWeight: 700, paddingTop: '0.85rem' }}>
+                        ✅ સેવ કરતા જ <strong>{selectedStockItemObj?.name}</strong> માં{' '}
+                        <strong>+{Number(stockQty) > 0 ? Number(stockQty) : 0} {selectedStockItemObj?.unit || 'Pcs'}</strong>{' '}
+                        સ્ટોક ઉમેરાઈ જશે!
+                      </div>
+                    </div>
+                  </div>
+                )}
+
                 {/* Optional Add to Rojmed Checkbox */}
                 <div className="rojmed-sync-checkbox-row">
                   <label className={`rojmed-sync-checkbox-label ${paymentMode !== 'Cash' ? 'disabled' : ''}`}>
@@ -1055,6 +1186,22 @@ export function VyapariModal({
                             </td>
                             <td>
                               <span style={{ fontWeight: 600 }}>{row.particulars || 'રોકડા જમા'}</span>
+                              {row.bill_no && (
+                                <span
+                                  className="vahi-mode-badge"
+                                  style={{ marginLeft: '0.35rem', background: '#fef3c7', color: '#92400e', borderColor: '#fde68a' }}
+                                >
+                                  🧾 Bill #{row.bill_no}
+                                </span>
+                              )}
+                              {row.stock_item_name && (
+                                <span
+                                  className="vahi-mode-badge"
+                                  style={{ marginLeft: '0.35rem', background: '#ccfbf1', color: '#0f766e', borderColor: '#99f6e4' }}
+                                >
+                                  📦 +{Number(row.stock_qty || 0)} {row.stock_item_name}
+                                </span>
+                              )}
                               {row.payment_mode && row.payment_mode !== 'Cash' && (
                                 <span className="vahi-mode-badge" style={{ marginLeft: '0.35rem' }}>
                                   {row.payment_mode}
@@ -1146,6 +1293,22 @@ export function VyapariModal({
                             <td style={{ textAlign: 'center', color: '#64748b', fontWeight: 600 }}>{idx + 1}</td>
                             <td>
                               <span style={{ fontWeight: 700, color: '#9a3412' }}>{row.particulars || 'માલ ઉધાર / બિલ'}</span>
+                              {row.bill_no && (
+                                <span
+                                  className="vahi-mode-badge"
+                                  style={{ marginLeft: '0.35rem', background: '#fef3c7', color: '#92400e', borderColor: '#fde68a' }}
+                                >
+                                  🧾 Bill #{row.bill_no}
+                                </span>
+                              )}
+                              {row.stock_item_name && (
+                                <span
+                                  className="vahi-mode-badge"
+                                  style={{ marginLeft: '0.35rem', background: '#ccfbf1', color: '#0f766e', borderColor: '#99f6e4' }}
+                                >
+                                  📦 +{Number(row.stock_qty || 0)} {row.stock_item_name}
+                                </span>
+                              )}
                               {row.rojmed_entry_id && (
                                 <span className="vahi-mode-badge rojmed-link-pill" style={{ marginLeft: '0.35rem' }}>
                                   📒 Rojmed
