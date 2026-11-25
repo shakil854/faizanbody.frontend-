@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import { Eye, EyeOff } from 'lucide-react';
 import { truckAccountService } from '../../services/truckAccountService';
 import { TruckAccountCard } from './TruckAccountCard';
 import { TruckAccountFormModal } from './TruckAccountFormModal';
@@ -12,12 +13,17 @@ import { useAuth } from '../../context/AuthContext';
  * STRICT RULE: No Account No.!
  */
 export function TruckAccountPage({ onBackToHome, onNavigate }) {
-  const { hasPermission } = useAuth();
+  const { hasPermission, isAdmin } = useAuth();
   const canCreate = hasPermission('truck_accounts:create');
   const canEdit = hasPermission('truck_accounts:edit');
   const canDelete = hasPermission('truck_accounts:delete');
   const canKhata = hasPermission('truck_accounts:khata');
   const canPrint = hasPermission('truck_accounts:print');
+
+  const [showStatsValues, setShowStatsValues] = useState(() => {
+    const saved = localStorage.getItem('faizanbody_truck_stats_visible');
+    return saved !== null ? saved === 'true' : true;
+  });
 
   const [accounts, setAccounts] = useState(() => truckAccountService.getCachedAccounts());
   const [loading, setLoading] = useState(() => truckAccountService.getCachedAccounts().length === 0);
@@ -194,39 +200,102 @@ export function TruckAccountPage({ onBackToHome, onNavigate }) {
       </div>
 
       <main className="android-body" style={{ padding: '0.85rem 1rem 5rem' }}>
-        {/* KPI Ribbon */}
-        <div
-          style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))',
-            gap: '0.65rem',
-            marginBottom: '0.85rem',
-          }}
-        >
-          <div style={{ background: '#ffffff', padding: '0.65rem 0.85rem', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
-            <span style={{ fontSize: '0.68rem', fontWeight: 700, color: '#64748b', display: 'block' }}>TOTAL TRUCKS</span>
-            <span style={{ fontSize: '1.25rem', fontWeight: 900, color: '#0f172a' }}>{stats.totalAccs}</span>
-          </div>
+        {/* KPI Ribbon (Strictly Admin Only with Seen/Hide Eye Toggle) */}
+        {isAdmin && (
+          <div style={{ marginBottom: '0.85rem' }}>
+            <div
+              style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                marginBottom: '0.4rem',
+                padding: '0 0.15rem',
+              }}
+            >
+              <span
+                style={{
+                  fontSize: '0.72rem',
+                  fontWeight: 800,
+                  color: '#64748b',
+                  letterSpacing: '0.4px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.35rem',
+                }}
+              >
+                <span>📊</span>
+                <span>ઓવરઓલ સમરી (Admin Only)</span>
+              </span>
 
-          {canKhata && (
-            <>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowStatsValues((prev) => {
+                    const next = !prev;
+                    localStorage.setItem('faizanbody_truck_stats_visible', String(next));
+                    return next;
+                  });
+                }}
+                style={{
+                  background: showStatsValues ? '#f8fafc' : '#eff6ff',
+                  border: '1px solid',
+                  borderColor: showStatsValues ? '#cbd5e1' : '#93c5fd',
+                  color: showStatsValues ? '#475569' : '#1d4ed8',
+                  borderRadius: '16px',
+                  padding: '0.2rem 0.65rem',
+                  fontSize: '0.72rem',
+                  fontWeight: 700,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.35rem',
+                  cursor: 'pointer',
+                  transition: 'all 0.15s ease',
+                  boxShadow: '0 1px 2px rgba(0,0,0,0.04)',
+                }}
+                title={showStatsValues ? 'રકમ છુપાવો (Hide Amounts)' : 'રકમ જુઓ (Show Amounts)'}
+              >
+                {showStatsValues ? <Eye size={13} strokeWidth={2.5} /> : <EyeOff size={13} strokeWidth={2.5} />}
+                <span>{showStatsValues ? 'Hide' : 'Show'}</span>
+              </button>
+            </div>
+
+            <div
+              style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))',
+                gap: '0.65rem',
+              }}
+            >
+              <div style={{ background: '#ffffff', padding: '0.65rem 0.85rem', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
+                <span style={{ fontSize: '0.68rem', fontWeight: 700, color: '#64748b', display: 'block' }}>TOTAL TRUCKS</span>
+                <span style={{ fontSize: '1.25rem', fontWeight: 900, color: '#0f172a' }}>
+                  {showStatsValues ? stats.totalAccs : '••'}
+                </span>
+              </div>
+
               <div style={{ background: '#fff7ed', padding: '0.65rem 0.85rem', borderRadius: '12px', border: '1px solid #fed7aa' }}>
                 <span style={{ fontSize: '0.68rem', fontWeight: 700, color: '#c2410c', display: 'block' }}>TOTAL BILL (ઉધાર)</span>
-                <span style={{ fontSize: '1.1rem', fontWeight: 900, color: '#9a3412' }}>₹{stats.totalUdhar.toLocaleString('en-IN')}</span>
+                <span style={{ fontSize: '1.1rem', fontWeight: 900, color: '#9a3412' }}>
+                  {showStatsValues ? `₹${stats.totalUdhar.toLocaleString('en-IN')}` : '₹ ••••••••'}
+                </span>
               </div>
 
               <div style={{ background: '#f0fdf4', padding: '0.65rem 0.85rem', borderRadius: '12px', border: '1px solid #bbf7d0' }}>
                 <span style={{ fontSize: '0.68rem', fontWeight: 700, color: '#15803d', display: 'block' }}>RECEIVED (જમા)</span>
-                <span style={{ fontSize: '1.1rem', fontWeight: 900, color: '#166534' }}>₹{stats.totalJama.toLocaleString('en-IN')}</span>
+                <span style={{ fontSize: '1.1rem', fontWeight: 900, color: '#166534' }}>
+                  {showStatsValues ? `₹${stats.totalJama.toLocaleString('en-IN')}` : '₹ ••••••••'}
+                </span>
               </div>
 
               <div style={{ background: '#fef2f2', padding: '0.65rem 0.85rem', borderRadius: '12px', border: '1px solid #fecaca' }}>
                 <span style={{ fontSize: '0.68rem', fontWeight: 700, color: '#b91c1c', display: 'block' }}>PENDING DUE (બાકી)</span>
-                <span style={{ fontSize: '1.1rem', fontWeight: 900, color: '#991b1b' }}>₹{stats.totalDue.toLocaleString('en-IN')}</span>
+                <span style={{ fontSize: '1.1rem', fontWeight: 900, color: '#991b1b' }}>
+                  {showStatsValues ? `₹${stats.totalDue.toLocaleString('en-IN')}` : '₹ ••••••••'}
+                </span>
               </div>
-            </>
-          )}
-        </div>
+            </div>
+          </div>
+        )}
 
         {/* Search Box */}
         <div style={{ marginBottom: '0.75rem' }}>
