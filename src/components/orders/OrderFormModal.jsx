@@ -4,6 +4,7 @@ import { DEFAULT_ORDER_DATA, ORDER_SECTIONS, calculateOrderProgress } from './or
 import { DigitalSignaturePad } from './DigitalSignaturePad';
 import { OrderComboboxInput } from './OrderComboboxInput';
 import { useAuth } from '../../context/AuthContext';
+import { workerService } from '../../services/workerService';
 
 export function OrderFormModal({
   isOpen,
@@ -23,10 +24,82 @@ export function OrderFormModal({
 
   const [formData, setFormData] = useState(DEFAULT_ORDER_DATA);
   const [currentMode, setCurrentMode] = useState(mode || 'view');
+  const [workersList, setWorkersList] = useState([]);
   const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const scrollRef = useRef(null);
   const lastModeSwitchRef = useRef(0);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    let active = true;
+    const unsub = workerService.subscribe((data) => {
+      if (active && Array.isArray(data)) {
+        setWorkersList(data);
+      }
+    });
+    workerService.getWorkers().then((res) => {
+      if (active && res?.success && Array.isArray(res.data)) {
+        setWorkersList(res.data);
+      }
+    }).catch(() => {});
+    return () => {
+      active = false;
+      unsub();
+    };
+  }, [isOpen]);
+
+  const workerNames = Array.from(
+    new Set(
+      (workersList || [])
+        .map((w) => (w.name || "").trim())
+        .filter(Boolean)
+    )
+  ).sort((a, b) => a.localeCompare(b));
+
+  const renderThreeBoxes = (idPrefix, boxes, onBoxChange) => (
+    <div className="three-blank-boxes-group">
+      <select
+        id={`${idPrefix}-0`}
+        data-nav-id={`${idPrefix}-0`}
+        className="box-rect-input box-worker-select"
+        value={boxes[0] || ""}
+        onChange={(e) => onBoxChange(0, e.target.value)}
+        disabled={isViewMode}
+        title="Worker Name"
+      >
+        <option value="">Worker</option>
+        {boxes[0] && !workerNames.includes(boxes[0]) && (
+          <option value={boxes[0]}>{boxes[0]}</option>
+        )}
+        {workerNames.map((name) => (
+          <option key={name} value={name}>{name}</option>
+        ))}
+      </select>
+      <input
+        id={`${idPrefix}-1`}
+        data-nav-id={`${idPrefix}-1`}
+        type="date"
+        title="Starting Date"
+        aria-label="Starting Date"
+        className="box-rect-input box-date-input"
+        value={boxes[1] || ""}
+        onChange={(e) => onBoxChange(1, e.target.value)}
+        disabled={isViewMode}
+      />
+      <input
+        id={`${idPrefix}-2`}
+        data-nav-id={`${idPrefix}-2`}
+        type="date"
+        title="End Date"
+        aria-label="End Date"
+        className="box-rect-input box-date-input"
+        value={boxes[2] || ""}
+        onChange={(e) => onBoxChange(2, e.target.value)}
+        disabled={isViewMode}
+      />
+    </div>
+  );
 
   useEffect(() => {
     if (initialData) {
@@ -799,39 +872,8 @@ export function OrderFormModal({
                               </div>
 
                               <div className="finishing-actions-right">
-                                {/* 3 Blank Boxes (Exact layout) */}
-                                <div className="three-blank-boxes-group">
-                                  <input
-                                    id={`box-finishing-${item.key}-0`}
-                                    data-nav-id={`box-finishing-${item.key}-0`}
-                                    type="text"
-                                    placeholder="Box 1"
-                                    className="box-rect-input"
-                                    value={boxes[0] || ''}
-                                    onChange={(e) => handleFinishingBoxChange(item.key, 0, e.target.value)}
-                                    readOnly={isViewMode}
-                                  />
-                                  <input
-                                    id={`box-finishing-${item.key}-1`}
-                                    data-nav-id={`box-finishing-${item.key}-1`}
-                                    type="text"
-                                    placeholder="Box 2"
-                                    className="box-rect-input"
-                                    value={boxes[1] || ''}
-                                    onChange={(e) => handleFinishingBoxChange(item.key, 1, e.target.value)}
-                                    readOnly={isViewMode}
-                                  />
-                                  <input
-                                    id={`box-finishing-${item.key}-2`}
-                                    data-nav-id={`box-finishing-${item.key}-2`}
-                                    type="text"
-                                    placeholder="Box 3"
-                                    className="box-rect-input"
-                                    value={boxes[2] || ''}
-                                    onChange={(e) => handleFinishingBoxChange(item.key, 2, e.target.value)}
-                                    readOnly={isViewMode}
-                                  />
-                                </div>
+                                {/* 3 Boxes: Worker Name Dropdown, Starting Date, End Date */}
+                                {renderThreeBoxes(`box-finishing-${item.key}`, boxes, (idx, val) => handleFinishingBoxChange(item.key, idx, val))}
 
                                 {/* Checkbox (Right ✓) - INTERACTIVE IN BOTH VIEW & EDIT MODES */}
                                 <div
@@ -886,41 +928,10 @@ export function OrderFormModal({
                       </div>
                     </div>
 
-                    {/* 3 Blank Boxes */}
+                    {/* 3 Boxes: Worker Name Dropdown, Starting Date, End Date */}
                     <div className="three-blank-boxes-container">
-                      <span className="boxes-title-hint">3 Boxes:</span>
-                      <div className="three-blank-boxes-group">
-                        <input
-                          id={`box-${sec.key}-0`}
-                          data-nav-id={`box-${sec.key}-0`}
-                          type="text"
-                          placeholder="Box 1"
-                          className="box-rect-input"
-                          value={secBoxes[0] || ''}
-                          onChange={(e) => handleSectionBoxChange(sec.key, 0, e.target.value)}
-                          readOnly={isViewMode}
-                        />
-                        <input
-                          id={`box-${sec.key}-1`}
-                          data-nav-id={`box-${sec.key}-1`}
-                          type="text"
-                          placeholder="Box 2"
-                          className="box-rect-input"
-                          value={secBoxes[1] || ''}
-                          onChange={(e) => handleSectionBoxChange(sec.key, 1, e.target.value)}
-                          readOnly={isViewMode}
-                        />
-                        <input
-                          id={`box-${sec.key}-2`}
-                          data-nav-id={`box-${sec.key}-2`}
-                          type="text"
-                          placeholder="Box 3"
-                          className="box-rect-input"
-                          value={secBoxes[2] || ''}
-                          onChange={(e) => handleSectionBoxChange(sec.key, 2, e.target.value)}
-                          readOnly={isViewMode}
-                        />
-                      </div>
+                      <span className="boxes-title-hint">Worker / Dates:</span>
+                      {renderThreeBoxes(`box-${sec.key}`, secBoxes, (idx, val) => handleSectionBoxChange(sec.key, idx, val))}
                     </div>
                   </div>
 

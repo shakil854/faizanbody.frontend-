@@ -6031,6 +6031,7 @@
 .three-blank-boxes-group {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: 0.35rem;
 }
 
@@ -6046,6 +6047,28 @@
   color: #0f172a;
   outline: none;
   transition: all 0.2s ease;
+}
+
+.box-rect-input.box-worker-select {
+  width: auto;
+  min-width: 105px;
+  max-width: 145px;
+  padding: 0 4px;
+  text-align: left;
+  font-size: 0.78rem;
+}
+
+.box-rect-input.box-date-input {
+  width: 118px;
+  padding: 0 4px;
+  font-size: 0.72rem;
+}
+
+.box-rect-input:disabled {
+  opacity: 0.95;
+  color: #0f172a;
+  background: #f8fafc;
+  cursor: default;
 }
 
 .box-rect-input:focus {
@@ -6780,6 +6803,17 @@
     width: 55px !important;
     height: 28px !important;
     font-size: 0.75rem !important;
+  }
+
+  .box-rect-input.box-worker-select {
+    width: auto !important;
+    min-width: 95px !important;
+    max-width: 130px !important;
+  }
+
+  .box-rect-input.box-date-input {
+    width: 110px !important;
+    font-size: 0.7rem !important;
   }
 
   .modern-signatures-grid {
