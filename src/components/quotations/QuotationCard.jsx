@@ -7,6 +7,8 @@ export const QuotationCard = React.memo(function QuotationCard({
   onDirectWhatsAppShare,
   isSharing = false,
   onDelete,
+  onApprove,
+  isApproving = false,
 }) {
   const { isAdmin } = useAuth();
   const cleanPhone = quotation.mobile_number ? quotation.mobile_number.replace(/[^0-9]/g, '') : '';
@@ -75,6 +77,34 @@ export const QuotationCard = React.memo(function QuotationCard({
           </span>
 
           <div className="quotation-card-actions">
+            {isAdmin && quotation.status !== 'Approved' && (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onApprove?.(quotation);
+                }}
+                disabled={isApproving}
+                title="Approve Quotation (Creates Incoming Order & Truck Account)"
+                style={{
+                  background: 'linear-gradient(135deg, #16a34a, #15803d)',
+                  color: '#ffffff',
+                  border: 'none',
+                  borderRadius: '8px',
+                  padding: '0.26rem 0.55rem',
+                  fontSize: '0.72rem',
+                  fontWeight: 800,
+                  cursor: isApproving ? 'wait' : 'pointer',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '0.25rem',
+                  boxShadow: '0 1px 4px rgba(22, 163, 74, 0.25)',
+                }}
+              >
+                <span>{isApproving ? '⏳' : '✓'}</span>
+                <span>{isApproving ? '...' : 'Approve'}</span>
+              </button>
+            )}
             <button
               type="button"
               className="action-btn edit-btn"

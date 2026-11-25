@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { quotationService } from '../../services/quotationService';
+import { orderService } from '../../services/orderService';
+import { truckAccountService } from '../../services/truckAccountService';
 import { QuotationCard } from './QuotationCard';
 import { QuotationFormModal } from './QuotationFormModal';
 import { QuotationPrintContent } from './QuotationPrintContent';
@@ -33,6 +35,8 @@ export function QuotationsPage({ onBackToHome }) {
   // Modals
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingQuotation, setEditingQuotation] = useState(null);
+  const [approvingQuotation, setApprovingQuotation] = useState(null);
+  const [approvingQuoteId, setApprovingQuoteId] = useState(null);
   const [deletingQuotation, setDeletingQuotation] = useState(null);
 
   // Direct WhatsApp Share (1-tap, pure PDF document)
@@ -133,6 +137,27 @@ export function QuotationsPage({ onBackToHome }) {
       fetchQuotations({ force: true });
     } catch (err) {
       showSnackbar(err.response?.data?.message || 'Error deleting quotation', 'error');
+    }
+  };
+
+  // Admin Approve Quotation -> creates Incoming Order + Truck Account (Udhar entry)
+  const handleConfirmApprove = async () => {
+    if (!approvingQuotation) return;
+    try {
+      setApprovingQuoteId(approvingQuotation.id);
+      await quotationService.approveQuotation(approvingQuotation.id);
+      orderService.getOrders({}, { forceRefresh: true }).catch(() => {});
+      truckAccountService.getAccounts({}, { forceRefresh: true }).catch(() => {});
+      showSnackbar(
+        `✅ Quotation #${approvingQuotation.quotation_no} Approved! Incoming Order અને Truck Account (ઉધાર) બની ગયા છે.`,
+        'success'
+      );
+      setApprovingQuotation(null);
+      fetchQuotations({ force: true });
+    } catch (err) {
+      showSnackbar(err.response?.data?.message || err.message || 'Error approving quotation', 'error');
+    } finally {
+      setApprovingQuoteId(null);
     }
   };
 
@@ -302,6 +327,8 @@ export function QuotationsPage({ onBackToHome }) {
                   onDirectWhatsAppShare={handleDirectWhatsAppShare}
                   isSharing={sharingQuoteId === quote.id}
                   onDelete={(q) => setDeletingQuotation(q)}
+                  onApprove={(q) => setApprovingQuotation(q)}
+                  isApproving={approvingQuoteId === quote.id}
                 />
               ))}
             </div>
@@ -365,6 +392,53 @@ export function QuotationsPage({ onBackToHome }) {
                 onClick={handleConfirmDelete}
               >
                 Yes, Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 4. Admin Approve Confirmation Dialog */}
+      {approvingQuotation && (
+        <div className="modal-backdrop-luxury luxury-glass-backdrop" onClick={() => !approvingQuoteId && setApprovingQuotation(null)}>
+          <div className="modern-order-modal-card" style={{ maxWidth: '460px', padding: '1.5rem', textAlign: 'center' }} onClick={(e) => e.stopPropagation()}>
+            <div style={{ fontSize: '2.5rem', marginBottom: '0.6rem' }}>✅</div>
+            <h4 style={{ margin: '0 0 0.5rem', fontSize: '1.15rem', fontWeight: 800 }}>
+              Approve Quotation #{approvingQuotation.quotation_no}?
+            </h4>
+            <p style={{ color: '#475569', fontSize: '0.86rem', margin: '0 0 1rem', lineHeight: 1.5 }}>
+              <strong>{approvingQuotation.customer_name}</strong> નું કોટેશન એપ્રુવ કરવાથી આપોઆપ:
+            </p>
+            <div style={{ textAlign: 'left', background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: '10px', padding: '0.75rem 0.9rem', fontSize: '0.82rem', color: '#166534', marginBottom: '1.25rem', lineHeight: 1.6 }}>
+              <div>1️⃣ <strong>Incoming Work Order</strong> બની જશે (નામ, મોબાઈલ, ગાડી નં., તારીખ સાથે)</div>
+              <div>2️⃣ <strong>Truck Account</strong> ({approvingQuotation.customer_name}) બની જશે</div>
+              <div>3️⃣ ખાતામાં <strong>₹{Number(approvingQuotation.final_price || 0).toLocaleString('en-IN')}</strong> ની <strong>ઉધાર (Udhar)</strong> એન્ટ્રી પડી જશે</div>
+            </div>
+            <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'center' }}>
+              <button
+                type="button"
+                className="btn btn-secondary-luxury"
+                onClick={() => setApprovingQuotation(null)}
+                disabled={Boolean(approvingQuoteId)}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="btn"
+                style={{
+                  background: '#16a34a',
+                  color: '#ffffff',
+                  fontWeight: 800,
+                  borderRadius: '10px',
+                  padding: '0.55rem 1.25rem',
+                  border: 'none',
+                  cursor: approvingQuoteId ? 'wait' : 'pointer',
+                }}
+                onClick={handleConfirmApprove}
+                disabled={Boolean(approvingQuoteId)}
+              >
+                {approvingQuoteId ? 'Approving...' : '✓ Yes, Approve'}
               </button>
             </div>
           </div>

@@ -118,6 +118,19 @@ export const quotationService = {
     return response.data;
   },
 
+  async approveQuotation(id) {
+    const response = await axiosInstance.post(ENDPOINTS.QUOTATION_APPROVE(id));
+    const result = response.data?.data;
+    const updatedQuote = result?.quotation;
+
+    if (updatedQuote && cachedQuotations) {
+      cachedQuotations = cachedQuotations.map((q) => (q.id === Number(id) ? updatedQuote : q));
+      notifyListeners();
+    }
+
+    return response.data;
+  },
+
   async deleteQuotation(id) {
     const response = await axiosInstance.delete(ENDPOINTS.QUOTATION_DETAIL(id));
     const numId = Number(id);
