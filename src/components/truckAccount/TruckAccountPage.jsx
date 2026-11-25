@@ -200,33 +200,17 @@ export function TruckAccountPage({ onBackToHome, onNavigate }) {
       </div>
 
       <main className="android-body" style={{ padding: '0.85rem 1rem 5rem' }}>
-        {/* KPI Ribbon (Strictly Admin Only with Seen/Hide Eye Toggle) */}
+        {/* KPI Ribbon (Strictly Admin Only with Seen/Hide Eye Icon Toggle) */}
         {isAdmin && (
-          <div style={{ marginBottom: showStatsValues ? '0.85rem' : '0.55rem' }}>
+          <div style={{ marginBottom: showStatsValues ? '0.85rem' : '0.45rem' }}>
             <div
               style={{
                 display: 'flex',
-                justifyContent: 'space-between',
+                justifyContent: 'flex-end',
                 alignItems: 'center',
-                marginBottom: showStatsValues ? '0.45rem' : '0',
-                padding: '0 0.15rem',
+                marginBottom: showStatsValues ? '0.4rem' : '0',
               }}
             >
-              <span
-                style={{
-                  fontSize: '0.72rem',
-                  fontWeight: 800,
-                  color: '#64748b',
-                  letterSpacing: '0.4px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '0.35rem',
-                }}
-              >
-                <span>📊</span>
-                <span>ઓવરઓલ સમરી (Admin Only)</span>
-              </span>
-
               <button
                 type="button"
                 onClick={() => {
@@ -241,21 +225,20 @@ export function TruckAccountPage({ onBackToHome, onNavigate }) {
                   border: '1px solid',
                   borderColor: showStatsValues ? '#cbd5e1' : '#93c5fd',
                   color: showStatsValues ? '#475569' : '#1d4ed8',
-                  borderRadius: '16px',
-                  padding: '0.2rem 0.65rem',
-                  fontSize: '0.72rem',
-                  fontWeight: 700,
+                  borderRadius: '50%',
+                  width: '30px',
+                  height: '30px',
                   display: 'flex',
                   alignItems: 'center',
-                  gap: '0.35rem',
+                  justifyContent: 'center',
                   cursor: 'pointer',
                   transition: 'all 0.15s ease',
-                  boxShadow: '0 1px 2px rgba(0,0,0,0.04)',
+                  boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
                 }}
-                title={showStatsValues ? 'સમરી બોક્સ છુપાવો (Hide Summary Boxes)' : 'સમરી બોક્સ જુઓ (Show Summary Boxes)'}
+                title={showStatsValues ? 'Hide Summary' : 'Show Summary'}
+                aria-label={showStatsValues ? 'Hide Summary' : 'Show Summary'}
               >
-                {showStatsValues ? <Eye size={13} strokeWidth={2.5} /> : <EyeOff size={13} strokeWidth={2.5} />}
-                <span>{showStatsValues ? 'Hide' : 'Show'}</span>
+                {showStatsValues ? <Eye size={16} strokeWidth={2.2} /> : <EyeOff size={16} strokeWidth={2.2} />}
               </button>
             </div>
 
