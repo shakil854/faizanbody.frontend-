@@ -5,13 +5,21 @@ import { stockService } from '../../services/stockService';
  * Stock Usage & Worker Rating Tab (inside StockPage)
  * Unified Worker-first view:
  * Each Worker card shows Rating (auto + 1-5 stars), overall stats,
- * and underneath, all Work Orders / Trucks they worked on with exact items & quantities taken.
+ * and underneath, all Work Orders / Trucks they worked on with exact items & quantities taken,
+ * plus a Return button to add unused material back into stock and deduct from worker tracking.
  */
 export function StockUsageTab({ canRate = true, searchQuery = '', onNotify }) {
   const [data, setData] = useState({ transactions: [], byOrder: [], byWorker: [] });
   const [loading, setLoading] = useState(true);
   const [expandedKey, setExpandedKey] = useState(null);
   const [savingWorkerId, setSavingWorkerId] = useState(null);
+
+  // Return modal state
+  const [returningTx, setReturningTx] = useState(null); // { worker, ord, item, maxReturnable }
+  const [returnQty, setReturnQty] = useState('');
+  const [returnDate, setReturnDate] = useState(() => new Date().toISOString().split('T')[0]);
+  const [returnNote, setReturnNote] = useState('');
+  const [isReturning, setIsReturning] = useState(false);
 
   const loadUsage = useCallback(async () => {
     try {
@@ -51,6 +59,54 @@ export function StockUsageTab({ canRate = true, searchQuery = '', onNotify }) {
     }
   };
 
+  const openReturnModal = (worker, ord, item, maxReturnable) => {
+    setReturningTx({ worker, ord, item, maxReturnable });
+    setReturnQty(String(maxReturnable));
+    setReturnDate(new Date().toISOString().split('T')[0]);
+    setReturnNote('');
+  };
+
+  const handleConfirmReturn = async (e) => {
+    e.preventDefault();
+    if (!returningTx || isReturning) return;
+
+    const qty = parseFloat(returnQty);
+    if (!qty || qty <= 0) {
+      if (onNotify) onNotify('Valid return quantity enter karo', 'error');
+      return;
+    }
+    if (qty > returningTx.maxReturnable) {
+      if (onNotify) onNotify(`Max returnable quantity is ${returningTx.maxReturnable}`, 'error');
+      return;
+    }
+
+    try {
+      setIsReturning(true);
+      const { worker, item } = returningTx;
+      await stockService.adjustStock(item.item_id, {
+        type: 'RETURN',
+        quantity: qty,
+        date: returnDate,
+        reference_note: returnNote.trim() || `Returned by ${worker.worker_name}`,
+        worker_id: worker.worker_id || item.worker_id || null,
+        worker_name: worker.worker_name || item.worker_name || null,
+        order_id: item.order_id || null,
+        order_no: item.order_no || null,
+        truck_chassis_no: item.truck_chassis_no || null,
+      });
+
+      if (onNotify) {
+        onNotify(`✓ +${qty} ${item.unit} ${item.item_name} stock ma vapas add thai gayu!`, 'success');
+      }
+      setReturningTx(null);
+      await loadUsage();
+    } catch (err) {
+      if (onNotify) onNotify(err.response?.data?.message || 'Error returning stock', 'error');
+    } finally {
+      setIsReturning(false);
+    }
+  };
+
   const filteredWorkers = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
     const list = data.byWorker || [];
@@ -62,12 +118,12 @@ export function StockUsageTab({ canRate = true, searchQuery = '', onNotify }) {
             (w.items || []).some(
               (it) =>
                 it.item_name?.toLowerCase().includes(q) ||
-              it.truck_chassis_no?.toLowerCase().includes(q) ||
-              it.order_no?.toLowerCase().includes(q)
+                it.truck_chassis_no?.toLowerCase().includes(q) ||
+                it.order_no?.toLowerCase().includes(q)
             )
         );
 
-    // Group each worker's items by Work Order / Truck
+    // Group each worker's items by Work Order / Truck, netting OUT - RETURN
     return matched.map((w) => {
       const orderGroupsMap = new Map();
       (w.items || []).forEach((it) => {
@@ -85,10 +141,14 @@ export function StockUsageTab({ canRate = true, searchQuery = '', onNotify }) {
             truck_chassis_no: it.truck_chassis_no || '',
             total_quantity: 0,
             items: [],
+            netByItemId: new Map(),
           });
         }
         const og = orderGroupsMap.get(oKey);
-        og.total_quantity += Number(it.quantity) || 0;
+        const sign = it.type === 'RETURN' ? -1 : 1;
+        const qty = Number(it.quantity) || 0;
+        og.total_quantity = Math.max(0, og.total_quantity + sign * qty);
+        og.netByItemId.set(it.item_id, (og.netByItemId.get(it.item_id) || 0) + sign * qty);
         og.items.push(it);
       });
 
@@ -214,9 +274,9 @@ export function StockUsageTab({ canRate = true, searchQuery = '', onNotify }) {
                       }}
                     >
                       <span>Orders: <strong>{w.orders_count}</strong></span>
-                      <span>Total Qty: <strong>{w.total_quantity}</strong></span>
+                      <span>Net Qty: <strong>{w.total_quantity}</strong></span>
                       <span>Avg / Order: <strong>{w.avg_qty_per_order}</strong></span>
-                      <span>Entries: <strong>{w.tx_count}</strong></span>
+                      <span>Pickups: <strong>{w.tx_count}</strong></span>
                     </div>
                   </div>
 
@@ -324,37 +384,83 @@ export function StockUsageTab({ canRate = true, searchQuery = '', onNotify }) {
                               color: '#b91c1c',
                             }}
                           >
-                            Total: {ord.total_quantity} Qty ({ord.items.length} items)
+                            Net Used: {ord.total_quantity} Qty
                           </span>
                         </div>
 
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
-                          {ord.items.map((it) => (
-                            <div
-                              key={it.id}
-                              style={{
-                                display: 'flex',
-                                justifyContent: 'space-between',
-                                alignItems: 'center',
-                                fontSize: '0.81rem',
-                                background: '#ffffff',
-                                padding: '0.4rem 0.6rem',
-                                borderRadius: '7px',
-                                border: '1px solid #f1f5f9',
-                              }}
-                            >
-                              <div>
-                                <strong style={{ color: '#1e293b' }}>{it.item_name}</strong>
-                                <div style={{ fontSize: '0.73rem', color: '#64748b' }}>
-                                  {it.date}
-                                  {it.reference_note && ` • ${it.reference_note}`}
+                          {ord.items.map((it) => {
+                            const isRet = it.type === 'RETURN';
+                            const netForThisItem = Math.max(0, Number((ord.netByItemId.get(it.item_id) || 0).toFixed(2)));
+                            const maxRet = Math.min(Number(it.quantity) || 0, netForThisItem);
+
+                            return (
+                              <div
+                                key={it.id}
+                                style={{
+                                  display: 'flex',
+                                  justifyContent: 'space-between',
+                                  alignItems: 'center',
+                                  gap: '0.5rem',
+                                  fontSize: '0.81rem',
+                                  background: isRet ? '#f0fdf4' : '#ffffff',
+                                  padding: '0.45rem 0.65rem',
+                                  borderRadius: '7px',
+                                  border: `1px solid ${isRet ? '#bbf7d0' : '#f1f5f9'}`,
+                                }}
+                              >
+                                <div>
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap' }}>
+                                    <strong style={{ color: '#1e293b' }}>{it.item_name}</strong>
+                                    {isRet && (
+                                      <span
+                                        style={{
+                                          fontSize: '0.68rem',
+                                          fontWeight: 700,
+                                          padding: '1px 6px',
+                                          borderRadius: '4px',
+                                          background: '#dcfce7',
+                                          color: '#15803d',
+                                        }}
+                                      >
+                                        ↩ Returned
+                                      </span>
+                                    )}
+                                  </div>
+                                  <div style={{ fontSize: '0.73rem', color: '#64748b' }}>
+                                    {it.date}
+                                    {it.reference_note && ` • ${it.reference_note}`}
+                                  </div>
+                                </div>
+
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                  <strong style={{ color: isRet ? '#15803d' : '#dc2626' }}>
+                                    {isRet ? '+' : '-'}{it.quantity} {it.unit}
+                                  </strong>
+
+                                  {!isRet && canRate && maxRet > 0 && (
+                                    <button
+                                      type="button"
+                                      onClick={() => openReturnModal(w, ord, it, maxRet)}
+                                      title="Return unused quantity back to stock"
+                                      style={{
+                                        fontSize: '0.72rem',
+                                        fontWeight: 700,
+                                        padding: '3px 8px',
+                                        borderRadius: '6px',
+                                        border: '1px solid #86efac',
+                                        background: '#f0fdf4',
+                                        color: '#15803d',
+                                        cursor: 'pointer',
+                                      }}
+                                    >
+                                      ↩ Return
+                                    </button>
+                                  )}
                                 </div>
                               </div>
-                              <strong style={{ color: '#dc2626' }}>
-                                -{it.quantity} {it.unit}
-                              </strong>
-                            </div>
-                          ))}
+                            );
+                          })}
                         </div>
                       </div>
                     ))}
@@ -363,6 +469,109 @@ export function StockUsageTab({ canRate = true, searchQuery = '', onNotify }) {
               </div>
             );
           })}
+        </div>
+      )}
+
+      {/* Return Unused Stock Modal */}
+      {returningTx && (
+        <div className="stock-modal-overlay" onClick={() => !isReturning && setReturningTx(null)}>
+          <div
+            className="stock-modal-card modal-sm"
+            onClick={(e) => e.stopPropagation()}
+            role="dialog"
+            aria-modal="true"
+          >
+            <div className="stock-modal-header">
+              <div className="stock-header-title-box">
+                <span
+                  className="stock-header-badge"
+                  style={{ background: '#dcfce7', color: '#166534', borderColor: '#bbf7d0' }}
+                >
+                  ↩ Return to Stock
+                </span>
+                <h2 className="stock-header-title">{returningTx.item.item_name}</h2>
+                <p className="stock-header-subtitle">
+                  👷 {returningTx.worker.worker_name} • Max Returnable: <strong>{returningTx.maxReturnable} {returningTx.item.unit}</strong>
+                </p>
+              </div>
+              <button
+                type="button"
+                className="stock-close-circle-btn"
+                onClick={() => !isReturning && setReturningTx(null)}
+                aria-label="Close modal"
+              >
+                ✕
+              </button>
+            </div>
+
+            <form onSubmit={handleConfirmReturn} className="stock-modal-form-shell">
+              <div className="stock-modal-body">
+                <div className="form-group" style={{ marginBottom: '1rem' }}>
+                  <label className="form-label" style={{ fontWeight: 600 }}>
+                    Return Quantity ({returningTx.item.unit}) *
+                  </label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0.01"
+                    max={returningTx.maxReturnable}
+                    className="form-input"
+                    value={returnQty}
+                    onChange={(e) => setReturnQty(e.target.value)}
+                    disabled={isReturning}
+                    autoFocus
+                    required
+                  />
+                </div>
+
+                <div className="form-group" style={{ marginBottom: '1rem' }}>
+                  <label className="form-label" style={{ fontWeight: 600 }}>
+                    Return Date
+                  </label>
+                  <input
+                    type="date"
+                    className="form-input"
+                    value={returnDate}
+                    onChange={(e) => setReturnDate(e.target.value)}
+                    disabled={isReturning}
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label className="form-label" style={{ fontWeight: 600 }}>
+                    Note (Optional)
+                  </label>
+                  <input
+                    type="text"
+                    className="form-input"
+                    placeholder="e.g. Unused material returned"
+                    value={returnNote}
+                    onChange={(e) => setReturnNote(e.target.value)}
+                    disabled={isReturning}
+                  />
+                </div>
+              </div>
+
+              <div className="stock-modal-footer">
+                <button
+                  type="button"
+                  className="btn btn-secondary"
+                  onClick={() => setReturningTx(null)}
+                  disabled={isReturning}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="btn btn-primary"
+                  disabled={isReturning}
+                  style={{ background: '#16a34a', borderColor: '#16a34a' }}
+                >
+                  {isReturning ? 'Saving...' : '✓ Add Back to Stock'}
+                </button>
+              </div>
+            </form>
+          </div>
         </div>
       )}
     </div>

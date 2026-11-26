@@ -94,7 +94,8 @@ export function StockHistoryModal({ isOpen, onClose, item = null }) {
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.65rem' }}>
               {history.map((tx) => {
-                const isIN = tx.type === 'IN';
+                const isIN = tx.type === 'IN' || tx.type === 'RETURN';
+                const isReturn = tx.type === 'RETURN';
                 return (
                   <div
                     key={tx.id}
@@ -144,7 +145,7 @@ export function StockHistoryModal({ isOpen, onClose, item = null }) {
                               border: `1px solid ${isIN ? '#bbf7d0' : '#fecaca'}`,
                             }}
                           >
-                            {isIN ? 'STOCK IN' : 'STOCK OUT'}
+                            {isReturn ? '↩ RETURNED' : isIN ? 'STOCK IN' : 'STOCK OUT'}
                           </span>
                         </div>
                         <div style={{ fontSize: '0.8rem', color: '#64748b', marginTop: '2px' }}>
