@@ -2009,7 +2009,7 @@ export function QuotationFormModal({
                   <div className="body-calc-badge-icon">🚛</div>
                   <div>
                     <h4 className="body-calc-main-title">
-                      ગાડી કાંટલે / બોડી કેલ્ક્યુલેશન (Body Size & Materials Calculation)
+                      બોડી કેલ્ક્યુલેશન (Body Size & Materials Calculation)
                     </h4>
                     <p className="body-calc-sub-title">
                       પ્લેટફોર્મ, સાઈડ, ધોકા અને થાંભલા ની ચોરસ ફૂટ, વજન અને રકમ ની લાઈવ ગણતરી
@@ -2645,8 +2645,8 @@ export function QuotationFormModal({
                       <strong>
                         {bodyCalc.purchuran?.enabled
                           ? (calculations.bodyCalcDetails.purchuran.selectedName
-                              ? `સામેલ (${calculations.bodyCalcDetails.purchuran.selectedName})`
-                              : 'સામેલ છે')
+                            ? `સામેલ (${calculations.bodyCalcDetails.purchuran.selectedName})`
+                            : 'સામેલ છે')
                           : 'અનચેક (ગણતરીમાં નથી)'}
                       </strong>
                       {isAdmin && bodyCalc.purchuran?.enabled && calculations.bodyCalcDetails.purchuran.weight > 0 && (
@@ -2772,8 +2772,8 @@ export function QuotationFormModal({
                       <strong>
                         {bodyCalc.machado?.enabled
                           ? (calculations.bodyCalcDetails.machado.selectedName
-                              ? `સામેલ (${calculations.bodyCalcDetails.machado.selectedName})`
-                              : 'સામેલ છે')
+                            ? `સામેલ (${calculations.bodyCalcDetails.machado.selectedName})`
+                            : 'સામેલ છે')
                           : 'અનચેક (ગણતરીમાં નથી)'}
                       </strong>
                       {isAdmin && bodyCalc.machado?.enabled && calculations.bodyCalcDetails.machado.weight > 0 && (
