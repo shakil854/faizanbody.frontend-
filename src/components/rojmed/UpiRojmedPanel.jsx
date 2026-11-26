@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { upiRojmedService } from '../../services/upiRojmedService';
+import { downloadPdfFile, sharePdfFile } from '../../utils/pdfGenerator';
 
 const KHATA_TYPES = [
   { key: 'general', label: '📝 General' },
@@ -40,6 +41,7 @@ export function UpiRojmedPanel({
   canCreate = true,
   canEdit = true,
   canDelete = true,
+  canPrint = true,
 }) {
   const todayStr = getTodayStr();
   const [mobileTab, setMobileTab] = useState('both'); // 'both' | 'aavak' | 'javak'
@@ -75,6 +77,7 @@ export function UpiRojmedPanel({
   const [particulars, setParticulars] = useState('');
   const [notes, setNotes] = useState('');
   const [savingEntry, setSavingEntry] = useState(false);
+  const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
 
   const loadAll = useCallback(async (dateVal = selectedDate) => {
     try {
@@ -241,6 +244,83 @@ export function UpiRojmedPanel({
     }
   };
 
+  const handleShareWhatsAppText = () => {
+    const aavakRows = sheet.aavak_entries || [];
+    const javakRows = sheet.javak_entries || [];
+    let text = `*FAIZAN BODY WORKS - UPI રોજમેળ*\n`;
+    text += `📅 Date: *${selectedDate}*\n\n`;
+    text += `💰 *ઓપનિંગ UPI સિલક:* ${formatRupee(sheet.opening_silak)}\n\n`;
+
+    text += `📥 *UPI આવક (Aavak):*\n`;
+    if (aavakRows.length === 0) {
+      text += `• કોઈ આવક નથી\n`;
+    } else {
+      aavakRows.forEach((e, i) => {
+        text += `${i + 1}. ${e.from_label} ➔ ${e.to_label} : *${formatRupee(e.amount)}*\n`;
+      });
+    }
+    text += `*કુલ UPI આવક (સિલક સહિત): ${formatRupee(sheet.total_aavak_with_opening)}*\n\n`;
+
+    text += `📤 *UPI જાવક (Javak):*\n`;
+    if (javakRows.length === 0) {
+      text += `• કોઈ જાવક નથી\n`;
+    } else {
+      javakRows.forEach((e, i) => {
+        text += `${i + 1}. ${e.from_label} ➔ ${e.to_label} : *${formatRupee(e.amount)}*\n`;
+      });
+    }
+    text += `*કુલ UPI જાવક: ${formatRupee(sheet.total_javak)}*\n\n`;
+    text += `✅ *ક્લોઝિંગ UPI સિલક: ${formatRupee(sheet.closing_silak)}*`;
+
+    if (Array.isArray(sheet.account_balances) && sheet.account_balances.length > 0) {
+      text += `\n\n💳 *ખાતા મુજબ પડેલ UPI Balance:*\n`;
+      sheet.account_balances.forEach((b) => {
+        text += `• ${b.label}: ${formatRupee(b.balance)}\n`;
+      });
+    }
+
+    const url = `https://wa.me/?text=${encodeURIComponent(text)}`;
+    window.open(url, '_blank');
+  };
+
+  const handleDownloadPdf = async () => {
+    if (isGeneratingPdf) return;
+    try {
+      setIsGeneratingPdf(true);
+      if (onNotify) onNotify('⏳ Generating UPI Rojmed PDF...', 'info');
+      await new Promise((r) => setTimeout(r, 150));
+      await downloadPdfFile({
+        elementId: 'printableUpiRojmedSheet',
+        fileName: `FaizanBody_UPI_Rojmed_${selectedDate}.pdf`,
+      });
+      if (onNotify) onNotify('✅ UPI Rojmed PDF downloaded!', 'success');
+    } catch (err) {
+      console.error('UPI Rojmed PDF error:', err);
+      if (onNotify) onNotify('⚠️ Failed to generate PDF', 'error');
+    } finally {
+      setIsGeneratingPdf(false);
+    }
+  };
+
+  const handleSharePdf = async () => {
+    if (isGeneratingPdf) return;
+    try {
+      setIsGeneratingPdf(true);
+      if (onNotify) onNotify('⏳ Preparing UPI Rojmed PDF...', 'info');
+      await new Promise((r) => setTimeout(r, 150));
+      await sharePdfFile({
+        elementId: 'printableUpiRojmedSheet',
+        fileName: `FaizanBody_UPI_Rojmed_${selectedDate}.pdf`,
+      });
+      if (onNotify) onNotify('✅ UPI Rojmed PDF ready!', 'success');
+    } catch (err) {
+      console.error('UPI Rojmed PDF share error:', err);
+      if (onNotify) onNotify('⚠️ Failed to share PDF', 'error');
+    } finally {
+      setIsGeneratingPdf(false);
+    }
+  };
+
   const aavakList = sheet.aavak_entries || [];
   const javakList = sheet.javak_entries || [];
 
@@ -349,25 +429,59 @@ export function UpiRojmedPanel({
         </div>
       )}
 
-      {/* Action Buttons Row */}
-      {canCreate && (
-        <div className="rojmed-actions-row">
-          <button
-            type="button"
-            className="btn btn-save-salary"
-            style={{ flex: 1, fontSize: '0.84rem', padding: '0.6rem 0.75rem' }}
-            onClick={() => openEntryModal('aavak')}
-          >
-            + UPI આવક ઉમેરો
-          </button>
-          <button
-            type="button"
-            className="btn btn-save-upad"
-            style={{ flex: 1, fontSize: '0.84rem', padding: '0.6rem 0.75rem' }}
-            onClick={() => openEntryModal('javak')}
-          >
-            − UPI જાવક ઉમેરો
-          </button>
+      {/* Action Buttons Row (Exact Normal Rojmed Bar + WhatsApp & PDF) */}
+      {(canCreate || canPrint) && (
+        <div className="khata-action-bar" style={{ marginBottom: '0.85rem' }}>
+          {canCreate && (
+            <>
+              <button
+                type="button"
+                className="btn btn-add-entry-toggle btn-vahi-action-jama"
+                onClick={() => openEntryModal('aavak')}
+              >
+                <span>＋ UPI આવક (Aavak)</span>
+              </button>
+              <button
+                type="button"
+                className="btn btn-add-entry-toggle btn-vahi-action-udhar"
+                onClick={() => openEntryModal('javak')}
+              >
+                <span>＋ UPI જાવક (Javak)</span>
+              </button>
+            </>
+          )}
+
+          {canPrint && (
+            <>
+              <button
+                type="button"
+                className="btn btn-whatsapp-share"
+                onClick={handleShareWhatsAppText}
+                title="Share UPI Rojmed Summary on WhatsApp"
+              >
+                <span>💬 WhatsApp</span>
+              </button>
+              <button
+                type="button"
+                className="btn btn-whatsapp-share"
+                style={{ background: '#4f46e5', borderColor: '#4338ca' }}
+                onClick={handleSharePdf}
+                disabled={isGeneratingPdf}
+                title="Share UPI Rojmed PDF"
+              >
+                <span>{isGeneratingPdf ? 'Wait...' : '📄 Share PDF'}</span>
+              </button>
+              <button
+                type="button"
+                className="btn btn-download-pdf-icon"
+                onClick={handleDownloadPdf}
+                disabled={isGeneratingPdf}
+                title="Download UPI Rojmed PDF"
+              >
+                <span>⬇️ PDF</span>
+              </button>
+            </>
+          )}
         </div>
       )}
 
@@ -937,6 +1051,123 @@ export function UpiRojmedPanel({
           </div>,
           document.body
         )}
+
+      {/* Off-Screen 720px Printable A4 Sheet for UPI Rojmed PDF */}
+      <div
+        style={{
+          position: 'fixed',
+          top: '0px',
+          left: '-9999px',
+          width: '720px',
+          zIndex: -1,
+          pointerEvents: 'none',
+          visibility: 'visible',
+          opacity: 1,
+          backgroundColor: '#ffffff',
+        }}
+        aria-hidden="true"
+      >
+        <div id="printableUpiRojmedSheet" className="khata-pdf-vahi-paper">
+          <div className="khata-pdf-notebook-header">
+            <div>
+              <div className="pdf-notebook-title">FAIZAN BODY WORKS — 💳 UPI રોજમેળ (UPI ROJMED)</div>
+              <div className="pdf-notebook-meta">
+                Date: <strong>{selectedDate}</strong>
+              </div>
+            </div>
+            <div className="pdf-page-stamp-box">
+              <div style={{ fontSize: '9px' }}>CLOSING UPI સિલક</div>
+              <div style={{ fontSize: '14px' }}>{formatRupee(sheet.closing_silak)}</div>
+            </div>
+          </div>
+
+          <div className="khata-pdf-two-col-grid">
+            <div className="pdf-vahi-col-jama">
+              <div className="pdf-col-hdr">
+                <span>UPI આવક (Aavak)</span>
+                <span>{aavakList.length}</span>
+              </div>
+              <table className="pdf-vahi-table">
+                <thead>
+                  <tr>
+                    <th>#</th>
+                    <th>વિગત (From ➔ To)</th>
+                    <th style={{ textAlign: 'right' }}>રકમ (₹)</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td>0</td>
+                    <td><strong>ઓપનિંગ UPI સિલક</strong></td>
+                    <td style={{ textAlign: 'right' }}><strong>{formatRupee(sheet.opening_silak)}</strong></td>
+                  </tr>
+                  {aavakList.map((r, i) => (
+                    <tr key={`pa-${r.id}`}>
+                      <td>{i + 1}</td>
+                      <td>
+                        <div><strong>{r.from_label}</strong> ➔ {r.to_label}</div>
+                        {r.particulars && <div style={{ fontSize: '9px', color: '#475569' }}>{r.particulars}</div>}
+                      </td>
+                      <td style={{ textAlign: 'right' }}>{formatRupee(r.amount)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+                <tfoot>
+                  <tr>
+                    <td colSpan={2}><strong>કુલ UPI આવક (સિલક સહિત)</strong></td>
+                    <td style={{ textAlign: 'right' }}><strong>{formatRupee(sheet.total_aavak_with_opening)}</strong></td>
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
+
+            <div className="pdf-vahi-col-udhar">
+              <div className="pdf-col-hdr">
+                <span>UPI જાવક (Javak)</span>
+                <span>{javakList.length}</span>
+              </div>
+              <table className="pdf-vahi-table">
+                <thead>
+                  <tr>
+                    <th>#</th>
+                    <th>વિગત (From ➔ To)</th>
+                    <th style={{ textAlign: 'right' }}>રકમ (₹)</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {javakList.length === 0 ? (
+                    <tr>
+                      <td colSpan={3} style={{ textAlign: 'center', color: '#64748b' }}>કોઈ જાવક નથી</td>
+                    </tr>
+                  ) : (
+                    javakList.map((r, i) => (
+                      <tr key={`pj-${r.id}`}>
+                        <td>{i + 1}</td>
+                        <td>
+                          <div>{r.from_label} ➔ <strong>{r.to_label}</strong></div>
+                          {r.particulars && <div style={{ fontSize: '9px', color: '#475569' }}>{r.particulars}</div>}
+                        </td>
+                        <td style={{ textAlign: 'right' }}>{formatRupee(r.amount)}</td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+                <tfoot>
+                  <tr>
+                    <td colSpan={2}><strong>કુલ UPI જાવક</strong></td>
+                    <td style={{ textAlign: 'right' }}><strong>{formatRupee(sheet.total_javak)}</strong></td>
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
+          </div>
+
+          <div style={{ marginTop: '12px', padding: '10px 14px', border: '1.5px solid #0f172a', borderRadius: '8px', display: 'flex', justifyContent: 'space-between', fontWeight: 800 }}>
+            <span>UPI આવક: {formatRupee(sheet.total_aavak_with_opening)} − UPI જાવક: {formatRupee(sheet.total_javak)}</span>
+            <span>ક્લોઝિંગ UPI સિલક = {formatRupee(sheet.closing_silak)}</span>
+          </div>
+        </div>
+      </div>
     </>
   );
 }

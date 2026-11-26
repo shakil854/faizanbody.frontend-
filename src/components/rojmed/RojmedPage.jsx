@@ -760,6 +760,7 @@ export function RojmedPage({ onBackToHome }) {
             canCreate={canCreate}
             canEdit={canEdit}
             canDelete={canDelete}
+            canPrint={canPrint}
           />
         ) : viewMode === 'daily' ? (
           <>
