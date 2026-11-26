@@ -49,6 +49,7 @@ export function App() {
   // Navigation history stack for Android hardware back button
   const navStackRef = useRef([currentPage || 'home']);
   const lastBackPressTimeRef = useRef(0);
+  const isProgrammaticHashRef = useRef(false);
   const [workerCount, setWorkerCount] = useState(0);
   const [alertCount, setAlertCount] = useState(0);
   const [stockCount, setStockCount] = useState(0);
@@ -168,13 +169,15 @@ export function App() {
   // Sync hash with browser history for Android back gesture / back button
   useEffect(() => {
     const handleHashChange = () => {
+      if (isProgrammaticHashRef.current) return;
       const hash = window.location.hash;
       const targetPage = hash === '#workers' ? 'workers'
         : hash === '#orders' ? 'orders'
           : hash === '#quotations' ? ((isAdmin || canAccessModule('quotations')) ? 'quotations' : 'home')
             : hash === '#stock' ? 'stock'
               : (hash === '#truck_accounts' || hash === '#truck-accounts') ? ((isAdmin || canAccessModule('truck_accounts')) ? 'truck_accounts' : 'home')
-                : hash === '#rojmed' ? ((isAdmin || canAccessModule('rojmed')) ? 'rojmed' : 'home')
+                : (hash === '#vyapari' || hash === '#vyapari_accounts' || hash === '#vyapari-accounts') ? ((isAdmin || canAccessModule('vyapari')) ? 'vyapari' : 'home')
+                  : hash === '#rojmed' ? ((isAdmin || canAccessModule('rojmed')) ? 'rojmed' : 'home')
                   : hash === '#users' ? (isAdmin ? 'users' : 'home')
                     : hash === '#backup' ? (isAdmin ? 'backup' : 'home')
                       : 'home';
@@ -280,8 +283,12 @@ export function App() {
     if (page !== currentPage) {
       navStackRef.current.push(page);
     }
+    isProgrammaticHashRef.current = true;
     setCurrentPage(page);
     window.location.hash = page === 'home' ? '#home' : `#${page}`;
+    setTimeout(() => {
+      isProgrammaticHashRef.current = false;
+    }, 80);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
