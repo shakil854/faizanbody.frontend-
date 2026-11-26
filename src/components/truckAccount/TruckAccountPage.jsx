@@ -3,6 +3,7 @@ import { Eye, EyeOff } from 'lucide-react';
 import { truckAccountService } from '../../services/truckAccountService';
 import { TruckAccountCard } from './TruckAccountCard';
 import { TruckAccountFormModal } from './TruckAccountFormModal';
+import { AccountReminderModal, getReminderStatus } from '../common/AccountReminderModal';
 import { Snackbar } from '../workers/Snackbar';
 import { useAuth } from '../../context/AuthContext';
 
@@ -34,6 +35,7 @@ export function TruckAccountPage({ onBackToHome, onNavigate }) {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingAccount, setEditingAccount] = useState(null);
   const [deletingAccount, setDeletingAccount] = useState(null);
+  const [reminderAccount, setReminderAccount] = useState(null);
   const [isDeleting, setIsDeleting] = useState(false);
 
   // Snackbar
@@ -74,12 +76,16 @@ export function TruckAccountPage({ onBackToHome, onNavigate }) {
     const totalJama = list.reduce((sum, a) => sum + (Number(a.total_jama) || 0), 0);
     const totalDue = list.filter((a) => a.balance > 0).reduce((sum, a) => sum + a.balance, 0);
     const dueCount = list.filter((a) => a.balance > 0).length;
+    const reminderCount = list.filter((a) => Boolean(a.reminder_date)).length;
+    const dueReminderAccounts = list.filter((a) => getReminderStatus(a.reminder_date).isDueOrOverdue);
     return {
       totalAccs,
       totalUdhar,
       totalJama,
       totalDue,
       dueCount,
+      reminderCount,
+      dueReminderAccounts,
     };
   }, [accounts]);
 
@@ -103,9 +109,14 @@ export function TruckAccountPage({ onBackToHome, onNavigate }) {
       list = list.filter((a) => (Number(a.balance) || 0) > 0);
     } else if (statusFilter === 'settled') {
       list = list.filter((a) => (Number(a.balance) || 0) <= 0);
+    } else if (statusFilter === 'reminders') {
+      list = list.filter((a) => Boolean(a.reminder_date));
     }
 
     return [...list].sort((a, b) => {
+      if (statusFilter === 'reminders') {
+        return String(a.reminder_date || '').localeCompare(String(b.reminder_date || ''));
+      }
       // Sort by Page No if available, else by id
       if (a.page_no && b.page_no) return a.page_no - b.page_no;
       if (a.page_no && !b.page_no) return -1;
@@ -300,7 +311,38 @@ export function TruckAccountPage({ onBackToHome, onNavigate }) {
           </div>
         </div>
 
-        {/* Filter Chips (All, Pending Due, Settled) */}
+        {/* Due Reminder Alert Banner (Today or Overdue) */}
+        {stats.dueReminderAccounts.length > 0 && (
+          <div
+            onClick={() => setStatusFilter('reminders')}
+            style={{
+              marginBottom: '0.75rem',
+              padding: '0.65rem 0.9rem',
+              borderRadius: '12px',
+              background: '#fef3c7',
+              border: '1.5px solid #f59e0b',
+              color: '#92400e',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: '0.5rem',
+              cursor: 'pointer',
+              fontSize: '0.82rem',
+              fontWeight: 700,
+            }}
+          >
+            <span>
+              🔔 Payment Reminders Due ({stats.dueReminderAccounts.length}):{' '}
+              {stats.dueReminderAccounts.slice(0, 2).map((a) => a.party_name).join(', ')}
+              {stats.dueReminderAccounts.length > 2 ? ` +${stats.dueReminderAccounts.length - 2} more` : ''}
+            </span>
+            <span style={{ fontSize: '0.75rem', textDecoration: 'underline', whiteSpace: 'nowrap' }}>
+              View →
+            </span>
+          </div>
+        )}
+
+        {/* Filter Chips (All, Pending Due, Settled, Reminders) */}
         <div className="khata-period-chips-row" style={{ marginBottom: '0.85rem' }}>
           <button
             type="button"
@@ -324,6 +366,13 @@ export function TruckAccountPage({ onBackToHome, onNavigate }) {
                 onClick={() => setStatusFilter('settled')}
               >
                 🟢 Settled (સરભર)
+              </button>
+              <button
+                type="button"
+                className={`khata-period-chip ${statusFilter === 'reminders' ? 'active' : ''}`}
+                onClick={() => setStatusFilter('reminders')}
+              >
+                🔔 Reminders ({stats.reminderCount})
               </button>
             </>
           )}
@@ -383,6 +432,7 @@ export function TruckAccountPage({ onBackToHome, onNavigate }) {
                     setIsFormOpen(true);
                   }}
                   onDelete={(item) => setDeletingAccount(item)}
+                  onReminder={(item) => setReminderAccount(item)}
                   onAccountChanged={() => fetchAccounts({ force: true })}
                 />
               ))}
@@ -465,6 +515,19 @@ export function TruckAccountPage({ onBackToHome, onNavigate }) {
           </div>
         </div>
       )}
+
+      {/* Reminder Modal */}
+      <AccountReminderModal
+        isOpen={Boolean(reminderAccount)}
+        onClose={() => setReminderAccount(null)}
+        account={reminderAccount}
+        accentColor="#0284c7"
+        onSave={async (id, payload) => {
+          await truckAccountService.setReminder(id, payload);
+          showSnackbar(payload.reminder_date ? '🔔 Reminder saved!' : 'Reminder cleared', 'success');
+          fetchAccounts({ force: true });
+        }}
+      />
 
       {/* Snackbar Toast */}
       <Snackbar

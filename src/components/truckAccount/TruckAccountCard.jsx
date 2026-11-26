@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { TruckAccountModal } from './TruckAccountModal';
+import { getReminderStatus } from '../common/AccountReminderModal';
 
 /**
  * Truck Account Card for the main directory list
@@ -11,6 +12,7 @@ export const TruckAccountCard = React.memo(function TruckAccountCard({
   account,
   onEdit,
   onDelete,
+  onReminder,
   onAccountChanged,
   canEdit = true,
   canDelete = true,
@@ -49,6 +51,7 @@ export const TruckAccountCard = React.memo(function TruckAccountCard({
   };
 
   const canOpenKhata = canManageKhata || canPrint;
+  const reminderInfo = getReminderStatus(account?.reminder_date);
 
   return (
     <>
@@ -111,9 +114,25 @@ export const TruckAccountCard = React.memo(function TruckAccountCard({
             </div>
           </div>
 
-          {/* Action buttons (Edit, Delete) - Governed by Permissions */}
-          {(canEdit || canDelete) && (
+          {/* Action buttons (Reminder, Edit, Delete) - Governed by Permissions */}
+          {(canEdit || canDelete || (onReminder && canManageKhata)) && (
             <div className="card-actions" onClick={(e) => e.stopPropagation()}>
+              {onReminder && (canManageKhata || canEdit) && (
+                <button
+                  type="button"
+                  className="action-btn"
+                  onClick={() => onReminder(account)}
+                  title={reminderInfo.isSet ? `Edit Reminder (${account.reminder_date})` : 'Set Payment Reminder'}
+                  style={{
+                    background: reminderInfo.isSet ? reminderInfo.bg : '#f8fafc',
+                    color: reminderInfo.isSet ? reminderInfo.color : '#475569',
+                    border: `1px solid ${reminderInfo.isSet ? reminderInfo.border : '#cbd5e1'}`,
+                    fontSize: '0.85rem',
+                  }}
+                >
+                  🔔
+                </button>
+              )}
               {canEdit && (
                 <button
                   type="button"
@@ -180,6 +199,38 @@ export const TruckAccountCard = React.memo(function TruckAccountCard({
                   WhatsApp
                 </button>
               </div>
+            )}
+          </div>
+        )}
+
+        {/* Reminder Badge (If Set) */}
+        {reminderInfo.isSet && (
+          <div
+            onClick={(e) => {
+              e.stopPropagation();
+              if (onReminder && (canManageKhata || canEdit)) onReminder(account);
+            }}
+            style={{
+              marginTop: '0.5rem',
+              padding: '0.35rem 0.65rem',
+              borderRadius: '8px',
+              background: reminderInfo.bg,
+              color: reminderInfo.color,
+              border: `1px solid ${reminderInfo.border}`,
+              fontSize: '0.76rem',
+              fontWeight: 700,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: '0.5rem',
+              cursor: onReminder && (canManageKhata || canEdit) ? 'pointer' : 'default',
+            }}
+          >
+            <span>{reminderInfo.label}</span>
+            {account.reminder_note && (
+              <span style={{ fontWeight: 600, opacity: 0.9, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                • {account.reminder_note}
+              </span>
             )}
           </div>
         )}

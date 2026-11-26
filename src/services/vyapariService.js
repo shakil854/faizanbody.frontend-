@@ -535,6 +535,40 @@ export const vyapariService = {
     cachedAccounts = localAccounts;
     notifyListeners();
   },
+
+  async setReminder(accountId, { reminder_date = null, reminder_note = '' } = {}) {
+    const cleanDate = reminder_date ? String(reminder_date).split('T')[0].trim() : '';
+    const cleanNote = reminder_note ? String(reminder_note).trim() : '';
+
+    try {
+      const response = await axiosInstance.put(ENDPOINTS.VYAPARI_ACCOUNT_REMINDER(accountId), {
+        reminder_date: cleanDate || null,
+        reminder_note: cleanNote,
+      });
+      const updated = response.data?.data;
+      const localAccounts = getLocalAccounts().map((a) =>
+        a.id === accountId
+          ? {
+              ...a,
+              reminder_date: updated ? updated.reminder_date || '' : cleanDate,
+              reminder_note: updated ? updated.reminder_note || '' : cleanNote,
+            }
+          : a
+      );
+      saveLocalAccounts(localAccounts);
+      cachedAccounts = localAccounts;
+      notifyListeners();
+      return response.data;
+    } catch (err) {
+      const localAccounts = getLocalAccounts().map((a) =>
+        a.id === accountId ? { ...a, reminder_date: cleanDate, reminder_note: cleanNote } : a
+      );
+      saveLocalAccounts(localAccounts);
+      cachedAccounts = localAccounts;
+      notifyListeners();
+      throw err;
+    }
+  },
 };
 
 export default vyapariService;

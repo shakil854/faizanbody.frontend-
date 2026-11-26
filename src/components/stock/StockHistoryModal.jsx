@@ -17,6 +17,7 @@ export function StockHistoryModal({ isOpen, onClose, item = null }) {
       ? stockService.getItemTransactions(item.id)
       : stockService.getAllTransactions(50);
 
+
     fetchPromise
       .then((res) => {
         if (res && res.data) {

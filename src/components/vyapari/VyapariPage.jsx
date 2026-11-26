@@ -3,6 +3,7 @@ import { Eye, EyeOff } from 'lucide-react';
 import { vyapariService } from '../../services/vyapariService';
 import { VyapariCard } from './VyapariCard';
 import { VyapariFormModal } from './VyapariFormModal';
+import { AccountReminderModal, getReminderStatus } from '../common/AccountReminderModal';
 import { Snackbar } from '../workers/Snackbar';
 import { useAuth } from '../../context/AuthContext';
 
@@ -32,6 +33,7 @@ export function VyapariPage({ onBackToHome, onNavigate }) {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingAccount, setEditingAccount] = useState(null);
   const [deletingAccount, setDeletingAccount] = useState(null);
+  const [reminderAccount, setReminderAccount] = useState(null);
   const [isDeleting, setIsDeleting] = useState(false);
 
   const [snackbar, setSnackbar] = useState({ message: '', type: 'info' });
@@ -70,12 +72,16 @@ export function VyapariPage({ onBackToHome, onNavigate }) {
     const totalJama = list.reduce((sum, a) => sum + (Number(a.total_jama) || 0), 0);
     const totalDue = list.filter((a) => a.balance > 0).reduce((sum, a) => sum + a.balance, 0);
     const dueCount = list.filter((a) => a.balance > 0).length;
+    const reminderCount = list.filter((a) => Boolean(a.reminder_date)).length;
+    const dueReminderAccounts = list.filter((a) => getReminderStatus(a.reminder_date).isDueOrOverdue);
     return {
       totalAccs,
       totalUdhar,
       totalJama,
       totalDue,
       dueCount,
+      reminderCount,
+      dueReminderAccounts,
     };
   }, [accounts]);
 
@@ -98,9 +104,14 @@ export function VyapariPage({ onBackToHome, onNavigate }) {
       list = list.filter((a) => (Number(a.balance) || 0) > 0);
     } else if (statusFilter === 'settled') {
       list = list.filter((a) => (Number(a.balance) || 0) <= 0);
+    } else if (statusFilter === 'reminders') {
+      list = list.filter((a) => Boolean(a.reminder_date));
     }
 
     return [...list].sort((a, b) => {
+      if (statusFilter === 'reminders') {
+        return String(a.reminder_date || '').localeCompare(String(b.reminder_date || ''));
+      }
       if (a.page_no && b.page_no) return a.page_no - b.page_no;
       if (a.page_no && !b.page_no) return -1;
       if (!a.page_no && b.page_no) return 1;
@@ -300,6 +311,37 @@ export function VyapariPage({ onBackToHome, onNavigate }) {
           </div>
         </div>
 
+        {/* Due Reminder Alert Banner (Today or Overdue) */}
+        {stats.dueReminderAccounts.length > 0 && (
+          <div
+            onClick={() => setStatusFilter('reminders')}
+            style={{
+              marginBottom: '0.75rem',
+              padding: '0.65rem 0.9rem',
+              borderRadius: '12px',
+              background: '#fef3c7',
+              border: '1.5px solid #f59e0b',
+              color: '#92400e',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: '0.5rem',
+              cursor: 'pointer',
+              fontSize: '0.82rem',
+              fontWeight: 700,
+            }}
+          >
+            <span>
+              🔔 Payment Reminders Due ({stats.dueReminderAccounts.length}):{' '}
+              {stats.dueReminderAccounts.slice(0, 2).map((a) => a.party_name).join(', ')}
+              {stats.dueReminderAccounts.length > 2 ? ` +${stats.dueReminderAccounts.length - 2} more` : ''}
+            </span>
+            <span style={{ fontSize: '0.75rem', textDecoration: 'underline', whiteSpace: 'nowrap' }}>
+              View →
+            </span>
+          </div>
+        )}
+
         {/* Filter Chips */}
         <div className="khata-period-chips-row" style={{ marginBottom: '0.85rem' }}>
           <button
@@ -324,6 +366,13 @@ export function VyapariPage({ onBackToHome, onNavigate }) {
                 onClick={() => setStatusFilter('settled')}
               >
                 🟢 Settled (સરભર)
+              </button>
+              <button
+                type="button"
+                className={`khata-period-chip ${statusFilter === 'reminders' ? 'active' : ''}`}
+                onClick={() => setStatusFilter('reminders')}
+              >
+                🔔 Reminders ({stats.reminderCount})
               </button>
             </>
           )}
@@ -379,6 +428,7 @@ export function VyapariPage({ onBackToHome, onNavigate }) {
                     setIsFormOpen(true);
                   }}
                   onDelete={(item) => setDeletingAccount(item)}
+                  onReminder={(item) => setReminderAccount(item)}
                   onAccountChanged={() => fetchAccounts({ force: true })}
                   canEdit={canEdit}
                   canDelete={canDelete}
@@ -436,6 +486,18 @@ export function VyapariPage({ onBackToHome, onNavigate }) {
           </div>
         </div>
       )}
+
+      <AccountReminderModal
+        isOpen={Boolean(reminderAccount)}
+        onClose={() => setReminderAccount(null)}
+        account={reminderAccount}
+        accentColor="#0d9488"
+        onSave={async (id, payload) => {
+          await vyapariService.setReminder(id, payload);
+          showSnackbar(payload.reminder_date ? '🔔 Reminder saved!' : 'Reminder cleared', 'success');
+          fetchAccounts({ force: true });
+        }}
+      />
 
       <Snackbar
         message={snackbar.message}
