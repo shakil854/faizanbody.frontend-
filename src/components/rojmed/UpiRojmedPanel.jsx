@@ -69,6 +69,7 @@ export function UpiRojmedPanel({
   const [fromId, setFromId] = useState('');
   const [toType, setToType] = useState('general');
   const [toId, setToId] = useState('');
+  const [toMode, setToMode] = useState('khata'); // 'khata' (ચૂકવ્યા - add to Khata) | 'balance' (ખાલી UPI Balance રાખવા આપ્યા - no Khata)
   const [amount, setAmount] = useState('');
   const [entryDate, setEntryDate] = useState(selectedDate);
   const [particulars, setParticulars] = useState('');
@@ -151,11 +152,13 @@ export function UpiRojmedPanel({
       setFromId('');
       setToType('general');
       setToId('');
+      setToMode('balance');
     } else {
       setFromType('general');
       setFromId('');
       setToType('vyapari_account');
       setToId('');
+      setToMode('khata');
     }
     setAmount('');
     setEntryDate(selectedDate);
@@ -171,6 +174,7 @@ export function UpiRojmedPanel({
     setFromId(row.from_id ? String(row.from_id) : '');
     setToType(row.to_type || 'general');
     setToId(row.to_id ? String(row.to_id) : '');
+    setToMode(row.to_mode || 'khata');
     setAmount(String(row.amount || ''));
     setEntryDate(row.date || selectedDate);
     setParticulars(row.particulars || '');
@@ -202,6 +206,7 @@ export function UpiRojmedPanel({
       from_id: fromType === 'general' ? null : Number(fromId),
       to_type: toType,
       to_id: toType === 'general' ? null : Number(toId),
+      to_mode: toType === 'general' ? 'balance' : toMode,
       particulars: particulars.trim(),
       notes: notes.trim(),
     };
@@ -590,12 +595,13 @@ export function UpiRojmedPanel({
                                     fontWeight: 800,
                                     padding: '1px 6px',
                                     borderRadius: '8px',
-                                    background: '#fef3c7',
-                                    color: '#92400e',
-                                    border: '1px solid #fde68a',
+                                    background: row.to_mode === 'balance' ? '#eff6ff' : '#fef3c7',
+                                    color: row.to_mode === 'balance' ? '#1d4ed8' : '#92400e',
+                                    border: `1px solid ${row.to_mode === 'balance' ? '#bfdbfe' : '#fde68a'}`,
                                   }}
                                 >
                                   From: {row.from_label} ➔ To: {row.to_label}
+                                  {row.to_mode === 'balance' ? ' (UPI Balance)' : ''}
                                 </span>
                                 {(row.particulars || row.notes) && (
                                   <span style={{ fontSize: '0.68rem', color: '#64748b' }}>
@@ -829,19 +835,58 @@ export function UpiRojmedPanel({
                     ))}
                   </div>
                   {toType !== 'general' && (
-                    <select
-                      className="form-input"
-                      value={toId}
-                      onChange={(e) => setToId(e.target.value)}
-                      required
-                    >
-                      <option value="">-- Select Account --</option>
-                      {getOptionListForType(toType).map((opt) => (
-                        <option key={opt.id} value={opt.id}>
-                          {opt.label}
-                        </option>
-                      ))}
-                    </select>
+                    <>
+                      <select
+                        className="form-input"
+                        value={toId}
+                        onChange={(e) => setToId(e.target.value)}
+                        required
+                      >
+                        <option value="">-- Select Account --</option>
+                        {getOptionListForType(toType).map((opt) => (
+                          <option key={opt.id} value={opt.id}>
+                            {opt.label}
+                          </option>
+                        ))}
+                      </select>
+
+                      <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap', marginTop: '0.5rem' }}>
+                        <button
+                          type="button"
+                          onClick={() => setToMode('khata')}
+                          style={{
+                            flex: 1,
+                            fontSize: '0.72rem',
+                            fontWeight: 700,
+                            padding: '6px 8px',
+                            borderRadius: '8px',
+                            border: `1.5px solid ${toMode === 'khata' ? '#d97706' : '#cbd5e1'}`,
+                            background: toMode === 'khata' ? '#fef3c7' : '#ffffff',
+                            color: toMode === 'khata' ? '#92400e' : '#475569',
+                            cursor: 'pointer',
+                          }}
+                        >
+                          📒 ખાતામાં પાડો (Add to Khata)
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setToMode('balance')}
+                          style={{
+                            flex: 1,
+                            fontSize: '0.72rem',
+                            fontWeight: 700,
+                            padding: '6px 8px',
+                            borderRadius: '8px',
+                            border: `1.5px solid ${toMode === 'balance' ? '#2563eb' : '#cbd5e1'}`,
+                            background: toMode === 'balance' ? '#dbeafe' : '#ffffff',
+                            color: toMode === 'balance' ? '#1e40af' : '#475569',
+                            cursor: 'pointer',
+                          }}
+                        >
+                          💳 ખાલી UPI Balance રાખ્યા (No Khata)
+                        </button>
+                      </div>
+                    </>
                   )}
                 </div>
 
