@@ -279,7 +279,7 @@ export function StockQuickAdjustModal({
                       })
                       .map((o) => (
                         <option key={o.id} value={o.id}>
-                          {o.truck_chassis_no || 'No Truck #'} • {o.owner_name || 'Customer'} ({o.order_no})
+                          {o.shade_no ? `${o.shade_no} • ` : ''}{o.owner_name || 'Customer'}
                         </option>
                       ))}
                   </select>
