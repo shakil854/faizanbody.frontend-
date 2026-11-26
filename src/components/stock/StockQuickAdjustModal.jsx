@@ -271,12 +271,16 @@ export function StockQuickAdjustModal({
                   >
                     <option value="">-- Select Work Order / Truck --</option>
                     {[...orders]
-                      .sort((a, b) => {
-                        const aActive = a.status !== 'Delivered' ? 0 : 1;
-                        const bActive = b.status !== 'Delivered' ? 0 : 1;
-                        if (aActive !== bActive) return aActive - bActive;
-                        return (b.id || 0) - (a.id || 0);
+                      .filter((o) => {
+                        const s = (o.status || '').toLowerCase().trim();
+                        return (
+                          s === 'incoming' ||
+                          s === 'in progress' ||
+                          s === 'in process' ||
+                          s === 'inprocess'
+                        );
                       })
+                      .sort((a, b) => (b.id || 0) - (a.id || 0))
                       .map((o) => (
                         <option key={o.id} value={o.id}>
                           {o.shade_no ? `${o.shade_no} • ` : ''}{o.owner_name || 'Customer'}
