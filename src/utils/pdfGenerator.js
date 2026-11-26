@@ -176,12 +176,13 @@ export async function generatePdfBlob(element, customFileName = 'Order_Slip.pdf'
     }
   };
 
-  // Check if target has explicit .pdf-page elements (e.g. Worker Khata Statements or multi-page reports)
+  // Check if target has explicit .pdf-page elements (multi-page reports; single #pdf-single-page uses crisp renderPageCanvas below)
   const allPdfPages = element.querySelectorAll('.pdf-page');
   const activeJsPdf = jsPDF || JsPdf;
   const activeH2C = html2canvas || window.html2canvas;
+  const isSingleExplicitPage = allPdfPages.length === 1 && element.querySelector('#pdf-single-page');
 
-  if (allPdfPages.length > 0 && activeJsPdf && activeH2C) {
+  if (allPdfPages.length > 0 && !isSingleExplicitPage && activeJsPdf && activeH2C) {
     const pdf = new activeJsPdf('p', 'mm', 'a4');
     const pdfWidth = pdf.internal.pageSize.getWidth();
     const pdfHeight = pdf.internal.pageSize.getHeight();
@@ -211,6 +212,10 @@ export async function generatePdfBlob(element, customFileName = 'Order_Slip.pdf'
       Math.min(4, Math.max(2, hardwareThreads >= 4 ? hardwareThreads - 1 : 2))
     );
 
+    const headStylesHtml = Array.from(document.querySelectorAll('link[rel="stylesheet"], style'))
+      .map((node) => node.outerHTML)
+      .join('\n');
+
     // Create pool of persistent, isolated sandbox iframes
     const iframes = [];
     for (let i = 0; i < poolSize; i++) {
@@ -221,7 +226,7 @@ export async function generatePdfBlob(element, customFileName = 'Order_Slip.pdf'
       document.body.appendChild(ifr);
       const sDoc = ifr.contentDocument || ifr.contentWindow.document;
       sDoc.open();
-      sDoc.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><style>
+      sDoc.write(`<!DOCTYPE html><html><head><meta charset="utf-8">${headStylesHtml}<style>
         * { box-sizing: border-box; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
         body {
           margin: 0;
