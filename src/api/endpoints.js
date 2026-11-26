@@ -53,6 +53,7 @@ export const ENDPOINTS = {
   ROJMED_OPENING: '/rojmed/opening',
   ROJMED_ENTRIES: '/rojmed/entries',
   ROJMED_ENTRY_DETAIL: (id) => `/rojmed/entries/${id}`,
+  ROJMED_CLEAR_REMINDER: (id) => `/rojmed/entries/${id}/clear-reminder`,
   USERS: '/users',
   USER_DETAIL: (id) => `/users/${id}`,
   USER_TOGGLE_STATUS: (id) => `/users/${id}/toggle-status`,

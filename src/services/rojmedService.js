@@ -116,6 +116,11 @@ export const rojmedService = {
     return data;
   },
 
+  async clearReminder(id) {
+    const response = await axiosInstance.put(ENDPOINTS.ROJMED_CLEAR_REMINDER(id));
+    return response.data?.data;
+  },
+
   async deleteEntry(id, existingEntry = null) {
     const response = await axiosInstance.delete(ENDPOINTS.ROJMED_ENTRY_DETAIL(id));
     const data = response.data?.data;

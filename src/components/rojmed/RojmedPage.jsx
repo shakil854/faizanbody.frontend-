@@ -150,6 +150,8 @@ export function RojmedPage({ onBackToHome }) {
   const [stockSearch, setStockSearch] = useState('');
   const [stockItems, setStockItems] = useState(() => stockService.getCachedItems());
   const [notes, setNotes] = useState('');
+  const [reminderDate, setReminderDate] = useState('');
+  const [reminderNote, setReminderNote] = useState('');
   const [isAutoParticulars, setIsAutoParticulars] = useState(true);
   const [formError, setFormError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -335,6 +337,8 @@ export function RojmedPage({ onBackToHome }) {
     setStockQty('');
     setStockSearch('');
     setNotes('');
+    setReminderDate('');
+    setReminderNote('');
     setIsAutoParticulars(true);
     setFormError('');
     setShowEntryModal(true);
@@ -357,6 +361,8 @@ export function RojmedPage({ onBackToHome }) {
     setStockQty('');
     setStockSearch('');
     setNotes(entry.notes || '');
+    setReminderDate(entry.reminder_date || '');
+    setReminderNote(entry.reminder_note || '');
     setIsAutoParticulars(false);
     setFormError('');
     setShowEntryModal(true);
@@ -415,6 +421,12 @@ export function RojmedPage({ onBackToHome }) {
             : 'udhar'
           : null,
       notes: notes.trim(),
+      ...(sourceType === 'general'
+        ? {
+            reminder_date: reminderDate || null,
+            reminder_note: reminderNote.trim() || '',
+          }
+        : {}),
       ...(sourceType === 'vyapari_account' ? { bill_no: billNo.trim() || null } : {}),
       ...(sourceType === 'vyapari_account' && !editingEntry && stockItemId && Number(stockQty) > 0
         ? { stock_item_id: Number(stockItemId), stock_qty: Number(stockQty) }
@@ -1204,6 +1216,102 @@ export function RojmedPage({ onBackToHome }) {
                       <span className="rojmed-closing-value">{formatRupee(sheet.closing_silak)}</span>
                     </div>
                   </div>
+
+                  {/* General Entry Reminders Due (Shown right below Rojmed closing) */}
+                  {Array.isArray(sheet.due_reminders) && sheet.due_reminders.length > 0 && (
+                    <div
+                      style={{
+                        marginTop: '0.85rem',
+                        background: '#fffbeb',
+                        border: '1.5px solid #f59e0b',
+                        borderRadius: '14px',
+                        padding: '0.85rem 1rem',
+                      }}
+                    >
+                      <div
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          marginBottom: '0.55rem',
+                        }}
+                      >
+                        <strong style={{ fontSize: '0.9rem', color: '#92400e' }}>
+                          🔔 Reminders (સામાન્ય એન્ટ્રી - {sheet.due_reminders.length})
+                        </strong>
+                        <span style={{ fontSize: '0.72rem', color: '#b45309', fontWeight: 600 }}>
+                          તારીખ આવી ગઈ / બાકી
+                        </span>
+                      </div>
+
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.45rem' }}>
+                        {sheet.due_reminders.map((rem) => {
+                          const isAavak = rem.entry_type === 'aavak';
+                          return (
+                            <div
+                              key={rem.id}
+                              style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'space-between',
+                                gap: '0.6rem',
+                                background: '#ffffff',
+                                border: '1px solid #fde68a',
+                                borderRadius: '10px',
+                                padding: '0.55rem 0.75rem',
+                              }}
+                            >
+                              <div style={{ minWidth: 0 }}>
+                                <div style={{ fontSize: '0.84rem', fontWeight: 700, color: '#0f172a' }}>
+                                  {rem.particulars}
+                                </div>
+                                <div style={{ fontSize: '0.74rem', color: '#64748b', marginTop: '2px' }}>
+                                  <span
+                                    style={{
+                                      fontWeight: 700,
+                                      color: isAavak ? '#15803d' : '#b91c1c',
+                                      marginRight: '6px',
+                                    }}
+                                  >
+                                    {isAavak ? 'આવક' : 'જાવક'} {formatRupee(rem.amount)}
+                                  </span>
+                                  • Reminder: <strong>{rem.reminder_date}</strong>
+                                  {rem.reminder_note && ` • ${rem.reminder_note}`}
+                                  {rem.date && ` (Entry: ${rem.date})`}
+                                </div>
+                              </div>
+
+                              <button
+                                type="button"
+                                onClick={async () => {
+                                  try {
+                                    await rojmedService.clearReminder(rem.id);
+                                    showSnackbar('✓ Reminder cleared!', 'success');
+                                    fetchDailySheet(selectedDate);
+                                  } catch (err) {
+                                    showSnackbar(err?.message || 'Error clearing reminder', 'error');
+                                  }
+                                }}
+                                style={{
+                                  flexShrink: 0,
+                                  fontSize: '0.74rem',
+                                  fontWeight: 700,
+                                  padding: '4px 10px',
+                                  borderRadius: '8px',
+                                  border: '1px solid #86efac',
+                                  background: '#f0fdf4',
+                                  color: '#15803d',
+                                  cursor: 'pointer',
+                                }}
+                              >
+                                ✓ Done
+                              </button>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
                 </>
               )}
             </div>
@@ -1726,6 +1834,47 @@ export function RojmedPage({ onBackToHome }) {
                   onChange={(e) => setNotes(e.target.value)}
                 />
               </div>
+
+              {sourceType === 'general' && (
+                <div
+                  style={{
+                    background: '#fffbeb',
+                    border: '1px solid #fde68a',
+                    borderRadius: '10px',
+                    padding: '0.75rem',
+                    marginBottom: '0.85rem',
+                    display: 'grid',
+                    gridTemplateColumns: '1fr',
+                    gap: '0.6rem',
+                  }}
+                >
+                  <div className="form-group" style={{ marginBottom: 0 }}>
+                    <label className="form-label" style={{ fontWeight: 700, fontSize: '0.8rem', color: '#92400e' }}>
+                      🔔 Reminder Date (Optional - આ તારીખે રોજમેળ નીચે યાદ અપાવશે)
+                    </label>
+                    <input
+                      type="date"
+                      className="form-input"
+                      value={reminderDate}
+                      onChange={(e) => setReminderDate(e.target.value)}
+                    />
+                  </div>
+                  {reminderDate && (
+                    <div className="form-group" style={{ marginBottom: 0 }}>
+                      <label className="form-label" style={{ fontWeight: 700, fontSize: '0.8rem', color: '#92400e' }}>
+                        Reminder Note (Optional)
+                      </label>
+                      <input
+                        type="text"
+                        className="form-input"
+                        placeholder="દા.ત. પૈસા પાછા લેવાના / બિલ ચેક કરવું"
+                        value={reminderNote}
+                        onChange={(e) => setReminderNote(e.target.value)}
+                      />
+                    </div>
+                  )}
+                </div>
+              )}
 
               <div className="entry-form-actions">
                 <button
