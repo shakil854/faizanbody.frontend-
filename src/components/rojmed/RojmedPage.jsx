@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { rojmedService, getTodayLocalDate } from '../../services/rojmedService';
 import { stockService } from '../../services/stockService';
+import { UpiRojmedPanel } from './UpiRojmedPanel';
 import { downloadPdfFile, sharePdfFile } from '../../utils/pdfGenerator';
 import { Snackbar } from '../workers/Snackbar';
 import { useAuth } from '../../context/AuthContext';
@@ -737,11 +738,27 @@ export function RojmedPage({ onBackToHome }) {
           >
             📅 Summary
           </button>
+          <button
+            type="button"
+            className={`rojmed-view-btn ${viewMode === 'upi' ? 'active' : ''}`}
+            onClick={() => setViewMode('upi')}
+          >
+            💳 UPI રોજમેળ
+          </button>
         </div>
       </div>
 
       <main className="android-body" style={{ padding: '0.85rem 1rem 5.5rem' }}>
-        {viewMode === 'daily' ? (
+        {viewMode === 'upi' ? (
+          <UpiRojmedPanel
+            selectedDate={selectedDate}
+            onDateChange={handleDateChange}
+            onNotify={showToast}
+            canCreate={canCreate}
+            canEdit={canEdit}
+            canDelete={canDelete}
+          />
+        ) : viewMode === 'daily' ? (
           <>
             {/* Date Navigation Strip */}
             <div className="rojmed-date-nav-card">
@@ -1286,10 +1303,10 @@ export function RojmedPage({ onBackToHome }) {
                                 onClick={async () => {
                                   try {
                                     await rojmedService.clearReminder(rem.id);
-                                    showSnackbar('✓ Reminder cleared!', 'success');
+                                    showToast('✓ Reminder cleared!', 'success');
                                     fetchDailySheet(selectedDate);
                                   } catch (err) {
-                                    showSnackbar(err?.message || 'Error clearing reminder', 'error');
+                                    showToast(err?.message || 'Error clearing reminder', 'error');
                                   }
                                 }}
                                 style={{
