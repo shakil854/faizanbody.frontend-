@@ -456,14 +456,6 @@ export function UpiRojmedPanel({
               <button
                 type="button"
                 className="btn btn-whatsapp-share"
-                onClick={handleShareWhatsAppText}
-                title="Share UPI Rojmed Summary on WhatsApp"
-              >
-                <span>💬 WhatsApp</span>
-              </button>
-              <button
-                type="button"
-                className="btn btn-whatsapp-share"
                 style={{ background: '#4f46e5', borderColor: '#4338ca' }}
                 onClick={handleSharePdf}
                 disabled={isGeneratingPdf}
