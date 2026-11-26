@@ -188,8 +188,8 @@ export function RojmedPage({ onBackToHome }) {
   const handleViewModeChange = useCallback((nextMode) => {
     if (nextMode === 'monthly') {
       setSummaryLoading(true);
-    } else {
-      setLoading(true);
+    } else if (nextMode === 'daily') {
+      setLoading(false);
     }
     setViewMode(nextMode);
   }, []);
@@ -727,7 +727,10 @@ export function RojmedPage({ onBackToHome }) {
           <button
             type="button"
             className={`rojmed-view-btn ${viewMode === 'daily' ? 'active' : ''}`}
-            onClick={() => handleViewModeChange('daily')}
+            onClick={() => {
+              handleViewModeChange('daily');
+              fetchDailySheet(selectedDate);
+            }}
           >
             📖 Daily Page
           </button>
