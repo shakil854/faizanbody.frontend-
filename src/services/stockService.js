@@ -257,6 +257,11 @@ export const stockService = {
     return response.data;
   },
 
+  async getIssueOptions() {
+    const response = await axiosInstance.get(ENDPOINTS.STOCK_ISSUE_OPTIONS);
+    return response.data;
+  },
+
   async saveWorkerRating(workerId, rating, note = '') {
     const response = await axiosInstance.post(ENDPOINTS.STOCK_WORKER_RATING, {
       worker_id: workerId,

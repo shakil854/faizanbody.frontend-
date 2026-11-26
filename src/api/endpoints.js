@@ -31,6 +31,7 @@ export const ENDPOINTS = {
   STOCK_TRANSACTIONS: '/stock/transactions',
   STOCK_SUMMARY: '/stock/summary',
   STOCK_USAGE: '/stock/usage',
+  STOCK_ISSUE_OPTIONS: '/stock/issue-options',
   STOCK_WORKER_RATING: '/stock/worker-rating',
   TRUCK_ACCOUNTS: '/truck-accounts',
   TRUCK_ACCOUNT_DETAIL: (id) => `/truck-accounts/${id}`,

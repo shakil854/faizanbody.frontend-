@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { workerService } from '../../services/workerService';
-import { orderService } from '../../services/orderService';
+import { stockService } from '../../services/stockService';
 
 /**
  * Quick Stock In / Stock Out Modal
@@ -34,15 +33,10 @@ export function StockQuickAdjustModal({
       setSelectedOrderId('');
       setError('');
 
-      workerService.getWorkers().then((res) => {
-        if (res?.success && Array.isArray(res.data)) {
-          setWorkers(res.data);
-        }
-      }).catch(() => {});
-
-      orderService.getOrders().then((res) => {
-        if (res?.success && Array.isArray(res.data)) {
-          setOrders(res.data);
+      stockService.getIssueOptions().then((res) => {
+        if (res?.success && res.data) {
+          setWorkers(Array.isArray(res.data.workers) ? res.data.workers : []);
+          setOrders(Array.isArray(res.data.orders) ? res.data.orders : []);
         }
       }).catch(() => {});
     }
