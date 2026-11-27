@@ -24,6 +24,11 @@ export const upiRojmedService = {
     return response.data?.data;
   },
 
+  async getPeriodSummary(params = {}) {
+    const response = await axiosInstance.get(ENDPOINTS.UPI_ROJMED_SUMMARY, { params });
+    return response.data?.data;
+  },
+
   async getOptions() {
     const response = await axiosInstance.get(ENDPOINTS.UPI_ROJMED_OPTIONS);
     return response.data?.data || {

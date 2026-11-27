@@ -55,6 +55,7 @@ export const ENDPOINTS = {
   ROJMED_ENTRY_DETAIL: (id) => `/rojmed/entries/${id}`,
   ROJMED_CLEAR_REMINDER: (id) => `/rojmed/entries/${id}/clear-reminder`,
   UPI_ROJMED_DAILY: '/upi-rojmed/daily',
+  UPI_ROJMED_SUMMARY: '/upi-rojmed/summary',
   UPI_ROJMED_OPTIONS: '/upi-rojmed/options',
   UPI_ROJMED_ACCOUNTS: '/upi-rojmed/accounts',
   UPI_ROJMED_ACCOUNT_DETAIL: (id) => `/upi-rojmed/accounts/${id}`,

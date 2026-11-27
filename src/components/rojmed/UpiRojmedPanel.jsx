@@ -44,6 +44,10 @@ export function UpiRojmedPanel({
   canPrint = true,
 }) {
   const todayStr = getTodayStr();
+  const [upiView, setUpiView] = useState('daily'); // 'daily' | 'summary'
+  const [selectedMonth, setSelectedMonth] = useState(() => todayStr.slice(0, 7));
+  const [summaryData, setSummaryData] = useState(null);
+  const [summaryLoading, setSummaryLoading] = useState(false);
   const [mobileTab, setMobileTab] = useState('both'); // 'both' | 'aavak' | 'javak'
   const [sheet, setSheet] = useState({
     date: selectedDate,
@@ -124,6 +128,28 @@ export function UpiRojmedPanel({
   useEffect(() => {
     loadAll(selectedDate);
   }, [selectedDate, loadAll]);
+
+  useEffect(() => {
+    if (upiView !== 'summary') return;
+    let cancelled = false;
+    setSummaryLoading(true);
+    upiRojmedService
+      .getPeriodSummary({ month: selectedMonth })
+      .then((res) => {
+        if (!cancelled) setSummaryData(res);
+      })
+      .catch((err) => {
+        if (!cancelled && onNotify) {
+          onNotify(err?.response?.data?.message || 'Failed to load UPI summary', 'error');
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setSummaryLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [upiView, selectedMonth, onNotify]);
 
   const getOptionListForType = (type) => {
     if (type === 'truck_account') {
@@ -326,6 +352,124 @@ export function UpiRojmedPanel({
 
   return (
     <>
+      {/* UPI Daily Page vs UPI Monthly Summary Toggle */}
+      <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '0.75rem' }}>
+        <div className="rojmed-view-switch" style={{ background: '#e2e8f0', padding: '3px', borderRadius: '10px' }}>
+          <button
+            type="button"
+            className={`rojmed-view-btn ${upiView === 'daily' ? 'active' : ''}`}
+            onClick={() => setUpiView('daily')}
+          >
+            📖 UPI Daily Page
+          </button>
+          <button
+            type="button"
+            className={`rojmed-view-btn ${upiView === 'summary' ? 'active' : ''}`}
+            onClick={() => setUpiView('summary')}
+          >
+            📅 UPI Summary
+          </button>
+        </div>
+      </div>
+
+      {upiView === 'summary' ? (
+        <div className="rojmed-summary-shell">
+          <div className="rojmed-date-nav-card" style={{ marginBottom: '0.85rem' }}>
+            <span style={{ fontWeight: 800, color: '#0f172a', fontSize: '0.9rem' }}>
+              📅 મહિનો પસંદ કરો (Select Month):
+            </span>
+            <input
+              type="month"
+              className="rojmed-date-picker"
+              value={selectedMonth}
+              onChange={(e) => setSelectedMonth(e.target.value)}
+            />
+          </div>
+
+          {summaryLoading ? (
+            <div style={{ padding: '2rem', textAlign: 'center', color: '#64748b', fontWeight: 700 }}>
+              ⏳ UPI મહિનાનો હિસાબ લોડ થઈ રહ્યો છે...
+            </div>
+          ) : summaryData ? (
+            <>
+              <div className="rojmed-kpi-grid" style={{ marginBottom: '0.85rem' }}>
+                <div className="rojmed-kpi-card kpi-opening">
+                  <span className="rojmed-kpi-lbl">મહિનાની UPI ઓપનિંગ સિલક</span>
+                  <span className="rojmed-kpi-val">{formatRupee(summaryData.opening_silak)}</span>
+                </div>
+                <div className="rojmed-kpi-card kpi-aavak">
+                  <span className="rojmed-kpi-lbl">કુલ UPI આવક</span>
+                  <span className="rojmed-kpi-val">+ {formatRupee(summaryData.total_aavak)}</span>
+                </div>
+                <div className="rojmed-kpi-card kpi-javak">
+                  <span className="rojmed-kpi-lbl">કુલ UPI જાવક</span>
+                  <span className="rojmed-kpi-val">- {formatRupee(summaryData.total_javak)}</span>
+                </div>
+                <div className="rojmed-kpi-card kpi-closing">
+                  <span className="rojmed-kpi-lbl">મહિનાની આખર UPI સિલક</span>
+                  <span className="rojmed-kpi-val">{formatRupee(summaryData.closing_silak)}</span>
+                </div>
+              </div>
+
+              <div className="khata-vahi-sheet-container">
+                <div className="khata-vahi-header-strip">
+                  <span className="vahi-worker-title">💳 દૈનિક UPI રોજમેળ લિસ્ટ ({summaryData.days?.length || 0} days)</span>
+                </div>
+                <div className="vahi-table-wrap" style={{ maxHeight: '540px' }}>
+                  <table className="vahi-table">
+                    <thead>
+                      <tr>
+                        <th>તારીખ (Date)</th>
+                        <th style={{ textAlign: 'right' }}>ઓપનિંગ સિલક</th>
+                        <th style={{ textAlign: 'right' }}>આવક</th>
+                        <th style={{ textAlign: 'right' }}>જાવક</th>
+                        <th style={{ textAlign: 'right' }}>ક્લોઝિંગ સિલક</th>
+                        <th style={{ textAlign: 'center' }}>ખોલો</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {!summaryData.days || summaryData.days.length === 0 ? (
+                        <tr>
+                          <td colSpan={6} className="vahi-empty-column-box">
+                            આ મહિનામાં કોઈ UPI રોજમેળ એન્ટ્રી નથી
+                          </td>
+                        </tr>
+                      ) : (
+                        summaryData.days.map((d) => (
+                          <tr
+                            key={d.date}
+                            style={{ cursor: 'pointer' }}
+                            onClick={() => {
+                              onDateChange(d.date);
+                              setUpiView('daily');
+                            }}
+                          >
+                            <td style={{ fontWeight: 700, color: '#0f172a' }}>{d.date}</td>
+                            <td style={{ textAlign: 'right', fontWeight: 600 }}>{formatRupee(d.opening_silak)}</td>
+                            <td style={{ textAlign: 'right' }} className="vahi-amt-jama">{formatRupee(d.total_aavak)}</td>
+                            <td style={{ textAlign: 'right' }} className="vahi-amt-udhar">{formatRupee(d.total_javak)}</td>
+                            <td style={{ textAlign: 'right', fontWeight: 900, color: '#0f172a' }}>{formatRupee(d.closing_silak)}</td>
+                            <td style={{ textAlign: 'center' }}>
+                              <button
+                                type="button"
+                                className="btn-vahi-add-entry"
+                                style={{ background: '#2563eb', color: '#fff' }}
+                              >
+                                View →
+                              </button>
+                            </td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </>
+          ) : null}
+        </div>
+      ) : (
+        <>
       {/* Date Navigation Strip (Exact Normal Rojmed Style) */}
       <div className="rojmed-date-nav-card">
         <button
@@ -781,6 +925,8 @@ export function UpiRojmedPanel({
           </>
         )}
       </div>
+        </>
+      )}
 
       {/* Add / Edit UPI Entry Modal (Exact Normal Rojmed Bottom Sheet) */}
       {showEntryModal &&
