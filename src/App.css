@@ -21540,6 +21540,11 @@
     min-width: 620px !important;
   }
 
+  .quotation-ledger-table.ledger-table-compact {
+    min-width: 100% !important;
+    width: 100% !important;
+  }
+
   .quotation-ledger-table thead th {
     padding: 0.45rem 0.5rem !important;
     font-size: 0.72rem !important;
