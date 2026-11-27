@@ -135,6 +135,33 @@ export function OrdersPage({ onBackToHome }) {
     }
   };
 
+  // Update 3 Worker / Dates boxes
+  const handleUpdateWorkerDates = async (section, itemKey, boxes, targetOrderId = null) => {
+    const orderId = targetOrderId || editingOrder?.id || viewingOrder?.id;
+    if (!orderId) return;
+    try {
+      const res = await orderService.updateWorkerDates(orderId, {
+        section,
+        itemKey,
+        boxes,
+      });
+      if (res && res.data) {
+        const updated = res.data;
+        if (viewingOrder?.id === orderId) {
+          setViewingOrder(updated);
+        }
+        if (editingOrder?.id === orderId) {
+          setEditingOrder(updated);
+        }
+        setOrders((prev) => prev.map((o) => (o.id === orderId ? updated : o)));
+      }
+      showSnackbar('✓ Worker / Dates updated', 'info');
+    } catch (err) {
+      console.error('Error updating worker & dates:', err);
+      showSnackbar(err?.response?.data?.message || 'Failed to update Worker & Dates', 'error');
+    }
+  };
+
   // Delete Order
   const handleDeleteConfirm = async (id) => {
     try {
@@ -435,6 +462,7 @@ export function OrdersPage({ onBackToHome }) {
         mode={formMode}
         onSave={handleSaveOrder}
         onToggleTask={handleToggleTask}
+        onUpdateWorkerDates={handleUpdateWorkerDates}
         onViewJobSheet={(ord) => setViewingOrder(ord)}
       />
 

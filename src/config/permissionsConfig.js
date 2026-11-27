@@ -31,6 +31,11 @@ export const APP_MODULES = [
         description: 'Mark body building and cabin fabrication tasks as done / pending',
       },
       {
+        key: 'orders:worker_dates',
+        label: 'Worker & Dates (3 Boxes)',
+        description: 'Assign worker name, start date & end date in all order sections',
+      },
+      {
         key: 'orders:photos',
         label: 'Upload / Manage Photos',
         description: 'Upload live progress vehicle photos & remove uploaded images',

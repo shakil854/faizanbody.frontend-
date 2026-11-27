@@ -13,6 +13,7 @@ export function OrderFormModal({
   initialData,
   mode = 'view',
   onToggleTask,
+  onUpdateWorkerDates,
   onViewJobSheet,
 }) {
   const { hasPermission } = useAuth();
@@ -20,6 +21,7 @@ export function OrderFormModal({
   const canCreate = hasPermission('orders:create');
   const canPrint = hasPermission('orders:print');
   const canTasks = hasPermission('orders:tasks');
+  const canWorkerDates = hasPermission('orders:worker_dates') || canEdit;
   const canSignatures = hasPermission('orders:signatures');
 
   const [formData, setFormData] = useState(DEFAULT_ORDER_DATA);
@@ -65,7 +67,7 @@ export function OrderFormModal({
         className="box-rect-input box-worker-select"
         value={boxes[0] || ""}
         onChange={(e) => onBoxChange(0, e.target.value)}
-        disabled={isViewMode}
+        disabled={isViewMode && !canWorkerDates}
         title="Worker Name"
       >
         <option value="">Worker</option>
@@ -85,7 +87,7 @@ export function OrderFormModal({
         className="box-rect-input box-date-input"
         value={boxes[1] || ""}
         onChange={(e) => onBoxChange(1, e.target.value)}
-        disabled={isViewMode}
+        disabled={isViewMode && !canWorkerDates}
       />
       <input
         id={`${idPrefix}-2`}
@@ -96,7 +98,7 @@ export function OrderFormModal({
         className="box-rect-input box-date-input"
         value={boxes[2] || ""}
         onChange={(e) => onBoxChange(2, e.target.value)}
-        disabled={isViewMode}
+        disabled={isViewMode && !canWorkerDates}
       />
     </div>
   );
@@ -431,14 +433,22 @@ export function OrderFormModal({
   };
 
   const handleSectionBoxChange = (sectionKey, boxIndex, value) => {
-    if (isViewMode) return;
+    if (isViewMode && !canWorkerDates) return;
+    const currentBoxes = Array.isArray(formData?.[sectionKey]?.boxes)
+      ? [...formData[sectionKey].boxes]
+      : ['', '', ''];
+    currentBoxes[boxIndex] = value;
+
     setFormData((prev) => {
       const copy = { ...prev };
       if (!copy[sectionKey]) copy[sectionKey] = { boxes: ['', '', ''], items: {} };
-      if (!Array.isArray(copy[sectionKey].boxes)) copy[sectionKey].boxes = ['', '', ''];
-      copy[sectionKey].boxes[boxIndex] = value;
+      copy[sectionKey].boxes = currentBoxes;
       return copy;
     });
+
+    if (isViewMode && canWorkerDates && formData.id && onUpdateWorkerDates) {
+      onUpdateWorkerDates(sectionKey, null, currentBoxes, formData.id);
+    }
   };
 
   const handleSectionItemChange = (sectionKey, itemKey, field, value) => {
@@ -469,19 +479,25 @@ export function OrderFormModal({
   };
 
   const handleFinishingBoxChange = (itemKey, boxIndex, value) => {
-    if (isViewMode) return;
+    if (isViewMode && !canWorkerDates) return;
+    const currentBoxes = Array.isArray(formData?.finishing_work?.[itemKey]?.boxes)
+      ? [...formData.finishing_work[itemKey].boxes]
+      : ['', '', ''];
+    currentBoxes[boxIndex] = value;
+
     setFormData((prev) => {
       const copy = { ...prev };
       if (!copy.finishing_work) copy.finishing_work = {};
       if (!copy.finishing_work[itemKey]) {
         copy.finishing_work[itemKey] = { value: '', boxes: ['', '', ''], done: false };
       }
-      if (!Array.isArray(copy.finishing_work[itemKey].boxes)) {
-        copy.finishing_work[itemKey].boxes = ['', '', ''];
-      }
-      copy.finishing_work[itemKey].boxes[boxIndex] = value;
+      copy.finishing_work[itemKey].boxes = currentBoxes;
       return copy;
     });
+
+    if (isViewMode && canWorkerDates && formData.id && onUpdateWorkerDates) {
+      onUpdateWorkerDates('finishing_work', itemKey, currentBoxes, formData.id);
+    }
   };
 
   // Dedicated checkbox toggle handler (Interactive in BOTH View Mode & Edit Mode)

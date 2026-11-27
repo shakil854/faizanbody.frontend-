@@ -143,6 +143,45 @@ export const orderService = {
     return response.data;
   },
 
+  async updateWorkerDates(id, { section, itemKey = null, boxes }) {
+    const normalizedBoxes = [
+      String(boxes?.[0] || ''),
+      String(boxes?.[1] || ''),
+      String(boxes?.[2] || ''),
+    ];
+
+    if (cachedOrders) {
+      cachedOrders = cachedOrders.map((order) => {
+        if (order.id !== Number(id)) return order;
+        const copy = JSON.parse(JSON.stringify(order));
+        if (section === 'finishing_work') {
+          if (!copy.finishing_work) copy.finishing_work = {};
+          if (!copy.finishing_work[itemKey]) copy.finishing_work[itemKey] = { value: '', boxes: ['', '', ''], done: false };
+          copy.finishing_work[itemKey].boxes = normalizedBoxes;
+        } else {
+          if (!copy[section]) copy[section] = { boxes: ['', '', ''], items: {} };
+          copy[section].boxes = normalizedBoxes;
+        }
+        return copy;
+      });
+      notifyListeners();
+    }
+
+    const response = await axiosInstance.patch(`${ENDPOINTS.ORDERS}/${id}/worker-dates`, {
+      section,
+      itemKey,
+      boxes: normalizedBoxes,
+    });
+    const updated = response.data?.data;
+
+    if (updated && cachedOrders) {
+      cachedOrders = cachedOrders.map((o) => (o.id === Number(id) ? updated : o));
+      notifyListeners();
+    }
+
+    return response.data;
+  },
+
   async deleteOrder(id) {
     const response = await axiosInstance.delete(`${ENDPOINTS.ORDERS}/${id}`);
     const numId = Number(id);
