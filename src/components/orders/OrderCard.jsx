@@ -4,6 +4,7 @@ import orderService, { getPhotoFullUrl } from '../../services/orderService';
 import { capturePhotoFromCamera, pickPhotosFromGallery } from '../../utils/nativeCamera';
 import { sharePhoto } from '../../utils/photoShare';
 import { useAuth } from '../../context/AuthContext';
+import { DeleteActionButton } from '../common/DeleteActionButton';
 
 export const OrderCard = React.memo(function OrderCard({
   order,
@@ -252,8 +253,7 @@ export const OrderCard = React.memo(function OrderCard({
         </div>
 
         {/* Action Buttons: Jobsheet, Edit & Delete */}
-        {(canPrint || canEdit || canDelete) && (
-          <div className="card-actions" onClick={(e) => e.stopPropagation()}>
+        <div className="card-actions" onClick={(e) => e.stopPropagation()}>
             {canPrint && (
               <button
                 type="button"
@@ -287,24 +287,31 @@ export const OrderCard = React.memo(function OrderCard({
                 </svg>
               </button>
             )}
-            {canDelete && (
-              <button
-                type="button"
-                className="action-btn delete-btn"
-                onClick={() => onDelete(order)}
-                title="Delete Order"
-                aria-label={`Delete ${order.owner_name || order.truck_chassis_no || 'order'}`}
-              >
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                  <polyline points="3 6 5 6 21 6" />
-                  <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
-                  <line x1="10" y1="11" x2="10" y2="17" />
-                  <line x1="14" y1="11" x2="14" y2="17" />
-                </svg>
-              </button>
-            )}
+            <DeleteActionButton
+              permission="orders:delete"
+              module="work_order"
+              entityId={order.id}
+              entityLabel={`Order #${order.order_no || order.id} - ${order.owner_name || order.truck_chassis_no || ''}`}
+              entitySnapshot={{
+                order_no: order.order_no,
+                owner_name: order.owner_name,
+                truck_chassis_no: order.truck_chassis_no,
+                status: order.status,
+              }}
+              onDirectDelete={() => onDelete(order)}
+              className="action-btn delete-btn"
+              title="Delete Order"
+              requestTitle="Request Admin to Delete Order"
+              requestChildren="📩"
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="3 6 5 6 21 6" />
+                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                <line x1="10" y1="11" x2="10" y2="17" />
+                <line x1="14" y1="11" x2="14" y2="17" />
+              </svg>
+            </DeleteActionButton>
           </div>
-        )}
       </div>
 
       {/* Truck / Chassis Badge Row */}

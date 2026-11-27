@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { upiRojmedService } from '../../services/upiRojmedService';
 import { downloadPdfFile, sharePdfFile } from '../../utils/pdfGenerator';
+import { DeleteActionButton } from '../common/DeleteActionButton';
 
 const KHATA_TYPES = [
   { key: 'general', label: '📝 General' },
@@ -694,7 +695,7 @@ export function UpiRojmedPanel({
                         <th style={{ width: '28px', textAlign: 'center' }}>#</th>
                         <th>વિગત (PARTICULARS)</th>
                         <th style={{ width: '96px', textAlign: 'right' }}>રૂપિયા ₹</th>
-                        {(canEdit || canDelete) && <th style={{ width: '54px', textAlign: 'center' }}>ક્રિયા</th>}
+                        <th style={{ width: '64px', textAlign: 'center' }}>ક્રિયા</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -711,12 +712,12 @@ export function UpiRojmedPanel({
                         <td style={{ textAlign: 'right' }} className="vahi-bf-amount">
                           {formatRupee(sheet.opening_silak)}
                         </td>
-                        {(canEdit || canDelete) && <td></td>}
+                        <td></td>
                       </tr>
 
                       {aavakList.length === 0 ? (
                         <tr>
-                          <td colSpan={canEdit || canDelete ? 4 : 3} className="vahi-empty-column-box">
+                          <td colSpan={4} className="vahi-empty-column-box">
                             આજે કોઈ UPI આવક નથી
                           </td>
                         </tr>
@@ -754,7 +755,6 @@ export function UpiRojmedPanel({
                             <td style={{ textAlign: 'right' }} className="vahi-amt-jama">
                               {formatRupee(row.amount)}
                             </td>
-                            {(canEdit || canDelete) && (
                               <td style={{ textAlign: 'center' }}>
                                 {canEdit && (
                                   <button
@@ -766,18 +766,21 @@ export function UpiRojmedPanel({
                                     ✏️
                                   </button>
                                 )}
-                                {canDelete && (
-                                  <button
-                                    type="button"
-                                    style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '2px 4px', fontSize: '0.85rem' }}
-                                    onClick={() => handleDeleteEntry(row)}
-                                    title="Delete Entry"
-                                  >
-                                    🗑️
-                                  </button>
-                                )}
+                                <DeleteActionButton
+                                  permission="rojmed:delete"
+                                  module="upi_entry"
+                                  entityId={row.id}
+                                  entityLabel={`UPI Aavak: ${row.particulars} (${formatRupee(row.amount)})`}
+                                  entitySnapshot={{ date: row.date, entry_type: row.entry_type, particulars: row.particulars, amount: row.amount }}
+                                  onDirectDelete={() => handleDeleteEntry(row)}
+                                  style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '2px 4px', fontSize: '0.85rem' }}
+                                  title="Delete Entry"
+                                  requestTitle="Request Admin to Delete UPI Entry"
+                                  requestChildren="📩"
+                                >
+                                  🗑️
+                                </DeleteActionButton>
                               </td>
-                            )}
                           </tr>
                         ))
                       )}
@@ -818,13 +821,13 @@ export function UpiRojmedPanel({
                         <th style={{ width: '28px', textAlign: 'center' }}>#</th>
                         <th>વિગત (PARTICULARS)</th>
                         <th style={{ width: '96px', textAlign: 'right' }}>રૂપિયા ₹</th>
-                        {(canEdit || canDelete) && <th style={{ width: '54px', textAlign: 'center' }}>ક્રિયા</th>}
+                        <th style={{ width: '64px', textAlign: 'center' }}>ક્રિયા</th>
                       </tr>
                     </thead>
                     <tbody>
                       {javakList.length === 0 ? (
                         <tr>
-                          <td colSpan={canEdit || canDelete ? 4 : 3} className="vahi-empty-column-box">
+                          <td colSpan={4} className="vahi-empty-column-box">
                             આજે કોઈ UPI જાવક નથી
                           </td>
                         </tr>
@@ -863,7 +866,6 @@ export function UpiRojmedPanel({
                             <td style={{ textAlign: 'right' }} className="vahi-amt-udhar">
                               {formatRupee(row.amount)}
                             </td>
-                            {(canEdit || canDelete) && (
                               <td style={{ textAlign: 'center' }}>
                                 {canEdit && (
                                   <button
@@ -875,18 +877,21 @@ export function UpiRojmedPanel({
                                     ✏️
                                   </button>
                                 )}
-                                {canDelete && (
-                                  <button
-                                    type="button"
-                                    style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '2px 4px', fontSize: '0.85rem' }}
-                                    onClick={() => handleDeleteEntry(row)}
-                                    title="Delete Entry"
-                                  >
-                                    🗑️
-                                  </button>
-                                )}
+                                <DeleteActionButton
+                                  permission="rojmed:delete"
+                                  module="upi_entry"
+                                  entityId={row.id}
+                                  entityLabel={`UPI Aavak: ${row.particulars} (${formatRupee(row.amount)})`}
+                                  entitySnapshot={{ date: row.date, entry_type: row.entry_type, particulars: row.particulars, amount: row.amount }}
+                                  onDirectDelete={() => handleDeleteEntry(row)}
+                                  style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '2px 4px', fontSize: '0.85rem' }}
+                                  title="Delete Entry"
+                                  requestTitle="Request Admin to Delete UPI Entry"
+                                  requestChildren="📩"
+                                >
+                                  🗑️
+                                </DeleteActionButton>
                               </td>
-                            )}
                           </tr>
                         ))
                       )}

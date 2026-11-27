@@ -64,6 +64,11 @@ export const ENDPOINTS = {
   USERS: '/users',
   USER_DETAIL: (id) => `/users/${id}`,
   USER_TOGGLE_STATUS: (id) => `/users/${id}/toggle-status`,
+  DELETE_REQUESTS: '/delete-requests',
+  DELETE_REQUEST_PENDING_COUNT: '/delete-requests/pending-count',
+  DELETE_REQUEST_PENDING_KEYS: '/delete-requests/pending-keys',
+  DELETE_REQUEST_APPROVE: (id) => `/delete-requests/${id}/approve`,
+  DELETE_REQUEST_REJECT: (id) => `/delete-requests/${id}/reject`,
   AUTH: {
     LOGIN: '/auth/login',
     VERIFY_LOGIN_OTP: '/auth/verify-login-otp',

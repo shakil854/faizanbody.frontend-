@@ -14,6 +14,8 @@ import { VyapariPage } from './components/vyapari/VyapariPage';
 import { RojmedPage } from './components/rojmed/RojmedPage';
 import { WorkerFormModal } from './components/workers/WorkerFormModal';
 import { BackupPage } from './components/backup/BackupPage';
+import { DeleteRequestsPage } from './components/deleteRequests/DeleteRequestsPage';
+import { DeleteRequestProvider } from './context/DeleteRequestContext';
 import { Snackbar } from './components/workers/Snackbar';
 import { BottomNav } from './components/common/BottomNav';
 import { workerService } from './services/workerService';
@@ -39,6 +41,7 @@ export function App() {
     if (hash === '#rojmed') return 'rojmed';
     if (hash === '#users') return 'users';
     if (hash === '#backup') return 'backup';
+    if (hash === '#delete_requests' || hash === '#delete-requests') return 'delete_requests';
     return 'home';
   });
 
@@ -180,7 +183,8 @@ export function App() {
                   : hash === '#rojmed' ? ((isAdmin || canAccessModule('rojmed')) ? 'rojmed' : 'home')
                   : hash === '#users' ? (isAdmin ? 'users' : 'home')
                     : hash === '#backup' ? (isAdmin ? 'backup' : 'home')
-                      : 'home';
+                      : (hash === '#delete_requests' || hash === '#delete-requests') ? 'delete_requests'
+                        : 'home';
 
       setCurrentPage((prev) => {
         if (prev !== targetPage) {
@@ -343,6 +347,7 @@ export function App() {
 
   // 3. Authenticated: Render Main App Shell
   return (
+    <DeleteRequestProvider onNotify={(msg, type) => setSnackbar({ message: msg, type })}>
     <div className="app-root">
       {/* 1. Global Persistent Sticky Header */}
       <AppHeader
@@ -420,6 +425,13 @@ export function App() {
           />
         )}
 
+        {currentPage === 'delete_requests' && (
+          <DeleteRequestsPage
+            onBackToHome={() => navigateTo('home')}
+            onNotify={(msg, type) => setSnackbar({ message: msg, type })}
+          />
+        )}
+
         {/* Global Bottom Navigation Bar */}
         <BottomNav
           activeTab={currentPage}
@@ -459,6 +471,7 @@ export function App() {
         onClose={() => setSnackbar({ message: '', type: 'info' })}
       />
     </div>
+    </DeleteRequestProvider>
   );
 }
 

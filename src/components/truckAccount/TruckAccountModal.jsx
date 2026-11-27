@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { truckAccountService } from '../../services/truckAccountService';
 import { sharePdfFile, downloadPdfFile } from '../../utils/pdfGenerator';
+import { DeleteActionButton } from '../common/DeleteActionButton';
 
 /**
  * Authentic Five Star 2-Column Truck Account Ledger Sheet (ગાડી વાળા નું ખાતાવહી)
@@ -1079,14 +1080,21 @@ export function TruckAccountModal({
                                 >
                                   ✏️
                                 </button>
-                                <button
-                                  type="button"
+                                <DeleteActionButton
+                                  permission="truck_accounts:khata"
+                                  module="truck_account_entry"
+                                  entityId={row.id}
+                                  entityMeta={{ accountId }}
+                                  entityLabel={`Truck Khata (${account?.party_name || ''}): ${row.type} ₹${row.amount}`}
+                                  entitySnapshot={{ party_name: account?.party_name, type: row.type, amount: row.amount, date: row.date, particulars: row.particulars }}
+                                  onDirectDelete={() => setDeletingEntry(row)}
                                   style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '2px 4px', fontSize: '0.85rem' }}
-                                  onClick={() => setDeletingEntry(row)}
                                   title="Delete Entry"
+                                  requestTitle="Request Admin to Delete Truck Entry"
+                                  requestChildren="📩"
                                 >
                                   🗑️
-                                </button>
+                                </DeleteActionButton>
                               </td>
                             )}
                           </tr>
@@ -1168,14 +1176,21 @@ export function TruckAccountModal({
                                 >
                                   ✏️
                                 </button>
-                                <button
-                                  type="button"
+                                <DeleteActionButton
+                                  permission="truck_accounts:khata"
+                                  module="truck_account_entry"
+                                  entityId={row.id}
+                                  entityMeta={{ accountId }}
+                                  entityLabel={`Truck Khata (${account?.party_name || ''}): ${row.type} ₹${row.amount}`}
+                                  entitySnapshot={{ party_name: account?.party_name, type: row.type, amount: row.amount, date: row.date, particulars: row.particulars }}
+                                  onDirectDelete={() => setDeletingEntry(row)}
                                   style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '2px 4px', fontSize: '0.85rem' }}
-                                  onClick={() => setDeletingEntry(row)}
                                   title="Delete Entry"
+                                  requestTitle="Request Admin to Delete Truck Entry"
+                                  requestChildren="📩"
                                 >
                                   🗑️
-                                </button>
+                                </DeleteActionButton>
                               </td>
                             )}
                           </tr>

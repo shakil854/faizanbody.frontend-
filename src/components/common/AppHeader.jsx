@@ -1,9 +1,11 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { TruckLogo } from './TruckLogo';
 import { useAuth } from '../../context/AuthContext';
+import { useDeleteRequest } from '../../context/DeleteRequestContext';
 
 export function AppHeader({ onOpenChangePassword, onNotify, onNavigate, onOpenBackup }) {
   const { user, role, isAdmin, canAccessModule, logout } = useAuth();
+  const { pendingCount } = useDeleteRequest();
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef(null);
 
@@ -53,7 +55,31 @@ export function AppHeader({ onOpenChangePassword, onNotify, onNavigate, onOpenBa
           </div>
 
           {/* Right side user profile menu */}
-          <div className="top-bar-right" ref={menuRef}>
+          <div className="top-bar-right" ref={menuRef} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            {user && isAdmin && pendingCount > 0 && (
+              <button
+                type="button"
+                onClick={() => onNavigate && onNavigate('delete_requests')}
+                title="Pending Delete Approval Requests"
+                style={{
+                  position: 'relative',
+                  background: '#fef3c7',
+                  color: '#b45309',
+                  border: '1px solid #fcd34d',
+                  borderRadius: '20px',
+                  padding: '0.3rem 0.65rem',
+                  fontSize: '0.75rem',
+                  fontWeight: 800,
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.3rem',
+                }}
+              >
+                <span>🔔</span>
+                <span>{pendingCount}</span>
+              </button>
+            )}
             {/* Role Badge & Profile Button */}
             {user && (
               <div className="user-profile-menu-container">
@@ -178,6 +204,39 @@ export function AppHeader({ onOpenChangePassword, onNotify, onNavigate, onOpenBa
                           <span>Database Backup & Restore (બેકઅપ)</span>
                         </button>
                       )}
+
+                      <button
+                        type="button"
+                        className="dropdown-menu-item"
+                        onClick={() => {
+                          setMenuOpen(false);
+                          if (onNavigate) onNavigate('delete_requests');
+                        }}
+                      >
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <polyline points="3 6 5 6 21 6" />
+                          <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
+                          <path d="M10 11v6" />
+                          <path d="M14 11v6" />
+                        </svg>
+                        <span style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flex: 1 }}>
+                          <span>{isAdmin ? 'Delete Requests (મંજૂરી)' : 'My Delete Requests'}</span>
+                          {pendingCount > 0 && (
+                            <span
+                              style={{
+                                backgroundColor: '#f59e0b',
+                                color: '#ffffff',
+                                fontSize: '0.68rem',
+                                fontWeight: 800,
+                                padding: '0.05rem 0.45rem',
+                                borderRadius: '10px',
+                              }}
+                            >
+                              {pendingCount}
+                            </span>
+                          )}
+                        </span>
+                      </button>
 
                       <button
                         type="button"

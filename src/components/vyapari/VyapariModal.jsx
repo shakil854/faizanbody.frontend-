@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { vyapariService } from '../../services/vyapariService';
 import { stockService } from '../../services/stockService';
 import { sharePdfFile, downloadPdfFile } from '../../utils/pdfGenerator';
+import { DeleteActionButton } from '../common/DeleteActionButton';
 
 /**
  * Authentic Five Star 2-Column Vyapari Account Ledger Sheet (ગાડી વાળા નું ખાતાવહી)
@@ -1226,14 +1227,21 @@ export function VyapariModal({
                                 >
                                   ✏️
                                 </button>
-                                <button
-                                  type="button"
+                                <DeleteActionButton
+                                  permission="vyapari:khata"
+                                  module="vyapari_entry"
+                                  entityId={row.id}
+                                  entityMeta={{ accountId }}
+                                  entityLabel={`Vyapari Khata (${account?.party_name || ''}): ${row.type} ₹${row.amount}`}
+                                  entitySnapshot={{ party_name: account?.party_name, type: row.type, amount: row.amount, date: row.date, particulars: row.particulars }}
+                                  onDirectDelete={() => setDeletingEntry(row)}
                                   style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '2px 4px', fontSize: '0.85rem' }}
-                                  onClick={() => setDeletingEntry(row)}
                                   title="Delete Entry"
+                                  requestTitle="Request Admin to Delete Vyapari Entry"
+                                  requestChildren="📩"
                                 >
                                   🗑️
-                                </button>
+                                </DeleteActionButton>
                               </td>
                             )}
                           </tr>
@@ -1331,14 +1339,21 @@ export function VyapariModal({
                                 >
                                   ✏️
                                 </button>
-                                <button
-                                  type="button"
+                                <DeleteActionButton
+                                  permission="vyapari:khata"
+                                  module="vyapari_entry"
+                                  entityId={row.id}
+                                  entityMeta={{ accountId }}
+                                  entityLabel={`Vyapari Khata (${account?.party_name || ''}): ${row.type} ₹${row.amount}`}
+                                  entitySnapshot={{ party_name: account?.party_name, type: row.type, amount: row.amount, date: row.date, particulars: row.particulars }}
+                                  onDirectDelete={() => setDeletingEntry(row)}
                                   style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '2px 4px', fontSize: '0.85rem' }}
-                                  onClick={() => setDeletingEntry(row)}
                                   title="Delete Entry"
+                                  requestTitle="Request Admin to Delete Vyapari Entry"
+                                  requestChildren="📩"
                                 >
                                   🗑️
-                                </button>
+                                </DeleteActionButton>
                               </td>
                             )}
                           </tr>

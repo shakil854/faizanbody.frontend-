@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { workerService } from '../../services/workerService';
 import { sharePdfFile, downloadPdfFile } from '../../utils/pdfGenerator';
+import { DeleteActionButton } from '../common/DeleteActionButton';
 import {
   getPeriodDateRange,
   getAvailableKhataMonths,
@@ -972,17 +973,24 @@ export function WorkerKhataModal({
                                           <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
                                         </svg>
                                       </button>
-                                      <button
-                                        type="button"
+                                      <DeleteActionButton
+                                        permission="workers:khata"
+                                        module="worker_transaction"
+                                        entityId={tx.id}
+                                        entityMeta={{ workerId: worker?.id }}
+                                        entityLabel={`Worker Khata (${worker?.name || ''}): ${tx.type} ₹${tx.amount}`}
+                                        entitySnapshot={{ worker_name: worker?.name, type: tx.type, amount: tx.amount, date: tx.date }}
+                                        onDirectDelete={() => setDeletingTx(tx)}
                                         className="tx-action-btn tx-delete-btn"
-                                        onClick={() => setDeletingTx(tx)}
                                         title="Delete Entry"
+                                        requestTitle="Request Admin to Delete Worker Entry"
+                                        requestChildren="📩"
                                       >
                                         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
                                           <polyline points="3 6 5 6 21 6" />
                                           <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
                                         </svg>
-                                      </button>
+                                      </DeleteActionButton>
                                     </div>
                                   </td>
                                 )}
@@ -1105,17 +1113,24 @@ export function WorkerKhataModal({
                                           <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
                                         </svg>
                                       </button>
-                                      <button
-                                        type="button"
+                                      <DeleteActionButton
+                                        permission="workers:khata"
+                                        module="worker_transaction"
+                                        entityId={tx.id}
+                                        entityMeta={{ workerId: worker?.id }}
+                                        entityLabel={`Worker Khata (${worker?.name || ''}): ${tx.type} ₹${tx.amount}`}
+                                        entitySnapshot={{ worker_name: worker?.name, type: tx.type, amount: tx.amount, date: tx.date }}
+                                        onDirectDelete={() => setDeletingTx(tx)}
                                         className="tx-action-btn tx-delete-btn"
-                                        onClick={() => setDeletingTx(tx)}
                                         title="Delete Entry"
+                                        requestTitle="Request Admin to Delete Worker Entry"
+                                        requestChildren="📩"
                                       >
                                         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
                                           <polyline points="3 6 5 6 21 6" />
                                           <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
                                         </svg>
-                                      </button>
+                                      </DeleteActionButton>
                                     </div>
                                   </td>
                                 )}
