@@ -2931,13 +2931,13 @@ export function QuotationFormModal({
                 <table className="quotation-ledger-table">
                   <thead>
                     <tr>
-                      <th className="col-th-name" style={!isAdmin ? { width: '65%' } : { minWidth: '200px' }}>Name (वस्तु)</th>
-                      <th className="col-th-select" style={{ width: isAdmin ? '10%' : '25%', textAlign: 'center' }}>
+                      <th className="col-th-name" style={!isAdmin ? { width: '210px', minWidth: '190px', maxWidth: '220px' } : { minWidth: '200px' }}>Name (वस्तु)</th>
+                      <th className="col-th-select" style={{ width: isAdmin ? '10%' : '76px', textAlign: 'center' }}>
                         Tik (પસંદ ✓)
                       </th>
                       {isAdmin && <th className="col-th-rate">Rate (रेट ₹)</th>}
                       {isAdmin && <th className="col-th-amount">Amount (रકમ ₹)</th>}
-                      <th className="col-th-del" style={!isAdmin ? { width: '10%' } : undefined}></th>
+                      <th className="col-th-del" style={!isAdmin ? { width: 'auto' } : undefined}></th>
                     </tr>
                   </thead>
                   <tbody>
@@ -2958,11 +2958,11 @@ export function QuotationFormModal({
                         }}
                       >
                         {/* 1. Name */}
-                        <td className="col-td-name" style={!isAdmin ? { width: '65%' } : { minWidth: '200px' }}>
+                        <td className="col-td-name" style={!isAdmin ? { width: '210px', minWidth: '190px', maxWidth: '220px' } : { minWidth: '200px' }}>
                           <input
                             type="text"
                             className="ledger-input ledger-name-input font-bold"
-                            style={{ minWidth: '190px', width: '100%' }}
+                            style={{ minWidth: '185px', maxWidth: !isAdmin ? '210px' : undefined, width: '100%' }}
                             placeholder="Item name (वस्तु का नाम)..."
                             value={row.name}
                             onChange={(e) => handleRowChange(idx, 'name', e.target.value)}
@@ -2973,7 +2973,7 @@ export function QuotationFormModal({
                         </td>
 
                         {/* 2. Select (Tik ✓) Checkbox - Replaces Qty */}
-                        <td className="col-td-select" style={{ width: isAdmin ? '10%' : '25%', textAlign: 'center', verticalAlign: 'middle' }}>
+                        <td className="col-td-select" style={{ width: isAdmin ? '10%' : '76px', textAlign: 'center', verticalAlign: 'middle' }}>
                           <label
                             style={{
                               display: 'inline-flex',
