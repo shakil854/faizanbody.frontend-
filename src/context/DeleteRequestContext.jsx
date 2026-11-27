@@ -32,9 +32,6 @@ export function DeleteRequestProvider({ children, onNotify }) {
 
   useEffect(() => {
     refreshPending();
-    if (!isAuthenticated) return;
-    const interval = setInterval(refreshPending, 30000);
-    return () => clearInterval(interval);
   }, [isAuthenticated, refreshPending]);
 
   const isPendingDelete = useCallback(
