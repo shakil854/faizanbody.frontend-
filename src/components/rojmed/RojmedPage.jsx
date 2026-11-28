@@ -680,9 +680,9 @@ export function RojmedPage({ onBackToHome }) {
       const v = accountOptions.vyapari_accounts.find((item) => Number(item.id) === Number(sourceId));
       const vName = v ? (v.firm_name ? `${v.party_name} (${v.firm_name})` : v.party_name) : 'પસંદ કરેલ વેપારી ખાતું';
       if (entryType === 'aavak') {
-        return `🔗 Auto-Sync: "${vName}" ના Vyapari Khata માં 'જમા (Jama)' તરીકે ઉમેરાશે.`;
+        return `🔗 Auto-Sync: "${vName}" ના Vyapari Khata માં 'ઉધાર (Udhar)' તરીકે ઉમેરાશે.`;
       }
-      return `🔗 Auto-Sync: "${vName}" ના Vyapari Khata માં 'ઉધાર (Udhar)' તરીકે ઉમેરાશે.`;
+      return `🔗 Auto-Sync: "${vName}" ના Vyapari Khata માં 'જમા (Jama)' તરીકે ઉમેરાશે.`;
     }
     return null;
   }, [sourceType, sourceId, entryType, subType, accountOptions]);
